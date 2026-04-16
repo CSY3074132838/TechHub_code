@@ -53,9 +53,6 @@
       </div>
     </div>
     
-    <div class="login-footer">
-      <p>© 2024 TechHub - 研发协同管理平台</p>
-    </div>
   </div>
 </template>
 
