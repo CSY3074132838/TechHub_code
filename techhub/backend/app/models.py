@@ -301,11 +301,22 @@ class Approval(db.Model):
     processed_at = db.Column(db.DateTime)
     process_comment = db.Column(db.Text)
     attachments = db.Column(db.JSON, default=list)
+    current_node_id = db.Column(db.Integer, db.ForeignKey('approval_nodes.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    def to_dict(self):
-        return {
+    # 关联关系
+    nodes = db.relationship('ApprovalNode', backref='approval', lazy='dynamic', 
+                            foreign_keys='ApprovalNode.approval_id',
+                            cascade='all, delete-orphan', order_by='ApprovalNode.order')
+    
+    def get_approval_chain(self):
+        """获取审批链状态"""
+        nodes = self.nodes.order_by(ApprovalNode.order).all()
+        return [node.to_dict() for node in nodes]
+    
+    def to_dict(self, include_chain=False):
+        data = {
             'id': self.id,
             'title': self.title,
             'approval_type': self.approval_type.value if self.approval_type else None,
@@ -320,6 +331,10 @@ class Approval(db.Model):
             'attachments': self.attachments,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+        if include_chain:
+            data['approval_chain'] = self.get_approval_chain()
+            data['current_node'] = self.current_node_id
+        return data
 
 class Activity(db.Model):
     """活动记录模型 - 团队动态"""
@@ -345,6 +360,35 @@ class Activity(db.Model):
             'task_id': self.task_id,
             'project_id': self.project_id,
             'meta_data': self.meta_data,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class ApprovalNode(db.Model):
+    """审批节点模型 - 审批链可视化"""
+    __tablename__ = 'approval_nodes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    approval_id = db.Column(db.Integer, db.ForeignKey('approvals.id'), nullable=False)
+    node_name = db.Column(db.String(100), nullable=False)  # 节点名称，如"部门经理审批"
+    handler_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 指定处理人
+    status = db.Column(db.String(20), default='pending')  # pending, completed, skipped, rejected
+    order = db.Column(db.Integer, default=0)  # 节点顺序
+    comment = db.Column(db.Text)
+    handled_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关联关系
+    handler = db.relationship('User', foreign_keys=[handler_id])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'node_name': self.node_name,
+            'handler': self.handler.to_dict() if self.handler else None,
+            'status': self.status,
+            'order': self.order,
+            'comment': self.comment,
+            'handled_at': self.handled_at.isoformat() if self.handled_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

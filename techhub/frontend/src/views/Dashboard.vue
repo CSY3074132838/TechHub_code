@@ -235,8 +235,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
-import { getOverview, getActivities } from '@/api/dashboard'
-import { getMyTasks, createTask as apiCreateTask } from '@/api/tasks'
+import { getOverview, getActivities, getTodos } from '@/api/dashboard'
+import { createTask as apiCreateTask } from '@/api/tasks'
 import { getProjects, createProject as apiCreateProject } from '@/api/projects'
 
 const router = useRouter()
@@ -268,17 +268,17 @@ const projectForm = ref({
 
 const fetchData = async () => {
   try {
-    const [overviewRes, activitiesRes, tasksRes, projectsRes] = await Promise.all([
+    const [overviewRes, activitiesRes, todosRes, projectsRes] = await Promise.all([
       getOverview(),
       getActivities({ limit: 10 }),
-      getMyTasks(),
+      getTodos(),
       getProjects()
     ])
     
     overview.value = overviewRes
-    activities.value = activitiesRes.activities
-    myTasks.value = tasksRes.tasks.filter(t => t.status !== 'done')
-    projects.value = projectsRes.projects
+    activities.value = activitiesRes.activities || []
+    myTasks.value = todosRes.tasks || []
+    projects.value = projectsRes.projects || []
   } catch (error) {
     console.error('获取数据失败', error)
   }

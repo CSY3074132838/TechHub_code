@@ -15,3 +15,7 @@ export const getStatistics = () => {
 export const getPerformance = () => {
   return request.get('/dashboard/performance')
 }
+
+export const getTodos = (params) => {
+  return request.get('/dashboard/todos', { params })
+}

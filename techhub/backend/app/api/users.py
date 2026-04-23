@@ -124,6 +124,77 @@ def get_roles():
         'roles': [role.to_dict() for role in roles]
     }), 200
 
+@users_bp.route('/roles', methods=['POST'])
+@admin_required
+def create_role():
+    """创建新角色（仅管理员）"""
+    data = request.get_json()
+    
+    if not data or not data.get('name'):
+        return jsonify({'message': '角色名称不能为空', 'error': 'missing_name'}), 400
+    
+    if Role.query.filter_by(name=data['name']).first():
+        return jsonify({'message': '角色名称已存在', 'error': 'name_exists'}), 409
+    
+    role = Role(
+        name=data['name'],
+        description=data.get('description', ''),
+        level=data.get('level', 4),
+        permissions=data.get('permissions', [])
+    )
+    db.session.add(role)
+    db.session.commit()
+    
+    return jsonify({
+        'message': '角色创建成功',
+        'role': role.to_dict()
+    }), 201
+
+@users_bp.route('/roles/<int:role_id>', methods=['PUT'])
+@admin_required
+def update_role(role_id):
+    """更新角色信息（仅管理员）"""
+    role = Role.query.get_or_404(role_id)
+    data = request.get_json()
+    
+    if 'name' in data:
+        existing = Role.query.filter_by(name=data['name']).first()
+        if existing and existing.id != role_id:
+            return jsonify({'message': '角色名称已存在', 'error': 'name_exists'}), 409
+        role.name = data['name']
+    
+    if 'description' in data:
+        role.description = data['description']
+    if 'level' in data:
+        role.level = data['level']
+    if 'permissions' in data:
+        role.permissions = data['permissions']
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': '角色更新成功',
+        'role': role.to_dict()
+    }), 200
+
+@users_bp.route('/roles/<int:role_id>', methods=['DELETE'])
+@admin_required
+def delete_role(role_id):
+    """删除角色（仅管理员）"""
+    role = Role.query.get_or_404(role_id)
+    
+    # 检查是否有用户正在使用该角色
+    if role.users:
+        return jsonify({
+            'message': '该角色下还有用户，无法删除',
+            'error': 'role_in_use'
+        }), 409
+    
+    db.session.delete(role)
+    db.session.commit()
+    
+    return jsonify({'message': '角色已删除'}), 200
+
 @users_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_user_stats():

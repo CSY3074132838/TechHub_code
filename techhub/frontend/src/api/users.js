@@ -27,3 +27,15 @@ export const getRoles = () => {
 export const getUserStats = () => {
   return request.get('/users/stats')
 }
+
+export const createRole = (data) => {
+  return request.post('/users/roles', data)
+}
+
+export const updateRole = (id, data) => {
+  return request.put(`/users/roles/${id}`, data)
+}
+
+export const deleteRole = (id) => {
+  return request.delete(`/users/roles/${id}`)
+}

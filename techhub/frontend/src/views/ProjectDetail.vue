@@ -347,12 +347,25 @@ const handleDrop = async (newStatus, event) => {
   event.preventDefault()
   if (!draggedTask || draggedTask.status === newStatus) return
   
+  const oldStatus = draggedTask.status
+  const taskId = draggedTask.id
+  
+  // 乐观更新：先更新本地状态
+  const taskIndex = board.value[oldStatus].findIndex(t => t.id === taskId)
+  if (taskIndex > -1) {
+    const task = board.value[oldStatus].splice(taskIndex, 1)[0]
+    task.status = newStatus
+    board.value[newStatus].push(task)
+  }
+  draggedTask = null
+  
   try {
-    await updateTask(draggedTask.id, { status: newStatus })
-    fetchBoard()
-    draggedTask = null
+    await updateTask(taskId, { status: newStatus })
+    ElMessage.success('任务状态已更新')
   } catch (error) {
     console.error('更新任务状态失败', error)
+    ElMessage.error('更新失败，正在刷新')
+    fetchBoard() // 失败时回退
   }
 }
 

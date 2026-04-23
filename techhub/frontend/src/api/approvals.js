@@ -27,3 +27,7 @@ export const getApprovalTypes = () => {
 export const getPendingCount = () => {
   return request.get('/approvals/pending-count')
 }
+
+export const getApprovalChain = (id) => {
+  return request.get(`/approvals/${id}/chain`)
+}

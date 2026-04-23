@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from app import db
-from app.models import User, Project, Task, Approval, Activity, TaskStatus
+from app.models import User, Project, Task, Approval, Activity, TaskStatus, TaskPriority
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -46,6 +46,40 @@ def get_overview():
         'my_projects': my_projects,
         'my_pending_approvals': my_pending_approvals,
         'today_completed': today_completed
+    }), 200
+
+@dashboard_bp.route('/todos', methods=['GET'])
+@jwt_required()
+def get_todos():
+    """获取工作台待办任务列表，按优先级排序"""
+    current_user_id = get_jwt_identity()
+    status = request.args.get('status')
+    
+    # 查询当前用户的未完成任务
+    query = Task.query.filter(
+        Task.assignee_id == current_user_id,
+        Task.status != TaskStatus.DONE
+    )
+    
+    if status:
+        query = query.filter(Task.status == status)
+    
+    # 按优先级排序：urgent > high > medium > low
+    # SQLAlchemy enum 排序默认按枚举定义顺序，我们在模型中定义的顺序是：TODO, IN_PROGRESS, REVIEW, DONE
+    # 优先级排序需要在查询中处理
+    priority_order = db.case(
+        (Task.priority == TaskPriority.URGENT, 1),
+        (Task.priority == TaskPriority.HIGH, 2),
+        (Task.priority == TaskPriority.MEDIUM, 3),
+        (Task.priority == TaskPriority.LOW, 4),
+        else_=5
+    )
+    
+    tasks = query.order_by(priority_order, Task.created_at.desc()).all()
+    
+    return jsonify({
+        'tasks': [task.to_dict() for task in tasks],
+        'total': len(tasks)
     }), 200
 
 @dashboard_bp.route('/activities', methods=['GET'])

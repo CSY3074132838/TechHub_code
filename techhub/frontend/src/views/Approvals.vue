@@ -185,6 +185,50 @@
         <el-button type="primary" @click="handleProcess" :loading="processing">确认</el-button>
       </template>
     </el-dialog>
+
+    <!-- 审批详情对话框（含审批链可视化） -->
+    <el-dialog v-model="showDetailDialog" title="审批详情" width="700px">
+      <div v-if="detailApproval" class="approval-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="标题">{{ detailApproval.title }}</el-descriptions-item>
+          <el-descriptions-item label="类型">{{ getTypeLabel(detailApproval.approval_type) }}</el-descriptions-item>
+          <el-descriptions-item label="申请人">{{ detailApproval.applicant?.real_name }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(detailApproval.status)">
+              {{ getStatusLabel(detailApproval.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="金额">{{ detailApproval.amount ? `¥${detailApproval.amount}` : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="紧急程度">
+            <el-tag v-if="detailApproval.is_urgent" type="danger">紧急</el-tag>
+            <el-tag v-else type="info">普通</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="说明" :span="2">{{ detailApproval.description || '无' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div class="approval-chain-section">
+          <h4>审批流程</h4>
+          <el-steps :active="getActiveStep(detailApproval)" finish-status="success" direction="vertical">
+            <el-step
+              v-for="(node, index) in detailApproval.approval_chain"
+              :key="node.id"
+              :title="node.node_name"
+              :status="getNodeStatus(node, index, detailApproval)"
+            >
+              <template #description>
+                <div class="step-desc">
+                  <span v-if="node.handler">处理人：{{ node.handler.real_name }}</span>
+                  <span v-if="node.status === 'completed'" class="text-success">已通过</span>
+                  <span v-if="node.status === 'rejected'" class="text-danger">已拒绝</span>
+                  <span v-if="node.status === 'pending'" class="text-warning">待处理</span>
+                  <span v-if="node.comment" class="comment">备注：{{ node.comment }}</span>
+                </div>
+              </template>
+            </el-step>
+          </el-steps>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -193,7 +237,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 import { useUserStore } from '@/stores/user'
-import { getApprovals, createApproval, processApproval, getApprovalStats, getApprovalTypes } from '@/api/approvals'
+import { getApprovals, createApproval, processApproval, getApprovalStats, getApprovalTypes, getApprovalChain, getApproval } from '@/api/approvals'
 
 const userStore = useUserStore()
 
@@ -209,9 +253,11 @@ const total = ref(0)
 
 const showCreateDialog = ref(false)
 const showProcessDialog = ref(false)
+const showDetailDialog = ref(false)
 const creating = ref(false)
 const processing = ref(false)
 const currentApproval = ref(null)
+const detailApproval = ref(null)
 
 const form = ref({
   approval_type: '',
@@ -332,10 +378,33 @@ const handleProcess = async () => {
   }
 }
 
-const viewDetail = (approval) => {
-  currentApproval.value = approval
-  // 可以打开详情对话框
-  ElMessage.info('详情功能开发中')
+const viewDetail = async (approval) => {
+  try {
+    const res = await getApproval(approval.id)
+    detailApproval.value = res.approval
+    showDetailDialog.value = true
+  } catch (error) {
+    console.error('获取审批详情失败', error)
+    ElMessage.error('获取详情失败')
+  }
+}
+
+const getActiveStep = (approval) => {
+  if (!approval.approval_chain) return 0
+  const completed = approval.approval_chain.filter(n => n.status === 'completed').length
+  return completed
+}
+
+const getNodeStatus = (node, index, approval) => {
+  if (node.status === 'completed') return 'success'
+  if (node.status === 'rejected') return 'error'
+  if (node.status === 'pending') {
+    // 当前激活的节点
+    const prevCompleted = index === 0 || approval.approval_chain[index - 1]?.status === 'completed'
+    if (prevCompleted) return 'process'
+    return 'wait'
+  }
+  return 'wait'
 }
 
 const formatDate = (date) => {

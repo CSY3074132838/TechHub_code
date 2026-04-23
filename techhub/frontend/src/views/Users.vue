@@ -102,6 +102,47 @@
       </div>
     </el-card>
 
+    <!-- 角色管理卡片 -->
+    <el-card class="roles-card" style="margin-top: 20px;">
+      <template #header>
+        <div class="card-header">
+          <span>角色管理</span>
+          <el-button type="primary" size="small" @click="showRoleDialog = true">
+            <el-icon><Plus /></el-icon>新增角色
+          </el-button>
+        </div>
+      </template>
+      
+      <el-table :data="roles" size="small" border>
+        <el-table-column label="角色名称" prop="description" min-width="150" />
+        <el-table-column label="标识" prop="name" width="150" />
+        <el-table-column label="等级" prop="level" width="100">
+          <template #default="{ row }">
+            <el-tag size="small">{{ row.level }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="权限" min-width="300">
+          <template #default="{ row }">
+            <el-tag
+              v-for="perm in row.permissions"
+              :key="perm"
+              size="small"
+              type="info"
+              style="margin-right: 4px;"
+            >
+              {{ perm }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="150">
+          <template #default="{ row }">
+            <el-button text size="small" @click="editRole(row)">编辑</el-button>
+            <el-button text type="danger" size="small" @click="removeRole(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <!-- 添加/编辑用户对话框 -->
     <el-dialog
       v-model="showCreateDialog"
@@ -143,13 +184,50 @@
         <el-button type="primary" @click="saveUser" :loading="saving">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 添加/编辑角色对话框 -->
+    <el-dialog
+      v-model="showRoleDialog"
+      :title="isEditRole ? '编辑角色' : '新增角色'"
+      width="500px"
+    >
+      <el-form :model="roleForm" label-width="100px">
+        <el-form-item label="角色标识">
+          <el-input v-model="roleForm.name" placeholder="如：project_manager" :disabled="isEditRole" />
+        </el-form-item>
+        <el-form-item label="角色名称">
+          <el-input v-model="roleForm.description" placeholder="如：项目经理" />
+        </el-form-item>
+        <el-form-item label="等级">
+          <el-input-number v-model="roleForm.level" :min="1" :max="10" />
+        </el-form-item>
+        <el-form-item label="权限">
+          <el-select v-model="roleForm.permissions" multiple placeholder="选择权限" style="width: 100%;">
+            <el-option label="全部权限" value="all" />
+            <el-option label="仪表盘查看" value="dashboard_view" />
+            <el-option label="团队管理" value="team_manage" />
+            <el-option label="紧急审批" value="approval_urgent" />
+            <el-option label="项目管理" value="project_manage" />
+            <el-option label="任务分配" value="task_assign" />
+            <el-option label="团队查看" value="team_view" />
+            <el-option label="任务查看" value="task_view" />
+            <el-option label="任务执行" value="task_execute" />
+            <el-option label="审批提交" value="approval_submit" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showRoleDialog = false">取消</el-button>
+        <el-button type="primary" @click="saveRole" :loading="savingRole">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsers, updateUser, getUserStats, getRoles } from '@/api/users'
+import { getUsers, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole } from '@/api/users'
 
 const users = ref([])
 const roles = ref([])
@@ -160,8 +238,11 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const showCreateDialog = ref(false)
+const showRoleDialog = ref(false)
 const isEdit = ref(false)
+const isEditRole = ref(false)
 const saving = ref(false)
+const savingRole = ref(false)
 
 const form = ref({
   id: '',
@@ -172,6 +253,14 @@ const form = ref({
   department: '',
   position: '',
   role_ids: []
+})
+
+const roleForm = ref({
+  id: '',
+  name: '',
+  description: '',
+  level: 4,
+  permissions: []
 })
 
 const fetchUsers = async () => {
@@ -263,6 +352,71 @@ const toggleStatus = async (row) => {
     if (error !== 'cancel') {
       console.error(`${action}用户失败`, error)
     }
+  }
+}
+
+const editRole = (role) => {
+  isEditRole.value = true
+  roleForm.value = {
+    id: role.id,
+    name: role.name,
+    description: role.description,
+    level: role.level,
+    permissions: role.permissions || []
+  }
+  showRoleDialog.value = true
+}
+
+const removeRole = async (role) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除角色 "${role.description}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteRole(role.id)
+    ElMessage.success('角色已删除')
+    fetchRoles()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.message || '删除失败')
+    }
+  }
+}
+
+const saveRole = async () => {
+  if (!roleForm.value.name || !roleForm.value.description) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+  
+  savingRole.value = true
+  try {
+    if (isEditRole.value) {
+      await updateRole(roleForm.value.id, {
+        name: roleForm.value.name,
+        description: roleForm.value.description,
+        level: roleForm.value.level,
+        permissions: roleForm.value.permissions
+      })
+      ElMessage.success('角色更新成功')
+    } else {
+      await createRole({
+        name: roleForm.value.name,
+        description: roleForm.value.description,
+        level: roleForm.value.level,
+        permissions: roleForm.value.permissions
+      })
+      ElMessage.success('角色创建成功')
+    }
+    showRoleDialog.value = false
+    roleForm.value = { id: '', name: '', description: '', level: 4, permissions: [] }
+    fetchRoles()
+  } catch (error) {
+    console.error('保存角色失败', error)
+    ElMessage.error(error.response?.data?.message || '保存失败')
+  } finally {
+    savingRole.value = false
   }
 }
 

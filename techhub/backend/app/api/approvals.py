@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Approval, User, Activity, ActivityType, ApprovalStatus
+from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode
 
 approvals_bp = Blueprint('approvals', __name__)
 
@@ -88,6 +88,15 @@ def create_approval():
     db.session.add(approval)
     db.session.commit()
     
+    # 创建审批链
+    applicant = User.query.get(current_user_id)
+    create_approval_chain(
+        approval,
+        data['approval_type'],
+        data.get('is_urgent', False),
+        applicant
+    )
+    
     # 记录活动
     activity = Activity(
         activity_type=ActivityType.APPROVAL_SUBMITTED,
@@ -99,20 +108,67 @@ def create_approval():
     
     return jsonify({
         'message': '审批提交成功',
-        'approval': approval.to_dict()
+        'approval': approval.to_dict(include_chain=True)
     }), 201
 
 @approvals_bp.route('/<int:approval_id>', methods=['GET'])
 @jwt_required()
 def get_approval(approval_id):
-    """获取审批详情"""
+    """获取审批详情（含审批链）"""
     approval = Approval.query.get_or_404(approval_id)
-    return jsonify({'approval': approval.to_dict()}), 200
+    return jsonify({'approval': approval.to_dict(include_chain=True)}), 200
+
+def create_approval_chain(approval, approval_type, is_urgent, applicant):
+    """为审批创建审批链节点"""
+    nodes = []
+    
+    # 节点1：直属上级/项目经理审批
+    nodes.append(ApprovalNode(
+        approval_id=approval.id,
+        node_name='直属上级审批',
+        status='pending',
+        order=1
+    ))
+    
+    # 节点2：部门负责人审批（紧急或金额相关）
+    if is_urgent or approval_type in ['expense', 'purchase']:
+        nodes.append(ApprovalNode(
+            approval_id=approval.id,
+            node_name='部门负责人审批',
+            status='pending',
+            order=2
+        ))
+    
+    # 节点3：财务/管理员终审（采购、报销、紧急）
+    if approval_type in ['expense', 'purchase'] or is_urgent:
+        nodes.append(ApprovalNode(
+            approval_id=approval.id,
+            node_name='财务终审',
+            status='pending',
+            order=3
+        ))
+    
+    # 如果没有额外节点，至少加一个归档节点
+    if len(nodes) == 1:
+        nodes.append(ApprovalNode(
+            approval_id=approval.id,
+            node_name='归档完成',
+            status='pending',
+            order=2
+        ))
+    
+    for node in nodes:
+        db.session.add(node)
+    
+    # 设置当前节点为第一个
+    db.session.flush()
+    approval.current_node_id = nodes[0].id
+    db.session.commit()
 
 @approvals_bp.route('/<int:approval_id>/process', methods=['PUT'])
 @jwt_required()
 def process_approval(approval_id):
-    """处理审批"""
+    """处理审批（按审批链推进）"""
     current_user_id = get_jwt_identity()
     approval = Approval.query.get_or_404(approval_id)
     data = request.get_json()
@@ -123,17 +179,49 @@ def process_approval(approval_id):
     # 检查权限
     user = User.query.get(current_user_id)
     
-    # 普通审批：任何人都可以处理
-    # 紧急审批：需要特定权限
-    if approval.is_urgent and not user.has_permission('approval_urgent') and not user.has_permission('all'):
-        return jsonify({'message': '权限不足，无法处理紧急审批', 'error': 'forbidden'}), 403
+    # 获取当前节点
+    current_node = None
+    if approval.current_node_id:
+        current_node = ApprovalNode.query.get(approval.current_node_id)
     
     action = data['action']
     
     if action == 'approve':
-        approval.status = ApprovalStatus.APPROVED
-        activity_title = f'批准了审批 "{approval.title}"'
+        # 推进到下一个节点
+        if current_node:
+            current_node.status = 'completed'
+            current_node.handler_id = current_user_id
+            current_node.handled_at = datetime.utcnow()
+            current_node.comment = data.get('comment', '')
+            
+            # 查找下一个待处理节点
+            next_node = ApprovalNode.query.filter(
+                ApprovalNode.approval_id == approval.id,
+                ApprovalNode.order > current_node.order,
+                ApprovalNode.status == 'pending'
+            ).order_by(ApprovalNode.order).first()
+            
+            if next_node:
+                approval.current_node_id = next_node.id
+                approval.status = ApprovalStatus.PENDING
+                activity_title = f'审批 "{approval.title}" 通过并进入下一节点'
+            else:
+                # 所有节点完成
+                approval.status = ApprovalStatus.APPROVED
+                approval.current_node_id = None
+                activity_title = f'批准了审批 "{approval.title}"'
+        else:
+            approval.status = ApprovalStatus.APPROVED
+            activity_title = f'批准了审批 "{approval.title}"'
+            
     elif action == 'reject':
+        # 拒绝审批，当前节点标记为拒绝
+        if current_node:
+            current_node.status = 'rejected'
+            current_node.handler_id = current_user_id
+            current_node.handled_at = datetime.utcnow()
+            current_node.comment = data.get('comment', '')
+        
         approval.status = ApprovalStatus.REJECTED
         activity_title = f'拒绝了审批 "{approval.title}"'
     else:
@@ -156,7 +244,7 @@ def process_approval(approval_id):
     
     return jsonify({
         'message': '审批处理成功',
-        'approval': approval.to_dict()
+        'approval': approval.to_dict(include_chain=True)
     }), 200
 
 @approvals_bp.route('/stats', methods=['GET'])
@@ -193,6 +281,19 @@ def get_approval_stats():
             'urgent_pending': urgent_pending
         },
         'by_type': [{"type": t.value, "count": c} for t, c in type_stats]
+    }), 200
+
+@approvals_bp.route('/<int:approval_id>/chain', methods=['GET'])
+@jwt_required()
+def get_approval_chain(approval_id):
+    """获取审批链详情"""
+    approval = Approval.query.get_or_404(approval_id)
+    return jsonify({
+        'approval_id': approval.id,
+        'title': approval.title,
+        'status': approval.status.value if approval.status else None,
+        'chain': approval.get_approval_chain(),
+        'current_node': approval.current_node_id
     }), 200
 
 @approvals_bp.route('/types', methods=['GET'])
