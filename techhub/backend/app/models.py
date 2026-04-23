@@ -344,7 +344,7 @@ class Activity(db.Model):
             'user': self.user.to_dict() if self.user else None,
             'task_id': self.task_id,
             'project_id': self.project_id,
-            'meta_data': self.metadata,
+            'meta_data': self.meta_data,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

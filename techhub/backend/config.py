@@ -1,13 +1,15 @@
 import os
 from datetime import timedelta
 
+basedir = os.path.abspath(os.path.dirname(__file__))
+
 class Config:
     """基础配置类"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
     
-    # 数据库配置
+    # 数据库配置 - 使用绝对路径确保数据库位置固定
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///techhub.db'
+        'sqlite:///' + os.path.join(basedir, 'instance', 'techhub.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT配置

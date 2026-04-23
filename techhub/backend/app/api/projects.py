@@ -3,8 +3,20 @@
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime
 from app import db
 from app.models import Project, User, Task, TaskStatus, Activity, ActivityType
+
+def parse_date(date_str):
+    """解析日期字符串为 date 对象"""
+    if not date_str:
+        return None
+    if isinstance(date_str, str):
+        try:
+            return datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return None
+    return date_str
 
 projects_bp = Blueprint('projects', __name__)
 
@@ -58,8 +70,8 @@ def create_project():
         name=data['name'],
         description=data.get('description', ''),
         color=data.get('color', '#1890ff'),
-        start_date=data.get('start_date'),
-        end_date=data.get('end_date'),
+        start_date=parse_date(data.get('start_date')),
+        end_date=parse_date(data.get('end_date')),
         creator_id=current_user_id
     )
     
@@ -114,10 +126,16 @@ def update_project(project_id):
     data = request.get_json()
     
     # 更新字段
-    allowed_fields = ['name', 'description', 'color', 'status', 'start_date', 'end_date']
+    allowed_fields = ['name', 'description', 'color', 'status']
     for field in allowed_fields:
         if field in data:
             setattr(project, field, data[field])
+    
+    # 日期字段需要解析
+    if 'start_date' in data:
+        project.start_date = parse_date(data['start_date'])
+    if 'end_date' in data:
+        project.end_date = parse_date(data['end_date'])
     
     # 更新成员
     if 'member_ids' in data:

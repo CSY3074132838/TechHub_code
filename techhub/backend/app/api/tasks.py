@@ -7,6 +7,18 @@ from datetime import datetime
 from app import db
 from app.models import Task, Project, User, Comment, Activity, ActivityType, TaskStatus
 
+def parse_datetime(dt_str):
+    """解析日期时间字符串为 datetime 对象"""
+    if not dt_str:
+        return None
+    if isinstance(dt_str, str):
+        for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+            try:
+                return datetime.strptime(dt_str, fmt)
+            except ValueError:
+                continue
+    return dt_str
+
 tasks_bp = Blueprint('tasks', __name__)
 
 @tasks_bp.route('/', methods=['GET'])
@@ -92,7 +104,7 @@ def create_task():
         assignee_id=data.get('assignee_id'),
         creator_id=current_user_id,
         priority=data.get('priority', 'medium'),
-        due_date=data.get('due_date'),
+        due_date=parse_datetime(data.get('due_date')),
         order=data.get('order', 0)
     )
     
@@ -141,10 +153,13 @@ def update_task(task_id):
     old_status = task.status
     
     # 更新字段
-    allowed_fields = ['title', 'description', 'status', 'priority', 'assignee_id', 'due_date', 'order']
+    allowed_fields = ['title', 'description', 'status', 'priority', 'assignee_id', 'order']
     for field in allowed_fields:
         if field in data:
             setattr(task, field, data[field])
+    
+    if 'due_date' in data:
+        task.due_date = parse_datetime(data['due_date'])
     
     # 如果状态变为完成，记录完成时间
     if data.get('status') == 'done' and old_status != TaskStatus.DONE:

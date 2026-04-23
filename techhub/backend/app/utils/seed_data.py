@@ -23,39 +23,59 @@ def seed_users(count=20):
     
     users = []
     
-    # 创建超级管理员
-    admin = User(
-        username='admin',
-        email='admin@techhub.com',
-        real_name='系统管理员',
-        department='技术部',
-        position='技术总监',
-        is_active=True
-    )
-    admin.set_password('admin123')
-    admin_role = Role.query.filter_by(name='super_admin').first()
-    if admin_role:
-        admin.roles.append(admin_role)
-    users.append(admin)
+    # 创建超级管理员（如果不存在）
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(
+            username='admin',
+            email='admin@techhub.com',
+            real_name='系统管理员',
+            department='技术部',
+            position='技术总监',
+            is_active=True
+        )
+        admin.set_password('admin123')
+        admin_role = Role.query.filter_by(name='super_admin').first()
+        if admin_role:
+            admin.roles.append(admin_role)
+        db.session.add(admin)
+        users.append(admin)
+    else:
+        users.append(admin)
     
-    # 创建测试账号
-    test_user = User(
-        username='test',
-        email='test@techhub.com',
-        real_name='测试用户',
-        department='研发部',
-        position='工程师',
-        is_active=True
-    )
-    test_user.set_password('test123')
-    member_role = Role.query.filter_by(name='member').first()
-    if member_role:
-        test_user.roles.append(member_role)
-    users.append(test_user)
+    # 创建测试账号（如果不存在）
+    test_user = User.query.filter_by(username='test').first()
+    if not test_user:
+        test_user = User(
+            username='test',
+            email='test@techhub.com',
+            real_name='测试用户',
+            department='研发部',
+            position='工程师',
+            is_active=True
+        )
+        test_user.set_password('test123')
+        member_role = Role.query.filter_by(name='member').first()
+        if member_role:
+            test_user.roles.append(member_role)
+        db.session.add(test_user)
+        users.append(test_user)
+    else:
+        users.append(test_user)
     
-    # 创建随机用户
-    for i in range(count):
+    # 获取已有用户数量
+    existing_count = User.query.count()
+    target_count = count + 2  # 加上 admin 和 test
+    
+    # 创建随机用户，直到达到目标数量
+    i = 0
+    while existing_count < target_count:
         username = fake.user_name() + str(i)
+        # 避免重复
+        if User.query.filter_by(username=username).first():
+            i += 1
+            continue
+            
         user = User(
             username=username,
             email=fake.email(),
@@ -68,9 +88,9 @@ def seed_users(count=20):
         user.set_password('password123')
         
         # 随机分配角色
-        if i < 3:
+        if existing_count < 5:
             role = Role.query.filter_by(name='department_manager').first()
-        elif i < 8:
+        elif existing_count < 10:
             role = Role.query.filter_by(name='project_manager').first()
         else:
             role = Role.query.filter_by(name='member').first()
@@ -78,9 +98,11 @@ def seed_users(count=20):
         if role:
             user.roles.append(role)
         
+        db.session.add(user)
         users.append(user)
+        existing_count += 1
+        i += 1
     
-    db.session.add_all(users)
     db.session.commit()
     print(f"✓ 创建了 {len(users)} 个用户")
     return users
@@ -96,8 +118,13 @@ def seed_projects(users, count=10):
         start_date = fake.date_between(start_date='-3M', end_date='today')
         end_date = start_date + timedelta(days=fake.random_int(30, 180))
         
+        project_name = fake.catch_phrase() + f'项目{i+1}'
+        # 避免重复
+        if Project.query.filter_by(name=project_name).first():
+            continue
+            
         project = Project(
-            name=fake.catch_phrase() + f'项目{i+1}',
+            name=project_name,
             description=fake.text(max_nb_chars=200),
             color=fake.random_element(colors),
             start_date=start_date,
@@ -107,7 +134,7 @@ def seed_projects(users, count=10):
         )
         
         # 添加随机成员
-        member_count = fake.random_int(2, 6)
+        member_count = min(fake.random_int(2, 6), len(users))
         members = fake.random_sample(elements=users, length=member_count)
         for member in members:
             if member not in project.members:
@@ -117,9 +144,9 @@ def seed_projects(users, count=10):
         if creator not in project.members:
             project.members.append(creator)
         
+        db.session.add(project)
         projects.append(project)
     
-    db.session.add_all(projects)
     db.session.commit()
     print(f"✓ 创建了 {len(projects)} 个项目")
     return projects
@@ -129,6 +156,9 @@ def seed_tasks(users, projects, count_per_project=15):
     tasks = []
     
     for project in projects:
+        # 跳过没有成员的项目
+        if not project.members:
+            continue
         for i in range(count_per_project):
             creator = fake.random_element(project.members)
             assignee = fake.random_element(project.members)
@@ -156,9 +186,9 @@ def seed_tasks(users, projects, count_per_project=15):
                 completed_at=completed_at,
                 order=i
             )
+            db.session.add(task)
             tasks.append(task)
     
-    db.session.add_all(tasks)
     db.session.commit()
     print(f"✓ 创建了 {len(tasks)} 个任务")
     return tasks
@@ -217,9 +247,9 @@ def seed_approvals(users, count=30):
             processed_at=processed_at,
             process_comment=process_comment
         )
+        db.session.add(approval)
         approvals.append(approval)
     
-    db.session.add_all(approvals)
     db.session.commit()
     print(f"✓ 创建了 {len(approvals)} 条审批")
     return approvals
@@ -238,6 +268,7 @@ def seed_activities(users, tasks, projects):
             task_id=task.id,
             project_id=task.project_id
         )
+        db.session.add(activity)
         activities.append(activity)
         
         # 如果任务已完成，添加完成活动
@@ -249,6 +280,7 @@ def seed_activities(users, tasks, projects):
                 task_id=task.id,
                 project_id=task.project_id
             )
+            db.session.add(activity)
             activities.append(activity)
     
     # 为每个项目创建活动
@@ -259,9 +291,9 @@ def seed_activities(users, tasks, projects):
             user_id=project.creator_id,
             project_id=project.id
         )
+        db.session.add(activity)
         activities.append(activity)
     
-    db.session.add_all(activities)
     db.session.commit()
     print(f"✓ 创建了 {len(activities)} 条活动记录")
     return activities
