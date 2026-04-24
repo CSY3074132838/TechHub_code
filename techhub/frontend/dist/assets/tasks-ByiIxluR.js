@@ -1,0 +1,1 @@
+import{I as t}from"./index-8Tfyv1DT.js";const r=s=>t.get("/tasks/",{params:s}),n=s=>t.get(`/tasks/${s}`),o=s=>t.post("/tasks/",s),k=(s,a)=>t.put(`/tasks/${s}`,a),u=(s,a)=>t.post(`/tasks/${s}/comments`,{content:a});export{u as a,r as b,o as c,n as g,k as u};

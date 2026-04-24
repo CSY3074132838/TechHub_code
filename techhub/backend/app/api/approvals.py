@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode, ApprovalType
+from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode, ApprovalType, Role
 
 def parse_approval_type(value):
     """将字符串转换为 ApprovalType 枚举"""
@@ -223,9 +223,11 @@ def process_approval(approval_id):
                 approval.status = ApprovalStatus.APPROVED
                 approval.current_node_id = None
                 activity_title = f'批准了审批 "{approval.title}"'
+                _handle_permission_approval(approval, granted=True)
         else:
             approval.status = ApprovalStatus.APPROVED
             activity_title = f'批准了审批 "{approval.title}"'
+            _handle_permission_approval(approval, granted=True)
             
     elif action == 'reject':
         # 拒绝审批，当前节点标记为拒绝
@@ -237,6 +239,7 @@ def process_approval(approval_id):
         
         approval.status = ApprovalStatus.REJECTED
         activity_title = f'拒绝了审批 "{approval.title}"'
+        _handle_permission_approval(approval, granted=False)
     else:
         return jsonify({'message': '无效的操作', 'error': 'invalid_action'}), 400
     
@@ -254,6 +257,30 @@ def process_approval(approval_id):
     )
     db.session.add(activity)
     db.session.commit()
+
+def _handle_permission_approval(approval, granted=True):
+    """处理权限申请审批的结果"""
+    if not approval.title or '[权限申请]' not in approval.title:
+        return
+    
+    applicant = User.query.get(approval.applicant_id)
+    if not applicant:
+        return
+    
+    data_viewer_role = Role.query.filter_by(name='data_viewer').first()
+    if not data_viewer_role:
+        return
+    
+    if granted:
+        # 授予 data_viewer 角色
+        if data_viewer_role not in applicant.roles:
+            applicant.roles.append(data_viewer_role)
+            db.session.commit()
+    else:
+        # 拒绝时移除 data_viewer 角色
+        if data_viewer_role in applicant.roles:
+            applicant.roles.remove(data_viewer_role)
+            db.session.commit()
     
     return jsonify({
         'message': '审批处理成功',

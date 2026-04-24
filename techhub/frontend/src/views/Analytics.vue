@@ -4,6 +4,25 @@
       <h2>数据中心</h2>
     </div>
 
+    <!-- 无权限提示 -->
+    <div v-if="!hasAccess" class="access-denied">
+      <el-result
+        icon="warning"
+        title="暂无访问权限"
+        :sub-title="accessSubtitle"
+      >
+        <template #extra>
+          <el-button v-if="!wasRejected" type="primary" @click="requestAccess" :loading="requesting">
+            申请查看权限
+          </el-button>
+          <el-button v-else type="primary" @click="requestAccess" :loading="requesting">
+            重新申请
+          </el-button>
+        </template>
+      </el-result>
+    </div>
+
+    <template v-else>
     <!-- 概览统计 -->
     <el-row :gutter="20" class="overview-row">
       <el-col :xs="12" :sm="6" v-for="stat in overviewStats" :key="stat.key">
@@ -98,26 +117,47 @@
         </el-table-column>
       </el-table>
     </el-card>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
+import { useUserStore } from '@/stores/user'
 import { getStatistics } from '@/api/dashboard'
+import { getApprovals, createApproval } from '@/api/approvals'
+import { ElMessage } from 'element-plus'
 
 const trendChart = ref(null)
 const statusChart = ref(null)
 const deptChart = ref(null)
 
+const userStore = useUserStore()
+
 const statistics = ref({})
 const overviewStats = ref([])
 const topPerformers = ref([])
 const projectProgress = ref([])
+const requesting = ref(false)
+const wasRejected = ref(false)
 
 let trendChartInstance = null
 let statusChartInstance = null
 let deptChartInstance = null
+
+const hasAccess = computed(() => {
+  if (!userStore.userInfo) return false
+  return userStore.userInfo.roles?.some(r =>
+    r.permissions?.includes('all') || r.permissions?.includes('dashboard_view')
+  ) || false
+})
+
+const accessSubtitle = computed(() => {
+  return wasRejected.value
+    ? '您已被拒绝访问，请尝试重新申请'
+    : '您暂无数据中心查看权限，请向管理员申请'
+})
 
 const fetchStatistics = async () => {
   try {
@@ -277,8 +317,44 @@ window.addEventListener('resize', () => {
   deptChartInstance?.resize()
 })
 
+const checkRejectedStatus = async () => {
+  try {
+    const res = await getApprovals({ scope: 'my', per_page: 1, status: 'rejected' })
+    const rejectedPermissions = (res.approvals || []).filter(a =>
+      a.title && a.title.includes('[权限申请]')
+    )
+    if (rejectedPermissions.length > 0) {
+      wasRejected.value = true
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const requestAccess = async () => {
+  requesting.value = true
+  try {
+    await createApproval({
+      title: '[权限申请] 申请查看数据中心',
+      approval_type: 'other',
+      description: '申请查看数据中心权限',
+      is_urgent: false
+    })
+    ElMessage.success('申请已提交，请等待管理员审批')
+    wasRejected.value = false
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '申请失败')
+  } finally {
+    requesting.value = false
+  }
+}
+
 onMounted(() => {
-  fetchStatistics()
+  if (hasAccess.value) {
+    fetchStatistics()
+  } else {
+    checkRejectedStatus()
+  }
 })
 </script>
 
@@ -406,6 +482,10 @@ onMounted(() => {
   
   .project-progress {
     margin-top: 20px;
+  }
+  
+  .access-denied {
+    padding: 60px 0;
   }
 }
 </style>
