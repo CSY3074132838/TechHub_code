@@ -46,7 +46,7 @@ def get_users():
     users = pagination.items
     
     return jsonify({
-        'users': [user.to_dict() for user in users],
+        'users': [user.to_dict(include_email=True) for user in users],
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page,

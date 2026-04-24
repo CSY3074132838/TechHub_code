@@ -5,7 +5,20 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode
+from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode, ApprovalType
+
+def parse_approval_type(value):
+    """将字符串转换为 ApprovalType 枚举"""
+    if value is None or isinstance(value, ApprovalType):
+        return value
+    mapping = {
+        'leave': ApprovalType.LEAVE,
+        'expense': ApprovalType.EXPENSE,
+        'purchase': ApprovalType.PURCHASE,
+        'overtime': ApprovalType.OVERTIME,
+        'other': ApprovalType.OTHER
+    }
+    return mapping.get(value)
 
 approvals_bp = Blueprint('approvals', __name__)
 
@@ -77,7 +90,7 @@ def create_approval():
     
     approval = Approval(
         title=data['title'],
-        approval_type=data['approval_type'],
+        approval_type=parse_approval_type(data['approval_type']),
         description=data.get('description', ''),
         amount=data.get('amount'),
         is_urgent=data.get('is_urgent', False),

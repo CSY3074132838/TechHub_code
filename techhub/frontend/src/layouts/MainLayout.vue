@@ -31,9 +31,41 @@
           <breadcrumb />
         </div>
         <div class="header-right">
-          <el-badge :value="pendingCount" class="message-badge" v-if="pendingCount > 0">
-            <el-icon size="20"><Bell /></el-icon>
-          </el-badge>
+          <el-popover
+            placement="bottom"
+            :width="320"
+            trigger="click"
+            v-if="pendingCount > 0"
+          >
+            <template #reference>
+              <el-badge :value="pendingCount" class="message-badge">
+                <el-icon size="20"><Bell /></el-icon>
+              </el-badge>
+            </template>
+            <div class="notification-popover">
+              <div class="notification-header">
+                <span>待处理审批 ({{ pendingCount }})</span>
+                <el-button link type="primary" size="small" @click="goToApprovals">查看全部</el-button>
+              </div>
+              <div class="notification-list">
+                <div
+                  v-for="item in pendingApprovals"
+                  :key="item.id"
+                  class="notification-item"
+                  @click="goToApprovalDetail(item)"
+                >
+                  <div class="notification-title">
+                    <el-tag v-if="item.is_urgent" type="danger" size="small">紧急</el-tag>
+                    <span>{{ item.title }}</span>
+                  </div>
+                  <div class="notification-meta">
+                    <span>{{ item.applicant?.real_name }}</span>
+                    <span class="time">{{ formatTime(item.created_at) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </el-popover>
           
           <el-dropdown @command="handleCommand">
             <div class="user-info">
@@ -71,13 +103,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getPendingCount } from '@/api/approvals'
+import { getPendingCount, getApprovals } from '@/api/approvals'
+import dayjs from 'dayjs'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
 const pendingCount = ref(0)
+const pendingApprovals = ref([])
 
 const menuItems = computed(() => [
   { path: '/dashboard', title: '工作台', icon: 'HomeFilled' },
@@ -95,6 +129,27 @@ const fetchPendingCount = async () => {
   } catch (error) {
     console.error('获取待办数量失败', error)
   }
+}
+
+const fetchPendingApprovals = async () => {
+  try {
+    const res = await getApprovals({ scope: 'pending_me', per_page: 5 })
+    pendingApprovals.value = res.approvals || []
+  } catch (error) {
+    console.error('获取待办列表失败', error)
+  }
+}
+
+const goToApprovals = () => {
+  router.push('/approvals')
+}
+
+const goToApprovalDetail = (item) => {
+  router.push('/approvals')
+}
+
+const formatTime = (date) => {
+  return date ? dayjs(date).format('MM-DD HH:mm') : ''
 }
 
 const handleCommand = (command) => {
@@ -120,6 +175,7 @@ const handleCommand = (command) => {
 
 onMounted(() => {
   fetchPendingCount()
+  fetchPendingApprovals()
 })
 </script>
 
@@ -183,6 +239,55 @@ onMounted(() => {
       
       &:hover {
         color: #1890ff;
+      }
+    }
+    
+    .notification-popover {
+      .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+      
+      .notification-list {
+        max-height: 300px;
+        overflow-y: auto;
+        
+        .notification-item {
+          padding: 10px 0;
+          border-bottom: 1px solid #f5f5f5;
+          cursor: pointer;
+          
+          &:last-child {
+            border-bottom: none;
+          }
+          
+          &:hover {
+            background-color: #f5f7fa;
+            margin: 0 -12px;
+            padding-left: 12px;
+            padding-right: 12px;
+          }
+          
+          .notification-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            margin-bottom: 4px;
+          }
+          
+          .notification-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #999;
+          }
+        }
       }
     }
     

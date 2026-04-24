@@ -89,7 +89,9 @@ class Role(db.Model):
             {'name': 'project_manager', 'description': '项目经理', 'level': 3,
              'permissions': ['project_manage', 'task_assign', 'team_view']},
             {'name': 'member', 'description': '普通成员', 'level': 4,
-             'permissions': ['task_view', 'task_execute', 'approval_submit']}
+             'permissions': ['task_view', 'task_execute', 'approval_submit']},
+            {'name': 'data_viewer', 'description': '数据查看员', 'level': 4,
+             'permissions': ['dashboard_view']}
         ]
         
         for role_data in roles:

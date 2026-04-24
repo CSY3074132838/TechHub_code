@@ -1,0 +1,1 @@
+import{I as e}from"./index-fUpdGC8U.js";const s=t=>e.get("/projects/",{params:t}),o=t=>e.get(`/projects/${t}`),c=t=>e.post("/projects/",t),a=t=>e.get(`/projects/${t}/tasks`);export{o as a,a as b,c,s as g};

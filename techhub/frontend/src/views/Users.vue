@@ -279,7 +279,7 @@ const fetchUsers = async () => {
 const fetchStats = async () => {
   try {
     const res = await getUserStats()
-    stats.value = res.data
+    stats.value = res
   } catch (error) {
     console.error('获取统计失败', error)
   }
@@ -310,7 +310,7 @@ const editUser = (row) => {
 }
 
 const saveUser = async () => {
-  if (!form.value.username || !form.value.email) {
+  if (!isEdit.value && (!form.value.username || !form.value.email)) {
     ElMessage.warning('请填写完整信息')
     return
   }

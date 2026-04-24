@@ -10,30 +10,38 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" :class="{ active: filterStatus === 'pending' }" @click="filterByStatus('pending')">
           <div class="stat-value">{{ stats.overview?.pending || 0 }}</div>
           <div class="stat-label">待处理</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" :class="{ active: filterStatus === 'approved' }" @click="filterByStatus('approved')">
           <div class="stat-value success">{{ stats.overview?.approved || 0 }}</div>
           <div class="stat-label">已通过</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" :class="{ active: filterStatus === 'rejected' }" @click="filterByStatus('rejected')">
           <div class="stat-value danger">{{ stats.overview?.rejected || 0 }}</div>
           <div class="stat-label">已拒绝</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" :class="{ active: filterUrgent }" @click="filterByUrgent">
           <div class="stat-value warning">{{ stats.overview?.urgent_pending || 0 }}</div>
           <div class="stat-label">紧急待办</div>
         </div>
       </el-col>
     </el-row>
+    
+    <!-- 筛选状态提示 -->
+    <div v-if="filterStatus || filterUrgent" class="filter-bar">
+      <el-tag closable @close="clearFilter">
+        {{ filterUrgent ? '紧急待办' : statusLabelMap[filterStatus] }}
+      </el-tag>
+      <el-button link type="primary" size="small" @click="clearFilter">清除筛选</el-button>
+    </div>
 
     <!-- 审批列表 -->
     <el-card class="approvals-list">
@@ -247,6 +255,14 @@ const approvalTypes = ref([])
 const loading = ref(false)
 const activeTab = ref('all')
 const filterType = ref('')
+const filterStatus = ref('')
+const filterUrgent = ref(false)
+
+const statusLabelMap = {
+  pending: '待处理',
+  approved: '已通过',
+  rejected: '已拒绝'
+}
 const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -288,7 +304,9 @@ const fetchApprovals = async () => {
       page: page.value,
       per_page: pageSize.value,
       scope: activeTab.value,
-      type: filterType.value
+      type: filterType.value,
+      status: filterStatus.value,
+      is_urgent: filterUrgent.value || undefined
     }
     const res = await getApprovals(params)
     approvals.value = res.approvals
@@ -303,7 +321,7 @@ const fetchApprovals = async () => {
 const fetchStats = async () => {
   try {
     const res = await getApprovalStats()
-    stats.value = res.data
+    stats.value = res
   } catch (error) {
     console.error('获取统计失败', error)
   }
@@ -316,6 +334,35 @@ const fetchTypes = async () => {
   } catch (error) {
     console.error('获取审批类型失败', error)
   }
+}
+
+const filterByStatus = (status) => {
+  if (filterStatus.value === status && !filterUrgent.value) {
+    filterStatus.value = ''
+  } else {
+    filterStatus.value = status
+    filterUrgent.value = false
+  }
+  page.value = 1
+  fetchApprovals()
+}
+
+const filterByUrgent = () => {
+  if (filterUrgent.value) {
+    filterUrgent.value = false
+  } else {
+    filterUrgent.value = true
+    filterStatus.value = ''
+  }
+  page.value = 1
+  fetchApprovals()
+}
+
+const clearFilter = () => {
+  filterStatus.value = ''
+  filterUrgent.value = false
+  page.value = 1
+  fetchApprovals()
 }
 
 const handleTabChange = () => {
@@ -460,6 +507,21 @@ onMounted(() => {
       padding: 20px;
       text-align: center;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+      
+      &.clickable {
+        cursor: pointer;
+        
+        &:hover {
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+          transform: translateY(-2px);
+        }
+        
+        &.active {
+          border: 2px solid #1890ff;
+          background: #e6f7ff;
+        }
+      }
       
       .stat-value {
         font-size: 28px;
@@ -485,6 +547,13 @@ onMounted(() => {
         color: #666;
       }
     }
+  }
+  
+  .filter-bar {
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   
   .approvals-list {

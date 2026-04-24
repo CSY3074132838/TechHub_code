@@ -47,6 +47,11 @@
         </el-form-item>
       </el-form>
       
+      <div class="register-link">
+        <span>还没有账号？</span>
+        <el-button link type="primary" @click="$router.push('/register')">立即注册</el-button>
+      </div>
+      
       <div class="login-tips">
         <p>测试账号：admin / admin123</p>
         <p>普通账号：test / test123</p>
@@ -150,6 +155,13 @@ const handleLogin = async () => {
     font-size: 12px;
     margin: 4px 0;
   }
+}
+
+.register-link {
+  margin-top: 16px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
 }
 
 .login-footer {

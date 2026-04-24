@@ -1,0 +1,1 @@
+import{I as s}from"./index-fUpdGC8U.js";const u=e=>s.get("/users/",{params:e}),o=(e,t)=>s.put(`/users/${e}`,t),a=()=>s.get("/users/roles"),n=()=>s.get("/users/stats"),l=e=>s.post("/users/roles",e),c=(e,t)=>s.put(`/users/roles/${e}`,t),g=e=>s.delete(`/users/roles/${e}`);export{n as a,a as b,c,g as d,l as e,u as g,o as u};

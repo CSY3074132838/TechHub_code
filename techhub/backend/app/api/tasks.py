@@ -5,18 +5,51 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Task, Project, User, Comment, Activity, ActivityType, TaskStatus
+from app.models import Task, Project, User, Comment, Activity, ActivityType, TaskStatus, TaskPriority
+
+def parse_task_status(value):
+    """将字符串转换为 TaskStatus 枚举"""
+    if value is None or isinstance(value, TaskStatus):
+        return value
+    mapping = {
+        'todo': TaskStatus.TODO,
+        'in_progress': TaskStatus.IN_PROGRESS,
+        'review': TaskStatus.REVIEW,
+        'done': TaskStatus.DONE
+    }
+    return mapping.get(value)
+
+def parse_task_priority(value):
+    """将字符串转换为 TaskPriority 枚举"""
+    if value is None or isinstance(value, TaskPriority):
+        return value
+    mapping = {
+        'low': TaskPriority.LOW,
+        'medium': TaskPriority.MEDIUM,
+        'high': TaskPriority.HIGH,
+        'urgent': TaskPriority.URGENT
+    }
+    return mapping.get(value)
 
 def parse_datetime(dt_str):
     """解析日期时间字符串为 datetime 对象"""
     if not dt_str:
         return None
     if isinstance(dt_str, str):
-        for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        # 优先尝试 ISO 8601 格式（带毫秒和时区，如 2026-04-25T10:00:00.000Z）
+        for fmt in ('%Y-%m-%dT%H:%M:%S.%fZ', '%Y-%m-%dT%H:%M:%S.%f%z', '%Y-%m-%dT%H:%M:%S%z', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
             try:
                 return datetime.strptime(dt_str, fmt)
             except ValueError:
                 continue
+        # 兜底：使用 fromisoformat（支持 +00:00 时区格式）
+        try:
+            s = dt_str
+            if s.endswith('Z'):
+                s = s[:-1] + '+00:00'
+            return datetime.fromisoformat(s)
+        except ValueError:
+            pass
     return dt_str
 
 tasks_bp = Blueprint('tasks', __name__)
@@ -103,7 +136,7 @@ def create_task():
         project_id=data['project_id'],
         assignee_id=data.get('assignee_id'),
         creator_id=current_user_id,
-        priority=data.get('priority', 'medium'),
+        priority=parse_task_priority(data.get('priority', 'medium')),
         due_date=parse_datetime(data.get('due_date')),
         order=data.get('order', 0)
     )
@@ -153,7 +186,11 @@ def update_task(task_id):
     old_status = task.status
     
     # 更新字段
-    allowed_fields = ['title', 'description', 'status', 'priority', 'assignee_id', 'order']
+    if 'status' in data:
+        task.status = parse_task_status(data['status'])
+    if 'priority' in data:
+        task.priority = parse_task_priority(data['priority'])
+    allowed_fields = ['title', 'description', 'assignee_id', 'order']
     for field in allowed_fields:
         if field in data:
             setattr(task, field, data[field])
@@ -281,7 +318,7 @@ def update_board():
                     continue  # 跳过无权限的任务
             
             if new_status:
-                task.status = new_status
+                task.status = parse_task_status(new_status)
             if new_order is not None:
                 task.order = new_order
     

@@ -138,7 +138,7 @@ const fetchStatistics = async () => {
     
     // 初始化图表
     nextTick(() => {
-      initCharts(res.data)
+      initCharts(res)
     })
   } catch (error) {
     console.error('获取统计数据失败', error)
