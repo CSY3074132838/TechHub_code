@@ -9,7 +9,7 @@ class Config:
     
     # 数据库配置 - 使用绝对路径确保数据库位置固定
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///' + os.path.join(basedir, 'instance', 'techhub.db')
+        'mysql+pymysql://root:7896352abcQ@localhost:3306/techhub?charset=utf8mb4'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT配置
