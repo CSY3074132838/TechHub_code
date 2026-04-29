@@ -11,6 +11,39 @@ from app.models import User, Role
 from app.services import AuditService, CacheService
 from datetime import datetime
 
+# 登录安全策略常量
+MAX_LOGIN_ATTEMPTS = 5      # 最大尝试次数
+LOGIN_LOCKOUT_MINUTES = 15  # 锁定时长（分钟）
+
+
+def _get_login_fail_key(username):
+    """获取登录失败计数缓存Key"""
+    return f"login_fail:{username}"
+
+
+def _is_account_locked(username):
+    """检查账号是否因登录失败过多被锁定"""
+    fail_count = CacheService.get(_get_login_fail_key(username))
+    if fail_count and int(fail_count) >= MAX_LOGIN_ATTEMPTS:
+        return True
+    return False
+
+
+def _record_login_failure(username):
+    """记录一次登录失败"""
+    key = _get_login_fail_key(username)
+    fail_count = CacheService.get(key)
+    if fail_count is None:
+        fail_count = 0
+    fail_count = int(fail_count) + 1
+    CacheService.set(key, fail_count, ttl=LOGIN_LOCKOUT_MINUTES * 60)
+    return fail_count
+
+
+def _clear_login_failures(username):
+    """登录成功后清除失败计数"""
+    CacheService.delete(_get_login_fail_key(username))
+
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
@@ -62,19 +95,50 @@ def login():
     if not data or not data.get('username') or not data.get('password'):
         return jsonify({'message': '请提供用户名和密码', 'error': 'missing_credentials'}), 400
     
+    username_input = data.get('username')
+    
+    # 检查账号是否被锁定
+    if _is_account_locked(username_input):
+        AuditService.log(
+            action=AuditService.LOGIN_FAILED,
+            username=username_input,
+            detail={'reason': 'account_locked', 'ip': request.remote_addr},
+            status='failure'
+        )
+        return jsonify({
+            'message': f'登录失败次数过多，账号已锁定 {LOGIN_LOCKOUT_MINUTES} 分钟',
+            'error': 'account_locked',
+            'lockout_minutes': LOGIN_LOCKOUT_MINUTES
+        }), 403
+    
     # 查找用户（支持用户名或邮箱登录）
     user = User.query.filter(
-        (User.username == data['username']) | (User.email == data['username'])
+        (User.username == username_input) | (User.email == username_input)
     ).first()
     
     if not user or not user.check_password(data['password']):
+        fail_count = _record_login_failure(username_input)
+        remaining = max(0, MAX_LOGIN_ATTEMPTS - fail_count)
+        
         AuditService.log(
             action=AuditService.LOGIN_FAILED,
-            username=data.get('username'),
-            detail={'reason': 'invalid_credentials', 'ip': request.remote_addr},
+            username=username_input,
+            detail={'reason': 'invalid_credentials', 'ip': request.remote_addr, 'fail_count': fail_count},
             status='failure'
         )
-        return jsonify({'message': '用户名或密码错误', 'error': 'invalid_credentials'}), 401
+        
+        if remaining == 0:
+            return jsonify({
+                'message': f'登录失败次数过多，账号已锁定 {LOGIN_LOCKOUT_MINUTES} 分钟',
+                'error': 'account_locked',
+                'lockout_minutes': LOGIN_LOCKOUT_MINUTES
+            }), 403
+        
+        return jsonify({
+            'message': f'用户名或密码错误，还剩 {remaining} 次机会',
+            'error': 'invalid_credentials',
+            'remaining_attempts': remaining
+        }), 401
     
     if not user.is_active:
         AuditService.log(
@@ -90,6 +154,9 @@ def login():
     user.last_login = datetime.utcnow()
     db.session.commit()
     
+    # 登录成功，清除失败计数
+    _clear_login_failures(username_input)
+    
     # 记录登录成功审计日志
     AuditService.log(
         action=AuditService.LOGIN,
@@ -99,15 +166,21 @@ def login():
         status='success'
     )
     
-    # 创建 JWT Token
+    # 创建 JWT Token（携带权限版本号，用于即时生效校验）
     access_token = create_access_token(
         identity=user.id,
         additional_claims={
             'username': user.username,
-            'roles': [role.name for role in user.roles]
+            'roles': [role.name for role in user.roles],
+            'permission_version': user.permission_version
         }
     )
-    refresh_token = create_refresh_token(identity=user.id)
+    refresh_token = create_refresh_token(
+        identity=user.id,
+        additional_claims={
+            'permission_version': user.permission_version
+        }
+    )
     
     return jsonify({
         'message': '登录成功',
@@ -130,7 +203,8 @@ def refresh():
         identity=user.id,
         additional_claims={
             'username': user.username,
-            'roles': [role.name for role in user.roles]
+            'roles': [role.name for role in user.roles],
+            'permission_version': user.permission_version
         }
     )
     

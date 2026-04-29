@@ -2,7 +2,7 @@
   <div class="users-page">
     <div class="page-header">
       <h2>用户管理</h2>
-      <el-button type="primary" @click="showCreateDialog = true">
+      <el-button type="primary" @click="showCreateDialog = true" v-if="userStore.hasPermission('user_manage')">
         <el-icon><Plus /></el-icon>添加用户
       </el-button>
     </div>
@@ -78,6 +78,7 @@
           <template #default="{ row }">
             <el-button text size="small" @click="editUser(row)">编辑</el-button>
             <el-button
+              v-if="userStore.hasPermission('user_manage')"
               :type="row.is_active ? 'danger' : 'success'"
               text
               size="small"
@@ -107,7 +108,7 @@
       <template #header>
         <div class="card-header">
           <span>角色管理</span>
-          <el-button type="primary" size="small" @click="showRoleDialog = true">
+          <el-button type="primary" size="small" @click="showRoleDialog = true" v-if="userStore.hasPermission('role_manage')">
             <el-icon><Plus /></el-icon>新增角色
           </el-button>
         </div>
@@ -137,7 +138,7 @@
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
             <el-button text size="small" @click="editRole(row)">编辑</el-button>
-            <el-button text type="danger" size="small" @click="removeRole(row)">删除</el-button>
+            <el-button v-if="userStore.hasPermission('role_manage')" text type="danger" size="small" @click="removeRole(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -203,16 +204,21 @@
         </el-form-item>
         <el-form-item label="权限">
           <el-select v-model="roleForm.permissions" multiple placeholder="选择权限" style="width: 100%;">
-            <el-option label="全部权限" value="all" />
-            <el-option label="仪表盘查看" value="dashboard_view" />
-            <el-option label="团队管理" value="team_manage" />
-            <el-option label="紧急审批" value="approval_urgent" />
-            <el-option label="项目管理" value="project_manage" />
-            <el-option label="任务分配" value="task_assign" />
-            <el-option label="团队查看" value="team_view" />
-            <el-option label="任务查看" value="task_view" />
-            <el-option label="任务执行" value="task_execute" />
-            <el-option label="审批提交" value="approval_submit" />
+            <el-option
+              v-for="perm in permissionOptions"
+              :key="perm.code"
+              :label="perm.label"
+              :value="perm.code"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="数据范围">
+          <el-select v-model="roleForm.data_scope" placeholder="选择数据范围" style="width: 100%;">
+            <el-option label="全部数据" value="all" />
+            <el-option label="本部门数据" value="dept" />
+            <el-option label="本部门及子部门" value="dept_and_below" />
+            <el-option label="仅自己的数据" value="self" />
+            <el-option label="自定义" value="custom" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -227,8 +233,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUsers, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole } from '@/api/users'
+import { useUserStore } from '@/stores/user'
+import { getUsers, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole, getPermissions } from '@/api/users'
 
+const userStore = useUserStore()
 const users = ref([])
 const roles = ref([])
 const stats = ref({})
@@ -243,6 +251,7 @@ const isEdit = ref(false)
 const isEditRole = ref(false)
 const saving = ref(false)
 const savingRole = ref(false)
+const permissionOptions = ref([])
 
 const form = ref({
   id: '',
@@ -260,7 +269,9 @@ const roleForm = ref({
   name: '',
   description: '',
   level: 4,
-  permissions: []
+  permissions: [],
+  data_scope: 'self',
+  data_scope_custom: []
 })
 
 const fetchUsers = async () => {
@@ -318,13 +329,16 @@ const saveUser = async () => {
   saving.value = true
   try {
     if (isEdit.value) {
-      await updateUser(form.value.id, {
+      const res = await updateUser(form.value.id, {
         real_name: form.value.real_name,
         department: form.value.department,
         position: form.value.position,
         roles: form.value.role_ids
       })
-      ElMessage.success('用户更新成功')
+      ElMessage.success(res.message || '用户更新成功')
+      if (res.require_relogin) {
+        ElMessage.warning('您的权限已变更，请重新登录')
+      }
     }
     showCreateDialog.value = false
     fetchUsers()
@@ -362,7 +376,9 @@ const editRole = (role) => {
     name: role.name,
     description: role.description,
     level: role.level,
-    permissions: role.permissions || []
+    permissions: role.permissions || [],
+    data_scope: role.data_scope || 'self',
+    data_scope_custom: role.data_scope_custom || []
   }
   showRoleDialog.value = true
 }
@@ -410,8 +426,12 @@ const saveRole = async () => {
       ElMessage.success('角色创建成功')
     }
     showRoleDialog.value = false
-    roleForm.value = { id: '', name: '', description: '', level: 4, permissions: [] }
+    roleForm.value = { id: '', name: '', description: '', level: 4, permissions: [], data_scope: 'self', data_scope_custom: [] }
     fetchRoles()
+    // 如果有重新登录提示，展示给用户
+    if (res.require_relogin) {
+      ElMessage.warning('角色权限已变更，请重新登录后生效')
+    }
   } catch (error) {
     console.error('保存角色失败', error)
     ElMessage.error(error.response?.data?.message || '保存失败')
@@ -420,10 +440,20 @@ const saveRole = async () => {
   }
 }
 
+const fetchPermissions = async () => {
+  try {
+    const res = await getPermissions()
+    permissionOptions.value = res.permissions || []
+  } catch (error) {
+    console.error('获取权限列表失败', error)
+  }
+}
+
 onMounted(() => {
   fetchUsers()
   fetchStats()
   fetchRoles()
+  fetchPermissions()
 })
 </script>
 

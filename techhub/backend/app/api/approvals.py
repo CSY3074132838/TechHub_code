@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
 from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode, ApprovalType, Role
+from app.services import AuditService, PermissionService
 
 def parse_approval_type(value):
     """将字符串转换为 ApprovalType 枚举"""
@@ -16,6 +17,7 @@ def parse_approval_type(value):
         'expense': ApprovalType.EXPENSE,
         'purchase': ApprovalType.PURCHASE,
         'overtime': ApprovalType.OVERTIME,
+        'permission': ApprovalType.PERMISSION,
         'other': ApprovalType.OTHER
     }
     return mapping.get(value)
@@ -41,20 +43,27 @@ def get_approvals():
         # 我发起的审批
         query = query.filter_by(applicant_id=current_user_id)
     elif scope == 'pending_me':
-        # 待我审批的（这里简化处理，实际应根据审批流程配置）
-        user = User.query.get(current_user_id)
-        if user.has_permission('approval_urgent') or user.has_permission('all'):
+        if PermissionService.check_permission(current_user_id, 'approval_process') or \
+           PermissionService.check_permission(current_user_id, 'all'):
             query = query.filter_by(status=ApprovalStatus.PENDING)
         else:
-            query = query.filter_by(id=-1)  # 返回空结果
+            query = query.filter_by(id=-1)
     else:
-        # 所有我能看到的审批
-        user = User.query.get(current_user_id)
-        if not user.has_permission('all'):
-            query = query.filter(
-                (Approval.applicant_id == current_user_id) |
-                (Approval.processor_id == current_user_id)
-            )
+        if not PermissionService.check_permission(current_user_id, 'all'):
+            scope_level = PermissionService.get_user_data_scope(current_user_id)
+            if scope_level.value == 'dept':
+                user = User.query.get(current_user_id)
+                dept_members = User.query.filter_by(department=user.department).all()
+                member_ids = [m.id for m in dept_members]
+                query = query.filter(
+                    (Approval.applicant_id.in_(member_ids)) |
+                    (Approval.processor_id.in_(member_ids))
+                )
+            else:
+                query = query.filter(
+                    (Approval.applicant_id == current_user_id) |
+                    (Approval.processor_id == current_user_id)
+                )
     
     # 其他筛选条件
     if status:
@@ -152,6 +161,15 @@ def create_approval_chain(approval, approval_type, is_urgent, applicant):
             order=2
         ))
     
+    # 权限申请：需要系统管理员审批
+    if approval_type == 'permission':
+        nodes.append(ApprovalNode(
+            approval_id=approval.id,
+            node_name='系统管理员审批',
+            status='pending',
+            order=2
+        ))
+    
     # 节点3：财务/管理员终审（采购、报销、紧急）
     if approval_type in ['expense', 'purchase'] or is_urgent:
         nodes.append(ApprovalNode(
@@ -190,7 +208,9 @@ def process_approval(approval_id):
         return jsonify({'message': '请指定操作', 'error': 'missing_action'}), 400
     
     # 检查权限
-    user = User.query.get(current_user_id)
+    if not PermissionService.check_permission(current_user_id, 'approval_process') and \
+       not PermissionService.check_permission(current_user_id, 'all'):
+        return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     # 获取当前节点
     current_node = None
@@ -257,6 +277,15 @@ def process_approval(approval_id):
     )
     db.session.add(activity)
     db.session.commit()
+    
+    # 记录审计日志
+    AuditService.log_from_current_user(
+        action=AuditService.APPROVAL_PROCESS,
+        resource_type='approval',
+        resource_id=approval_id,
+        detail={'action': action, 'title': approval.title},
+        status='success'
+    )
 
 def _handle_permission_approval(approval, granted=True):
     """处理权限申请审批的结果"""
@@ -366,7 +395,8 @@ def get_pending_count():
     ).count()
     
     # 有权限的用户：所有待处理审批
-    can_process = user.has_permission('approval_urgent') or user.has_permission('all')
+    can_process = PermissionService.check_permission(current_user_id, 'approval_process') or \
+                  PermissionService.check_permission(current_user_id, 'all')
     total_pending = Approval.query.filter_by(status=ApprovalStatus.PENDING).count() if can_process else 0
     
     return jsonify({

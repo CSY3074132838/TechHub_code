@@ -11,6 +11,22 @@ const request = axios.create({
   }
 })
 
+// 是否正在刷新 Token
+let isRefreshing = false
+// 等待刷新成功的请求队列
+let refreshSubscribers = []
+
+// 订阅 Token 刷新
+function subscribeTokenRefresh(callback) {
+  refreshSubscribers.push(callback)
+}
+
+// 通知所有等待的请求继续
+function onTokenRefreshed(newToken) {
+  refreshSubscribers.forEach(callback => callback(newToken))
+  refreshSubscribers = []
+}
+
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
@@ -30,18 +46,66 @@ request.interceptors.response.use(
   (response) => {
     return response.data
   },
-  (error) => {
-    const { response } = error
+  async (error) => {
+    const { response, config } = error
     
     if (response) {
-      switch (response.status) {
-        case 401:
+      // Token 过期，尝试自动刷新
+      if (response.status === 401 && response.data?.error === 'token_expired') {
+        const refreshToken = localStorage.getItem('refresh_token')
+        if (!refreshToken) {
           ElMessage.error('登录已过期，请重新登录')
           localStorage.removeItem('token')
           router.push('/login')
+          return Promise.reject(error)
+        }
+        
+        // 如果已经在刷新中，加入等待队列
+        if (isRefreshing) {
+          return new Promise((resolve) => {
+            subscribeTokenRefresh((newToken) => {
+              config.headers.Authorization = `Bearer ${newToken}`
+              resolve(request(config))
+            })
+          })
+        }
+        
+        isRefreshing = true
+        
+        try {
+          const refreshRes = await axios.post('/api/auth/refresh', {}, {
+            headers: { Authorization: `Bearer ${refreshToken}` }
+          })
+          
+          if (refreshRes.data.access_token) {
+            const newToken = refreshRes.data.access_token
+            localStorage.setItem('token', newToken)
+            request.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+            onTokenRefreshed(newToken)
+            config.headers.Authorization = `Bearer ${newToken}`
+            return request(config)
+          }
+        } catch (refreshError) {
+          ElMessage.error('登录已过期，请重新登录')
+          localStorage.removeItem('token')
+          localStorage.removeItem('refresh_token')
+          router.push('/login')
+          return Promise.reject(refreshError)
+        } finally {
+          isRefreshing = false
+        }
+      }
+      
+      switch (response.status) {
+        case 401:
+          if (response.data?.error !== 'token_expired') {
+            ElMessage.error('登录已过期，请重新登录')
+            localStorage.removeItem('token')
+            router.push('/login')
+          }
           break
         case 403:
-          ElMessage.error('权限不足')
+          ElMessage.error(response.data?.message || '权限不足')
           break
         case 404:
           ElMessage.error('请求的资源不存在')

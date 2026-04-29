@@ -39,3 +39,7 @@ export const updateRole = (id, data) => {
 export const deleteRole = (id) => {
   return request.delete(`/users/roles/${id}`)
 }
+
+export const getPermissions = () => {
+  return request.get('/users/permissions')
+}

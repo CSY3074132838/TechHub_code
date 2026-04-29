@@ -41,10 +41,12 @@ class RoleService:
         
         db.session.commit()
         
-        # 清除该角色下所有用户的权限缓存
+        # 级联更新该角色下所有用户的权限版本号（实现权限即时生效）
         for user in role.users:
+            user.permission_version = (user.permission_version or 1) + 1
             PermissionService.invalidate_user_cache(user.id)
         
+        db.session.commit()
         return role
 
     @staticmethod
@@ -73,6 +75,7 @@ class RoleService:
         
         roles = Role.query.filter(Role.id.in_(role_ids)).all()
         user.roles = roles
+        user.permission_version = (user.permission_version or 1) + 1
         db.session.commit()
         
         # 清除用户权限缓存
@@ -90,6 +93,7 @@ class RoleService:
         
         if role not in user.roles:
             user.roles.append(role)
+            user.permission_version = (user.permission_version or 1) + 1
             db.session.commit()
             PermissionService.invalidate_user_cache(user_id)
         
@@ -105,6 +109,7 @@ class RoleService:
         
         if role in user.roles:
             user.roles.remove(role)
+            user.permission_version = (user.permission_version or 1) + 1
             db.session.commit()
             PermissionService.invalidate_user_cache(user_id)
         

@@ -15,6 +15,12 @@ const routes = [
     meta: { public: true }
   },
   {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/Profile.vue'),
+    meta: { title: '个人中心', icon: 'User' }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layouts/MainLayout.vue'),

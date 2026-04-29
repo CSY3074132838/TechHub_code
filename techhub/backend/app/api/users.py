@@ -10,6 +10,26 @@ from app.services import AuditService, RoleService
 
 users_bp = Blueprint('users', __name__)
 
+# 系统预定义权限点列表
+SYSTEM_PERMISSIONS = [
+    {'code': 'all', 'label': '全部权限', 'category': '系统'},
+    {'code': 'dashboard_view', 'label': '仪表盘查看', 'category': '数据'},
+    {'code': 'team_manage', 'label': '团队管理', 'category': '管理'},
+    {'code': 'approval_process', 'label': '审批处理', 'category': '审批'},
+    {'code': 'approval_urgent', 'label': '紧急审批', 'category': '审批'},
+    {'code': 'project_manage', 'label': '项目管理', 'category': '项目'},
+    {'code': 'task_manage', 'label': '任务管理', 'category': '任务'},
+    {'code': 'task_assign', 'label': '任务分配', 'category': '任务'},
+    {'code': 'team_view', 'label': '团队查看', 'category': '数据'},
+    {'code': 'task_view', 'label': '任务查看', 'category': '任务'},
+    {'code': 'task_execute', 'label': '任务执行', 'category': '任务'},
+    {'code': 'approval_submit', 'label': '审批提交', 'category': '审批'},
+    {'code': 'user_manage', 'label': '用户管理', 'category': '管理'},
+    {'code': 'role_manage', 'label': '角色管理', 'category': '管理'},
+    {'code': 'audit_view', 'label': '审计日志查看', 'category': '系统'},
+    {'code': 'data_export', 'label': '数据导出', 'category': '数据'},
+]
+
 @users_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_users():
@@ -91,6 +111,7 @@ def update_user(user_id):
     if 'roles' in data and current_user.has_permission('all'):
         role_ids = data['roles']
         user.roles = Role.query.filter(Role.id.in_(role_ids)).all()
+        user.permission_version = (user.permission_version or 1) + 1
         roles_changed = True
     
     # 只有管理员可以修改激活状态
@@ -116,9 +137,15 @@ def update_user(user_id):
         status='success'
     )
     
+    # 如果角色发生变化，提示需要重新登录
+    msg = '用户信息更新成功'
+    if roles_changed:
+        msg += '，权限已变更，请重新登录以生效'
+    
     return jsonify({
-        'message': '用户信息更新成功',
-        'user': user.to_dict(include_email=True)
+        'message': msg,
+        'user': user.to_dict(include_email=True),
+        'require_relogin': roles_changed
     }), 200
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
@@ -236,8 +263,9 @@ def update_role(role_id):
     )
     
     return jsonify({
-        'message': '角色更新成功',
-        'role': role.to_dict()
+        'message': '角色更新成功，已分配该角色的用户需重新登录以生效',
+        'role': role.to_dict(),
+        'require_relogin': True
     }), 200
 
 @users_bp.route('/roles/<int:role_id>', methods=['DELETE'])
@@ -266,6 +294,14 @@ def delete_role(role_id):
     )
     
     return jsonify({'message': '角色已删除'}), 200
+
+@users_bp.route('/permissions', methods=['GET'])
+@jwt_required()
+def get_permissions():
+    """获取系统所有可用权限点列表"""
+    return jsonify({
+        'permissions': SYSTEM_PERMISSIONS
+    }), 200
 
 @users_bp.route('/stats', methods=['GET'])
 @jwt_required()

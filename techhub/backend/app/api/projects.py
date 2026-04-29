@@ -6,6 +6,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
 from app.models import Project, User, Task, TaskStatus, Activity, ActivityType
+from app.decorators import require_permission, data_scope_required
+from app.services import AuditService, PermissionService
 
 def parse_date(date_str):
     """解析日期字符串为 date 对象"""
@@ -23,19 +25,33 @@ projects_bp = Blueprint('projects', __name__)
 @projects_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_projects():
-    """获取项目列表"""
+    """获取项目列表 - 带 DataScope 数据范围控制"""
     current_user_id = get_jwt_identity()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     status = request.args.get('status')
     search = request.args.get('search')
     
-    # 用户只能看到自己参与的项目或自己创建的项目
+    # 根据数据范围构建基础查询
+    scope = PermissionService.get_user_data_scope(current_user_id)
     user = User.query.get(current_user_id)
-    query = Project.query.filter(
-        (Project.creator_id == current_user_id) |
-        (Project.members.any(id=current_user_id))
-    )
+    
+    if scope.value == 'all':
+        query = Project.query
+    elif scope.value in ('dept', 'dept_and_below'):
+        # 部门负责人：看本部门成员参与的项目
+        dept_members = User.query.filter_by(department=user.department).all()
+        member_ids = [m.id for m in dept_members]
+        query = Project.query.filter(
+            (Project.creator_id.in_(member_ids)) |
+            (Project.members.any(User.id.in_(member_ids)))
+        )
+    else:
+        # 普通成员：只看自己参与的项目
+        query = Project.query.filter(
+            (Project.creator_id == current_user_id) |
+            (Project.members.any(id=current_user_id))
+        )
     
     if status:
         query = query.filter_by(status=status)
@@ -98,6 +114,15 @@ def create_project():
     db.session.add(activity)
     db.session.commit()
     
+    # 记录审计日志
+    AuditService.log_from_current_user(
+        action=AuditService.PROJECT_CREATE,
+        resource_type='project',
+        resource_id=project.id,
+        detail={'name': project.name},
+        status='success'
+    )
+    
     return jsonify({
         'message': '项目创建成功',
         'project': project.to_dict()
@@ -117,13 +142,20 @@ def update_project(project_id):
     current_user_id = get_jwt_identity()
     project = Project.query.get_or_404(project_id)
     
-    # 检查权限（只有创建者或管理员可以修改）
+    # 检查权限（创建者可直接修改，非创建者需要 project_manage 权限）
     if project.creator_id != current_user_id:
-        user = User.query.get(current_user_id)
-        if not user.has_permission('all'):
+        if not PermissionService.check_permission(current_user_id, 'project_manage'):
+            AuditService.log_from_current_user(
+                action=AuditService.PERMISSION_DENIED,
+                resource_type='project',
+                resource_id=project_id,
+                detail={'action': 'update_project'},
+                status='failure'
+            )
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     data = request.get_json()
+    before_data = {'name': project.name, 'status': project.status, 'description': project.description}
     
     # 更新字段
     allowed_fields = ['name', 'description', 'color', 'status']
@@ -144,6 +176,14 @@ def update_project(project_id):
     
     db.session.commit()
     
+    AuditService.log_from_current_user(
+        action=AuditService.PROJECT_UPDATE,
+        resource_type='project',
+        resource_id=project_id,
+        detail={'before': before_data, 'after': {'name': project.name, 'status': project.status}},
+        status='success'
+    )
+    
     return jsonify({
         'message': '项目更新成功',
         'project': project.to_dict()
@@ -158,12 +198,19 @@ def delete_project(project_id):
     
     # 检查权限
     if project.creator_id != current_user_id:
-        user = User.query.get(current_user_id)
-        if not user.has_permission('all'):
+        if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     project.status = 'deleted'
     db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action=AuditService.PROJECT_DELETE,
+        resource_type='project',
+        resource_id=project_id,
+        detail={'name': project.name, 'soft_delete': True},
+        status='success'
+    )
     
     return jsonify({'message': '项目已删除'}), 200
 
@@ -238,8 +285,7 @@ def add_project_member(project_id):
     
     # 检查权限
     if project.creator_id != current_user_id:
-        user = User.query.get(current_user_id)
-        if not user.has_permission('all'):
+        if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     data = request.get_json()
@@ -272,8 +318,7 @@ def remove_project_member(project_id, user_id):
     
     # 检查权限
     if project.creator_id != current_user_id:
-        user = User.query.get(current_user_id)
-        if not user.has_permission('all'):
+        if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     user = User.query.get(user_id)

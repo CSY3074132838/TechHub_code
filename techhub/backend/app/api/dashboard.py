@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from app import db
 from app.models import User, Project, Task, Approval, Activity, TaskStatus, TaskPriority
+from app.services import AuditService, PermissionService
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -65,8 +66,6 @@ def get_todos():
         query = query.filter(Task.status == status)
     
     # 按优先级排序：urgent > high > medium > low
-    # SQLAlchemy enum 排序默认按枚举定义顺序，我们在模型中定义的顺序是：TODO, IN_PROGRESS, REVIEW, DONE
-    # 优先级排序需要在查询中处理
     priority_order = db.case(
         (Task.priority == TaskPriority.URGENT, 1),
         (Task.priority == TaskPriority.HIGH, 2),
@@ -119,24 +118,44 @@ def get_activities():
 @dashboard_bp.route('/statistics', methods=['GET'])
 @jwt_required()
 def get_statistics():
-    """获取数据中心统计"""
+    """获取数据中心统计 - 带 DataScope 控制"""
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
     
-    # 检查权限（只有管理员可以查看全部统计）
-    if not user.has_permission('dashboard_view') and not user.has_permission('all'):
+    # 检查权限
+    if not PermissionService.check_permission(current_user_id, 'dashboard_view') and \
+       not PermissionService.check_permission(current_user_id, 'all'):
         # 只能看自己的数据
         return get_personal_statistics(current_user_id)
     
+    # DataScope：管理员看全部，部门负责人看部门，普通成员看自己
+    scope = PermissionService.get_user_data_scope(current_user_id)
+    user = User.query.get(current_user_id)
+    
     # 系统整体统计
+    if scope.value == 'all':
+        # 全部数据
+        total_users = User.query.filter_by(is_active=True).count()
+        total_projects = Project.query.filter_by(status='active').count()
+        total_tasks = Task.query.count()
+        completed_tasks = Task.query.filter_by(status=TaskStatus.DONE).count()
+    elif scope.value in ('dept', 'dept_and_below'):
+        # 本部门数据
+        dept_members = User.query.filter_by(department=user.department).all()
+        member_ids = [m.id for m in dept_members]
+        total_users = len(dept_members)
+        total_projects = Project.query.filter(
+            (Project.creator_id.in_(member_ids)) |
+            (Project.members.any(User.id.in_(member_ids)))
+        ).filter_by(status='active').count()
+        total_tasks = Task.query.filter(Task.assignee_id.in_(member_ids)).count()
+        completed_tasks = Task.query.filter(
+            Task.assignee_id.in_(member_ids),
+            Task.status == TaskStatus.DONE
+        ).count()
+    else:
+        # 只能看个人
+        return get_personal_statistics(current_user_id)
     
-    # 1. 用户统计
-    total_users = User.query.filter_by(is_active=True).count()
-    
-    # 2. 项目统计
-    total_projects = Project.query.filter_by(status='active').count()
-    total_tasks = Task.query.count()
-    completed_tasks = Task.query.filter_by(status=TaskStatus.DONE).count()
     task_completion_rate = round(completed_tasks / total_tasks * 100, 1) if total_tasks > 0 else 0
     
     # 3. 任务状态分布
@@ -275,10 +294,10 @@ def get_personal_statistics(user_id):
 def get_performance():
     """获取团队绩效数据"""
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
     
     # 检查权限
-    if not user.has_permission('team_manage') and not user.has_permission('all'):
+    if not PermissionService.check_permission(current_user_id, 'team_manage') and \
+       not PermissionService.check_permission(current_user_id, 'all'):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     # 本月统计

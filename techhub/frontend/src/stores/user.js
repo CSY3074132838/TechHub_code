@@ -20,6 +20,30 @@ export const useUserStore = defineStore('user', () => {
     return userInfo.value.roles.some(r => ['super_admin', 'department_manager'].includes(r.name))
   })
 
+  // 获取当前用户的所有权限点（合并所有角色的权限）
+  const permissions = computed(() => {
+    if (!userInfo.value || !userInfo.value.roles) return []
+    const perms = new Set()
+    userInfo.value.roles.forEach(role => {
+      if (role.permissions) {
+        role.permissions.forEach(p => perms.add(p))
+      }
+    })
+    return Array.from(perms)
+  })
+
+  // 检查是否拥有指定权限
+  const hasPermission = (permissionCode) => {
+    const perms = permissions.value
+    return perms.includes('all') || perms.includes(permissionCode)
+  }
+
+  // 检查是否拥有任一权限
+  const hasAnyPermission = (permissionCodes) => {
+    if (!permissionCodes || permissionCodes.length === 0) return true
+    return permissionCodes.some(code => hasPermission(code))
+  }
+
   // Actions
   const setToken = (newToken) => {
     token.value = newToken
@@ -43,7 +67,8 @@ export const useUserStore = defineStore('user', () => {
         return true
       }
     } catch (error) {
-      ElMessage.error(error.response?.data?.message || '登录失败')
+      const msg = error.response?.data?.message || '登录失败'
+      ElMessage.error(msg)
       return false
     } finally {
       loading.value = false
@@ -72,6 +97,9 @@ export const useUserStore = defineStore('user', () => {
     isLoggedIn,
     isAdmin,
     canManageTeam,
+    permissions,
+    hasPermission,
+    hasAnyPermission,
     setToken,
     clearToken,
     loginAction,

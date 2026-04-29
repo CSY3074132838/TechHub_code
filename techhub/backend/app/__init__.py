@@ -54,12 +54,27 @@ def create_app(config_name='default'):
     app.register_blueprint(activities_bp, url_prefix='/api/activities')
     app.register_blueprint(audit_bp, url_prefix='/api/audit')
     
-    # JWT Token 黑名单检查（使用Redis/内存缓存替代内存set）
+    # JWT Token 黑名单检查 + 权限版本号校验（实现权限即时生效）
     @jwt.token_in_blocklist_loader
     def check_if_token_revoked(jwt_header, jwt_payload):
         from app.services import CacheService
+        from app.models import User
+        
+        # 1. 检查Token是否被主动注销
         jti = jwt_payload['jti']
-        return CacheService.is_token_revoked(jti)
+        if CacheService.is_token_revoked(jti):
+            return True
+        
+        # 2. 检查权限版本号是否一致（权限变更即时生效机制）
+        user_id = jwt_payload.get('sub')
+        token_version = jwt_payload.get('permission_version')
+        if user_id and token_version is not None:
+            user = User.query.get(user_id)
+            if user and user.permission_version != token_version:
+                # 版本号不一致，视为Token已失效
+                return True
+        
+        return False
     
     # JWT 错误处理
     @jwt.expired_token_loader

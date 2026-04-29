@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
 from app.models import Task, Project, User, Comment, Activity, ActivityType, TaskStatus, TaskPriority
+from app.services import AuditService, PermissionService
 
 def parse_task_status(value):
     """将字符串转换为 TaskStatus 枚举"""
@@ -57,7 +58,7 @@ tasks_bp = Blueprint('tasks', __name__)
 @tasks_bp.route('/', methods=['GET'])
 @jwt_required()
 def get_tasks():
-    """获取任务列表"""
+    """获取任务列表 - 带 DataScope 数据范围控制"""
     current_user_id = get_jwt_identity()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
@@ -81,17 +82,20 @@ def get_tasks():
     if search:
         query = query.filter(Task.title.contains(search))
     
-    # 用户只能看到与自己相关的任务
-    query = query.filter(
-        (Task.assignee_id == current_user_id) |
-        (Task.creator_id == current_user_id) |
-        Task.project_id.in_(
-            db.session.query(Project.id).filter(
-                (Project.creator_id == current_user_id) |
-                (Project.members.any(id=current_user_id))
+    # DataScope 数据范围过滤
+    scope = PermissionService.get_user_data_scope(current_user_id)
+    if scope.value != 'all':
+        # 非管理员只能看与自己相关的任务
+        query = query.filter(
+            (Task.assignee_id == current_user_id) |
+            (Task.creator_id == current_user_id) |
+            Task.project_id.in_(
+                db.session.query(Project.id).filter(
+                    (Project.creator_id == current_user_id) |
+                    (Project.members.any(id=current_user_id))
+                )
             )
         )
-    )
     
     pagination = query.order_by(Task.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -125,9 +129,8 @@ def create_task():
         return jsonify({'message': '项目不存在', 'error': 'project_not_found'}), 404
     
     # 检查用户是否有权限在此项目创建任务
-    user = User.query.get(current_user_id)
     if project.creator_id != current_user_id and current_user_id not in [m.id for m in project.members]:
-        if not user.has_permission('all'):
+        if not PermissionService.check_permission(current_user_id, 'task_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     task = Task(
@@ -155,6 +158,15 @@ def create_task():
     db.session.add(activity)
     db.session.commit()
     
+    # 记录审计日志
+    AuditService.log_from_current_user(
+        action=AuditService.TASK_CREATE,
+        resource_type='task',
+        resource_id=task.id,
+        detail={'title': task.title, 'project_id': task.project_id},
+        status='success'
+    )
+    
     return jsonify({
         'message': '任务创建成功',
         'task': task.to_dict()
@@ -176,14 +188,22 @@ def update_task(task_id):
     data = request.get_json()
     
     # 检查权限
-    user = User.query.get(current_user_id)
     if task.assignee_id != current_user_id and task.creator_id != current_user_id:
         project = Project.query.get(task.project_id)
-        if project.creator_id != current_user_id and not user.has_permission('all'):
-            return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
+        if project.creator_id != current_user_id:
+            if not PermissionService.check_permission(current_user_id, 'task_manage'):
+                AuditService.log_from_current_user(
+                    action=AuditService.PERMISSION_DENIED,
+                    resource_type='task',
+                    resource_id=task_id,
+                    detail={'action': 'update_task'},
+                    status='failure'
+                )
+                return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     # 记录状态变更
     old_status = task.status
+    old_data = task.to_dict()
     
     # 更新字段
     if 'status' in data:
@@ -221,6 +241,15 @@ def update_task(task_id):
     db.session.add(activity)
     db.session.commit()
     
+    # 记录审计日志
+    AuditService.log_from_current_user(
+        action=AuditService.TASK_UPDATE,
+        resource_type='task',
+        resource_id=task_id,
+        detail={'old_status': old_status.value if old_status else None},
+        status='success'
+    )
+    
     return jsonify({
         'message': '任务更新成功',
         'task': task.to_dict()
@@ -234,14 +263,22 @@ def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     
     # 检查权限
-    user = User.query.get(current_user_id)
     if task.creator_id != current_user_id:
         project = Project.query.get(task.project_id)
-        if project.creator_id != current_user_id and not user.has_permission('all'):
-            return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
+        if project.creator_id != current_user_id:
+            if not PermissionService.check_permission(current_user_id, 'task_manage'):
+                return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     db.session.delete(task)
     db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action=AuditService.TASK_DELETE,
+        resource_type='task',
+        resource_id=task_id,
+        detail={'title': task.title},
+        status='success'
+    )
     
     return jsonify({'message': '任务已删除'}), 200
 
@@ -311,11 +348,11 @@ def update_board():
         task = Task.query.get(task_id)
         if task:
             # 检查权限
-            user = User.query.get(current_user_id)
             if task.assignee_id != current_user_id and task.creator_id != current_user_id:
                 project = Project.query.get(task.project_id)
-                if project.creator_id != current_user_id and not user.has_permission('all'):
-                    continue  # 跳过无权限的任务
+                if project.creator_id != current_user_id:
+                    if not PermissionService.check_permission(current_user_id, 'task_manage'):
+                        continue  # 跳过无权限的任务
             
             if new_status:
                 task.status = parse_task_status(new_status)

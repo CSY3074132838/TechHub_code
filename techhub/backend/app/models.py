@@ -36,6 +36,7 @@ class ApprovalType(enum.Enum):
     EXPENSE = 'expense'
     PURCHASE = 'purchase'
     OVERTIME = 'overtime'
+    PERMISSION = 'permission'
     OTHER = 'other'
 
 class ActivityType(enum.Enum):
@@ -136,6 +137,7 @@ class User(db.Model):
     department = db.Column(db.String(50))
     position = db.Column(db.String(50))
     is_active = db.Column(db.Boolean, default=True)
+    permission_version = db.Column(db.Integer, default=1)  # 权限版本号，用于Token即时失效
     last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -181,6 +183,7 @@ class User(db.Model):
             'position': self.position,
             'is_active': self.is_active,
             'roles': [role.to_dict() for role in self.roles],
+            'permission_version': self.permission_version,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         if include_email:

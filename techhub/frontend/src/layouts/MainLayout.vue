@@ -119,8 +119,10 @@ const menuItems = computed(() => [
   { path: '/tasks', title: '我的任务', icon: 'List' },
   { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
   { path: '/analytics', title: '数据中心', icon: 'TrendCharts' },
-  ...(userStore.isAdmin ? [
-    { path: '/users', title: '用户管理', icon: 'UserFilled' },
+  ...(userStore.hasPermission('user_manage') ? [
+    { path: '/users', title: '用户管理', icon: 'UserFilled' }
+  ] : []),
+  ...(userStore.hasPermission('audit_view') ? [
     { path: '/audit-logs', title: '审计日志', icon: 'Document' }
   ] : [])
 ])
@@ -158,7 +160,7 @@ const formatTime = (date) => {
 const handleCommand = (command) => {
   switch (command) {
     case 'profile':
-      ElMessage.info('个人中心功能开发中')
+      router.push('/profile')
       break
     case 'settings':
       ElMessage.info('系统设置功能开发中')

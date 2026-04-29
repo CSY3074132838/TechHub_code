@@ -1,0 +1,1 @@
+import{J as e}from"./index-Rqf25WMs.js";const o=s=>e.get("/users/",{params:s}),u=(s,t)=>e.put(`/users/${s}`,t),n=()=>e.get("/users/roles"),a=()=>e.get("/users/stats"),c=s=>e.post("/users/roles",s),l=(s,t)=>e.put(`/users/roles/${s}`,t),g=s=>e.delete(`/users/roles/${s}`),p=()=>e.get("/users/permissions");export{o as a,a as b,n as c,g as d,l as e,c as f,p as g,u};
