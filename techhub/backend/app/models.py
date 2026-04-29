@@ -48,6 +48,14 @@ class ActivityType(enum.Enum):
     APPROVAL_SUBMITTED = 'approval_submitted'
     APPROVAL_APPROVED = 'approval_approved'
 
+class DataScope(enum.Enum):
+    """数据范围枚举 - 行级数据权限控制"""
+    ALL = 'all'           # 全部数据
+    DEPT = 'dept'         # 本部门数据
+    DEPT_AND_BELOW = 'dept_and_below'  # 本部门及子部门数据
+    SELF = 'self'         # 仅自己的数据
+    CUSTOM = 'custom'     # 自定义（指定部门列表）
+
 # ==================== 关联表定义 ====================
 
 # 用户-角色关联表
@@ -73,6 +81,8 @@ class Role(db.Model):
     description = db.Column(db.String(200))
     level = db.Column(db.Integer, default=4)  # 1-超级管理员, 2-部门负责人, 3-项目经理, 4-普通成员
     permissions = db.Column(db.JSON, default=list)
+    data_scope = db.Column(db.String(20), default='self')
+    data_scope_custom = db.Column(db.JSON, default=list)  # CUSTOM模式下的部门列表
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # 关联关系
@@ -107,7 +117,9 @@ class Role(db.Model):
             'name': self.name,
             'description': self.description,
             'level': self.level,
-            'permissions': self.permissions
+            'permissions': self.permissions,
+            'data_scope': self.data_scope,
+            'data_scope_custom': self.data_scope_custom
         }
 
 class User(db.Model):
@@ -391,6 +403,37 @@ class ApprovalNode(db.Model):
             'order': self.order,
             'comment': self.comment,
             'handled_at': self.handled_at.isoformat() if self.handled_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class AuditLog(db.Model):
+    """审计日志模型 - 安全审计与操作追溯"""
+    __tablename__ = 'audit_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    username = db.Column(db.String(80), nullable=False)
+    action = db.Column(db.String(50), nullable=False, index=True)  # LOGIN, LOGOUT, USER_CREATE, ROLE_UPDATE, etc.
+    resource_type = db.Column(db.String(50))  # user, role, project, task, approval
+    resource_id = db.Column(db.Integer)
+    detail = db.Column(db.JSON, default=dict)  # {before: ..., after: ...}
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(500))
+    status = db.Column(db.String(20), default='success')  # success / failure
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'username': self.username,
+            'action': self.action,
+            'resource_type': self.resource_type,
+            'resource_id': self.resource_id,
+            'detail': self.detail,
+            'ip_address': self.ip_address,
+            'user_agent': self.user_agent,
+            'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

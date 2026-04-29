@@ -20,6 +20,9 @@ class Config:
     # 分页配置
     ITEMS_PER_PAGE = 10
     
+    # Redis 配置（可选，未配置则自动降级为内存缓存）
+    REDIS_URL = os.environ.get('REDIS_URL') or None
+    
     # 文件上传配置
     UPLOAD_FOLDER = 'uploads'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB

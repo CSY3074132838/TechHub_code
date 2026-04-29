@@ -43,6 +43,7 @@ def create_app(config_name='default'):
     from app.api.approvals import approvals_bp
     from app.api.dashboard import dashboard_bp
     from app.api.activities import activities_bp
+    from app.api.audit import audit_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -51,6 +52,14 @@ def create_app(config_name='default'):
     app.register_blueprint(approvals_bp, url_prefix='/api/approvals')
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     app.register_blueprint(activities_bp, url_prefix='/api/activities')
+    app.register_blueprint(audit_bp, url_prefix='/api/audit')
+    
+    # JWT Token 黑名单检查（使用Redis/内存缓存替代内存set）
+    @jwt.token_in_blocklist_loader
+    def check_if_token_revoked(jwt_header, jwt_payload):
+        from app.services import CacheService
+        jti = jwt_payload['jti']
+        return CacheService.is_token_revoked(jti)
     
     # JWT 错误处理
     @jwt.expired_token_loader

@@ -119,7 +119,10 @@ const menuItems = computed(() => [
   { path: '/tasks', title: '我的任务', icon: 'List' },
   { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
   { path: '/analytics', title: '数据中心', icon: 'TrendCharts' },
-  ...(userStore.isAdmin ? [{ path: '/users', title: '用户管理', icon: 'UserFilled' }] : [])
+  ...(userStore.isAdmin ? [
+    { path: '/users', title: '用户管理', icon: 'UserFilled' },
+    { path: '/audit-logs', title: '审计日志', icon: 'Document' }
+  ] : [])
 ])
 
 const fetchPendingCount = async () => {

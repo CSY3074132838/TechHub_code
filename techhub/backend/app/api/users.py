@@ -5,21 +5,10 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import User, Role
+from app.decorators import require_permission
+from app.services import AuditService, RoleService
 
 users_bp = Blueprint('users', __name__)
-
-def admin_required(fn):
-    """管理员权限装饰器"""
-    from functools import wraps
-    @wraps(fn)
-    @jwt_required()
-    def wrapper(*args, **kwargs):
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        if not user or not user.has_permission('all'):
-            return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
-        return fn(*args, **kwargs)
-    return wrapper
 
 @users_bp.route('/', methods=['GET'])
 @jwt_required()
@@ -69,10 +58,27 @@ def update_user(user_id):
     
     # 只能修改自己的信息，或者管理员可以修改任何人
     if current_user_id != user_id and not current_user.has_permission('all'):
+        AuditService.log_from_current_user(
+            action=AuditService.PERMISSION_DENIED,
+            resource_type='user',
+            resource_id=user_id,
+            detail={'action': 'update_user', 'reason': 'not_owner_or_admin'},
+            status='failure'
+        )
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     user = User.query.get_or_404(user_id)
     data = request.get_json()
+    
+    # 记录变更前数据用于审计
+    before_data = {
+        'real_name': user.real_name,
+        'phone': user.phone,
+        'department': user.department,
+        'position': user.position,
+        'is_active': user.is_active,
+        'roles': [r.id for r in user.roles]
+    }
     
     # 更新允许修改的字段
     allowed_fields = ['real_name', 'phone', 'department', 'position', 'avatar']
@@ -81,9 +87,11 @@ def update_user(user_id):
             setattr(user, field, data[field])
     
     # 只有管理员可以修改角色
+    roles_changed = False
     if 'roles' in data and current_user.has_permission('all'):
         role_ids = data['roles']
         user.roles = Role.query.filter(Role.id.in_(role_ids)).all()
+        roles_changed = True
     
     # 只有管理员可以修改激活状态
     if 'is_active' in data and current_user.has_permission('all'):
@@ -91,18 +99,43 @@ def update_user(user_id):
     
     db.session.commit()
     
+    # 记录审计日志
+    after_data = {
+        'real_name': user.real_name,
+        'phone': user.phone,
+        'department': user.department,
+        'position': user.position,
+        'is_active': user.is_active,
+        'roles': [r.id for r in user.roles]
+    }
+    AuditService.log_from_current_user(
+        action=AuditService.USER_UPDATE,
+        resource_type='user',
+        resource_id=user_id,
+        detail={'before': before_data, 'after': after_data, 'roles_changed': roles_changed},
+        status='success'
+    )
+    
     return jsonify({
         'message': '用户信息更新成功',
         'user': user.to_dict(include_email=True)
     }), 200
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])
-@admin_required
+@require_permission('all')
 def delete_user(user_id):
     """删除用户（软删除）"""
     user = User.query.get_or_404(user_id)
     user.is_active = False
     db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action=AuditService.USER_DELETE,
+        resource_type='user',
+        resource_id=user_id,
+        detail={'username': user.username, 'soft_delete': True},
+        status='success'
+    )
     
     return jsonify({'message': '用户已禁用'}), 200
 
@@ -125,7 +158,7 @@ def get_roles():
     }), 200
 
 @users_bp.route('/roles', methods=['POST'])
-@admin_required
+@require_permission('all')
 def create_role():
     """创建新角色（仅管理员）"""
     data = request.get_json()
@@ -140,10 +173,20 @@ def create_role():
         name=data['name'],
         description=data.get('description', ''),
         level=data.get('level', 4),
-        permissions=data.get('permissions', [])
+        permissions=data.get('permissions', []),
+        data_scope=data.get('data_scope'),
+        data_scope_custom=data.get('data_scope_custom')
     )
     db.session.add(role)
     db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action=AuditService.ROLE_CREATE,
+        resource_type='role',
+        resource_id=role.id,
+        detail={'name': role.name, 'permissions': role.permissions, 'data_scope': str(role.data_scope) if role.data_scope else None},
+        status='success'
+    )
     
     return jsonify({
         'message': '角色创建成功',
@@ -151,11 +194,13 @@ def create_role():
     }), 201
 
 @users_bp.route('/roles/<int:role_id>', methods=['PUT'])
-@admin_required
+@require_permission('all')
 def update_role(role_id):
     """更新角色信息（仅管理员）"""
     role = Role.query.get_or_404(role_id)
     data = request.get_json()
+    
+    before_data = role.to_dict()
     
     if 'name' in data:
         existing = Role.query.filter_by(name=data['name']).first()
@@ -169,8 +214,26 @@ def update_role(role_id):
         role.level = data['level']
     if 'permissions' in data:
         role.permissions = data['permissions']
+    if 'data_scope' in data:
+        from app.models import DataScope
+        role.data_scope = DataScope(data['data_scope']) if data['data_scope'] else DataScope.SELF
+    if 'data_scope_custom' in data:
+        role.data_scope_custom = data['data_scope_custom']
     
     db.session.commit()
+    
+    # 清除该角色下所有用户的权限缓存
+    for user in role.users:
+        RoleService.remove_role_from_user(user.id, role.id)
+        RoleService.add_role_to_user(user.id, role.id)
+    
+    AuditService.log_from_current_user(
+        action=AuditService.ROLE_UPDATE,
+        resource_type='role',
+        resource_id=role_id,
+        detail={'before': before_data, 'after': role.to_dict()},
+        status='success'
+    )
     
     return jsonify({
         'message': '角色更新成功',
@@ -178,7 +241,7 @@ def update_role(role_id):
     }), 200
 
 @users_bp.route('/roles/<int:role_id>', methods=['DELETE'])
-@admin_required
+@require_permission('all')
 def delete_role(role_id):
     """删除角色（仅管理员）"""
     role = Role.query.get_or_404(role_id)
@@ -190,8 +253,17 @@ def delete_role(role_id):
             'error': 'role_in_use'
         }), 409
     
+    role_data = role.to_dict()
     db.session.delete(role)
     db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action=AuditService.ROLE_DELETE,
+        resource_type='role',
+        resource_id=role_id,
+        detail={'deleted_role': role_data},
+        status='success'
+    )
     
     return jsonify({'message': '角色已删除'}), 200
 

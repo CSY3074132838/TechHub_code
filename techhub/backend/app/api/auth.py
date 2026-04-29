@@ -8,12 +8,10 @@ from flask_jwt_extended import (
 )
 from app import db
 from app.models import User, Role
+from app.services import AuditService, CacheService
 from datetime import datetime
 
 auth_bp = Blueprint('auth', __name__)
-
-# 用于存储已注销的token（生产环境应使用Redis）
-revoked_tokens = set()
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -70,14 +68,36 @@ def login():
     ).first()
     
     if not user or not user.check_password(data['password']):
+        AuditService.log(
+            action=AuditService.LOGIN_FAILED,
+            username=data.get('username'),
+            detail={'reason': 'invalid_credentials', 'ip': request.remote_addr},
+            status='failure'
+        )
         return jsonify({'message': '用户名或密码错误', 'error': 'invalid_credentials'}), 401
     
     if not user.is_active:
+        AuditService.log(
+            action=AuditService.LOGIN_FAILED,
+            user_id=user.id,
+            username=user.username,
+            detail={'reason': 'account_disabled'},
+            status='failure'
+        )
         return jsonify({'message': '账号已被禁用', 'error': 'account_disabled'}), 403
     
     # 更新最后登录时间
     user.last_login = datetime.utcnow()
     db.session.commit()
+    
+    # 记录登录成功审计日志
+    AuditService.log(
+        action=AuditService.LOGIN,
+        user_id=user.id,
+        username=user.username,
+        detail={'ip': request.remote_addr},
+        status='success'
+    )
     
     # 创建 JWT Token
     access_token = create_access_token(
@@ -114,6 +134,14 @@ def refresh():
         }
     )
     
+    # 记录Token刷新审计日志
+    AuditService.log(
+        action=AuditService.TOKEN_REFRESH,
+        user_id=user.id,
+        username=user.username,
+        status='success'
+    )
+    
     return jsonify({
         'access_token': access_token
     }), 200
@@ -123,7 +151,23 @@ def refresh():
 def logout():
     """用户登出"""
     jti = get_jwt()['jti']
-    revoked_tokens.add(jti)
+    exp = get_jwt()['exp']
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+    
+    # 计算token剩余有效期用于缓存TTL
+    import time
+    expires_in = int(exp - time.time()) if exp else 86400
+    CacheService.revoke_token(jti, expires_in=expires_in)
+    
+    # 记录登出审计日志
+    AuditService.log(
+        action=AuditService.LOGOUT,
+        user_id=current_user_id,
+        username=user.username if user else 'unknown',
+        status='success'
+    )
+    
     return jsonify({'message': '登出成功'}), 200
 
 @auth_bp.route('/me', methods=['GET'])
@@ -160,6 +204,14 @@ def change_password():
     
     user.set_password(data['new_password'])
     db.session.commit()
+    
+    # 记录密码修改审计日志
+    AuditService.log(
+        action=AuditService.PASSWORD_CHANGE,
+        user_id=current_user_id,
+        username=user.username,
+        status='success'
+    )
     
     return jsonify({'message': '密码修改成功'}), 200
 
