@@ -44,6 +44,9 @@ def create_app(config_name='default'):
     from app.api.dashboard import dashboard_bp
     from app.api.activities import activities_bp
     from app.api.audit import audit_bp
+    from app.api.clients import clients_bp
+    from app.api.contracts import contracts_bp
+    from app.api.tickets import tickets_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -53,6 +56,9 @@ def create_app(config_name='default'):
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
     app.register_blueprint(activities_bp, url_prefix='/api/activities')
     app.register_blueprint(audit_bp, url_prefix='/api/audit')
+    app.register_blueprint(clients_bp, url_prefix='/api/clients')
+    app.register_blueprint(contracts_bp, url_prefix='/api/contracts')
+    app.register_blueprint(tickets_bp, url_prefix='/api/tickets')
     
     # JWT Token 黑名单检查 + 权限版本号校验（实现权限即时生效）
     @jwt.token_in_blocklist_loader

@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Project, User, Task, TaskStatus, Activity, ActivityType
+from app.models import Project, User, Task, Activity, Client
 from app.decorators import require_permission, data_scope_required
 from app.services import AuditService, PermissionService
 
@@ -88,7 +88,8 @@ def create_project():
         color=data.get('color', '#1890ff'),
         start_date=parse_date(data.get('start_date')),
         end_date=parse_date(data.get('end_date')),
-        creator_id=current_user_id
+        creator_id=current_user_id,
+        client_id=data.get('client_id')
     )
     
     # 添加成员
@@ -106,7 +107,7 @@ def create_project():
     
     # 记录活动
     activity = Activity(
-        activity_type=ActivityType.PROJECT_CREATED,
+        activity_type='project_created',
         title=f'创建了新项目 "{project.name}"',
         user_id=current_user_id,
         project_id=project.id
@@ -158,7 +159,7 @@ def update_project(project_id):
     before_data = {'name': project.name, 'status': project.status, 'description': project.description}
     
     # 更新字段
-    allowed_fields = ['name', 'description', 'color', 'status']
+    allowed_fields = ['name', 'description', 'color', 'status', 'client_id']
     for field in allowed_fields:
         if field in data:
             setattr(project, field, data[field])
@@ -229,7 +230,7 @@ def get_project_tasks(project_id):
     }
     
     for task in project.tasks:
-        status_key = task.status.value if task.status else 'todo'
+        status_key = task.status if task.status else 'todo'
         if status_key in tasks_by_status:
             tasks_by_status[status_key].append(task.to_dict())
     
@@ -262,7 +263,7 @@ def get_project_stats(project_id):
         completed = Task.query.filter_by(
             project_id=project_id, 
             assignee_id=member.id,
-            status=TaskStatus.DONE
+            status='done'
         ).count()
         member_stats.append({
             'user': member.to_dict(),
@@ -272,7 +273,7 @@ def get_project_stats(project_id):
     
     return jsonify({
         'total_tasks': total_tasks,
-        'status_distribution': {s.value: c for s, c in status_counts},
+        'status_distribution': {s: c for s, c in status_counts},
         'member_contributions': member_stats
     }), 200
 

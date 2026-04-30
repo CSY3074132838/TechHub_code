@@ -63,6 +63,30 @@ const routes = [
         meta: { title: '数据中心', icon: 'TrendCharts' }
       },
       {
+        path: '/clients',
+        name: 'Clients',
+        component: () => import('@/views/Clients.vue'),
+        meta: { title: '客户管理', icon: 'OfficeBuilding' }
+      },
+      {
+        path: '/clients/:id',
+        name: 'ClientDetail',
+        component: () => import('@/views/ClientDetail.vue'),
+        meta: { title: '客户详情', hidden: true }
+      },
+      {
+        path: '/contracts',
+        name: 'Contracts',
+        component: () => import('@/views/Contracts.vue'),
+        meta: { title: '合同管理', icon: 'DocumentCopy' }
+      },
+      {
+        path: '/tickets',
+        name: 'Tickets',
+        component: () => import('@/views/Tickets.vue'),
+        meta: { title: '客户工单', icon: 'ChatDotSquare' }
+      },
+      {
         path: '/users',
         name: 'Users',
         component: () => import('@/views/Users.vue'),

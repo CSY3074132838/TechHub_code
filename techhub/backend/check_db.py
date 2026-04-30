@@ -1,0 +1,10 @@
+import sqlite3
+conn = sqlite3.connect('instance/techhub.db')
+c = conn.cursor()
+c.execute('SELECT DISTINCT approval_type FROM approvals')
+print('Approval types:', [r[0] for r in c.fetchall()])
+c.execute('SELECT DISTINCT status FROM approvals')
+print('Status values:', [r[0] for r in c.fetchall()])
+c.execute("SELECT id, approval_type, status, title FROM approvals WHERE lower(approval_type) = 'leave'")
+print('Leave records:', c.fetchall())
+conn.close()

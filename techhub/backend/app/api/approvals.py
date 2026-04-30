@@ -5,22 +5,13 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Approval, User, Activity, ActivityType, ApprovalStatus, ApprovalNode, ApprovalType, Role
+from app.models import Approval, User, Activity, ApprovalNode, Role
 from app.services import AuditService, PermissionService
 
 def parse_approval_type(value):
-    """将字符串转换为 ApprovalType 枚举"""
-    if value is None or isinstance(value, ApprovalType):
-        return value
-    mapping = {
-        'leave': ApprovalType.LEAVE,
-        'expense': ApprovalType.EXPENSE,
-        'purchase': ApprovalType.PURCHASE,
-        'overtime': ApprovalType.OVERTIME,
-        'permission': ApprovalType.PERMISSION,
-        'other': ApprovalType.OTHER
-    }
-    return mapping.get(value)
+    """规范化审批类型字符串"""
+    valid = {'leave', 'expense', 'purchase', 'overtime', 'permission', 'other'}
+    return value if value in valid else 'other'
 
 approvals_bp = Blueprint('approvals', __name__)
 
@@ -45,7 +36,7 @@ def get_approvals():
     elif scope == 'pending_me':
         if PermissionService.check_permission(current_user_id, 'approval_process') or \
            PermissionService.check_permission(current_user_id, 'all'):
-            query = query.filter_by(status=ApprovalStatus.PENDING)
+            query = query.filter_by(status='pending')
         else:
             query = query.filter_by(id=-1)
     else:
@@ -121,7 +112,7 @@ def create_approval():
     
     # 记录活动
     activity = Activity(
-        activity_type=ActivityType.APPROVAL_SUBMITTED,
+        activity_type='approval_submitted',
         title=f'提交了审批 "{approval.title}"',
         user_id=current_user_id
     )
@@ -236,16 +227,16 @@ def process_approval(approval_id):
             
             if next_node:
                 approval.current_node_id = next_node.id
-                approval.status = ApprovalStatus.PENDING
+                approval.status = 'pending'
                 activity_title = f'审批 "{approval.title}" 通过并进入下一节点'
             else:
                 # 所有节点完成
-                approval.status = ApprovalStatus.APPROVED
+                approval.status = 'approved'
                 approval.current_node_id = None
                 activity_title = f'批准了审批 "{approval.title}"'
                 _handle_permission_approval(approval, granted=True)
         else:
-            approval.status = ApprovalStatus.APPROVED
+            approval.status = 'approved'
             activity_title = f'批准了审批 "{approval.title}"'
             _handle_permission_approval(approval, granted=True)
             
@@ -257,7 +248,7 @@ def process_approval(approval_id):
             current_node.handled_at = datetime.utcnow()
             current_node.comment = data.get('comment', '')
         
-        approval.status = ApprovalStatus.REJECTED
+        approval.status = 'rejected'
         activity_title = f'拒绝了审批 "{approval.title}"'
         _handle_permission_approval(approval, granted=False)
     else:
@@ -271,7 +262,7 @@ def process_approval(approval_id):
     
     # 记录活动
     activity = Activity(
-        activity_type=ActivityType.APPROVAL_APPROVED,
+        activity_type='approval_approved',
         title=activity_title,
         user_id=current_user_id
     )
@@ -325,13 +316,13 @@ def get_approval_stats():
     
     # 基础统计
     total = Approval.query.count()
-    pending = Approval.query.filter_by(status=ApprovalStatus.PENDING).count()
-    approved = Approval.query.filter_by(status=ApprovalStatus.APPROVED).count()
-    rejected = Approval.query.filter_by(status=ApprovalStatus.REJECTED).count()
+    pending = Approval.query.filter_by(status='pending').count()
+    approved = Approval.query.filter_by(status='approved').count()
+    rejected = Approval.query.filter_by(status='rejected').count()
     
     # 紧急审批统计
     urgent_pending = Approval.query.filter_by(
-        status=ApprovalStatus.PENDING, 
+        status='pending', 
         is_urgent=True
     ).count()
     
@@ -349,7 +340,7 @@ def get_approval_stats():
             'rejected': rejected,
             'urgent_pending': urgent_pending
         },
-        'by_type': [{"type": t.value, "count": c} for t, c in type_stats]
+        'by_type': [{"type": t, "count": c} for t, c in type_stats]
     }), 200
 
 @approvals_bp.route('/<int:approval_id>/chain', methods=['GET'])
@@ -360,7 +351,7 @@ def get_approval_chain(approval_id):
     return jsonify({
         'approval_id': approval.id,
         'title': approval.title,
-        'status': approval.status.value if approval.status else None,
+        'status': approval.status if approval.status else None,
         'chain': approval.get_approval_chain(),
         'current_node': approval.current_node_id
     }), 200
@@ -372,11 +363,12 @@ def get_approval_types():
     from app.models import ApprovalType
     
     types = [
-        {'value': ApprovalType.LEAVE.value, 'label': '请假申请'},
-        {'value': ApprovalType.EXPENSE.value, 'label': '报销申请'},
-        {'value': ApprovalType.PURCHASE.value, 'label': '采购申请'},
-        {'value': ApprovalType.OVERTIME.value, 'label': '加班申请'},
-        {'value': ApprovalType.OTHER.value, 'label': '其他申请'}
+        {'value': 'leave', 'label': '请假申请'},
+        {'value': 'expense', 'label': '报销申请'},
+        {'value': 'purchase', 'label': '采购申请'},
+        {'value': 'overtime', 'label': '加班申请'},
+        {'value': 'permission', 'label': '权限申请'},
+        {'value': 'other', 'label': '其他申请'}
     ]
     
     return jsonify({'types': types}), 200
@@ -391,13 +383,13 @@ def get_pending_count():
     # 普通用户：自己发起的待处理审批
     my_pending = Approval.query.filter_by(
         applicant_id=current_user_id,
-        status=ApprovalStatus.PENDING
+        status='pending'
     ).count()
     
     # 有权限的用户：所有待处理审批
     can_process = PermissionService.check_permission(current_user_id, 'approval_process') or \
                   PermissionService.check_permission(current_user_id, 'all')
-    total_pending = Approval.query.filter_by(status=ApprovalStatus.PENDING).count() if can_process else 0
+    total_pending = Approval.query.filter_by(status='pending').count() if can_process else 0
     
     return jsonify({
         'my_pending': my_pending,

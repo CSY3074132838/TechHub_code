@@ -7,9 +7,9 @@ class Config:
     """基础配置类"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
     
-    # 数据库配置 - 使用绝对路径确保数据库位置固定
+    # 数据库配置 - 开发环境默认SQLite，生产环境通过DATABASE_URL使用MySQL
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'mysql+pymysql://root:7896352abcQ@localhost:3306/techhub?charset=utf8mb4'
+        'sqlite:///' + os.path.join(basedir, 'instance', 'techhub.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT配置

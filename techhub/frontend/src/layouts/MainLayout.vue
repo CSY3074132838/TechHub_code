@@ -116,6 +116,9 @@ const pendingApprovals = ref([])
 const menuItems = computed(() => [
   { path: '/dashboard', title: '工作台', icon: 'HomeFilled' },
   { path: '/projects', title: '项目管理', icon: 'FolderOpened' },
+  { path: '/clients', title: '客户管理', icon: 'OfficeBuilding' },
+  { path: '/contracts', title: '合同管理', icon: 'DocumentCopy' },
+  { path: '/tickets', title: '客户工单', icon: 'ChatDotSquare' },
   { path: '/tasks', title: '我的任务', icon: 'List' },
   { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
   { path: '/analytics', title: '数据中心', icon: 'TrendCharts' },

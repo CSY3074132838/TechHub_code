@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from sqlalchemy import func
 from app import db
-from app.models import User, Project, Task, Approval, Activity, TaskStatus, TaskPriority
+from app.models import User, Project, Task, Approval, Activity, Client, Contract, Ticket
 from app.services import AuditService, PermissionService
 
 dashboard_bp = Blueprint('dashboard', __name__)
@@ -20,7 +20,7 @@ def get_overview():
     # 我的待办任务
     my_pending_tasks = Task.query.filter_by(
         assignee_id=current_user_id
-    ).filter(Task.status != TaskStatus.DONE).count()
+    ).filter(Task.status != 'done').count()
     
     # 我的项目数
     my_projects = Project.query.filter(
@@ -38,7 +38,7 @@ def get_overview():
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_completed = Task.query.filter(
         Task.assignee_id == current_user_id,
-        Task.status == TaskStatus.DONE,
+        Task.status == 'done',
         Task.completed_at >= today
     ).count()
     
@@ -59,7 +59,7 @@ def get_todos():
     # 查询当前用户的未完成任务
     query = Task.query.filter(
         Task.assignee_id == current_user_id,
-        Task.status != TaskStatus.DONE
+        Task.status != 'done'
     )
     
     if status:
@@ -67,10 +67,10 @@ def get_todos():
     
     # 按优先级排序：urgent > high > medium > low
     priority_order = db.case(
-        (Task.priority == TaskPriority.URGENT, 1),
-        (Task.priority == TaskPriority.HIGH, 2),
-        (Task.priority == TaskPriority.MEDIUM, 3),
-        (Task.priority == TaskPriority.LOW, 4),
+        (Task.priority == 'urgent', 1),
+        (Task.priority == 'high', 2),
+        (Task.priority == 'medium', 3),
+        (Task.priority == 'low', 4),
         else_=5
     )
     
@@ -137,7 +137,7 @@ def get_statistics():
         total_users = User.query.filter_by(is_active=True).count()
         total_projects = Project.query.filter_by(status='active').count()
         total_tasks = Task.query.count()
-        completed_tasks = Task.query.filter_by(status=TaskStatus.DONE).count()
+        completed_tasks = Task.query.filter_by(status='done').count()
     elif scope.value in ('dept', 'dept_and_below'):
         # 本部门数据
         dept_members = User.query.filter_by(department=user.department).all()
@@ -150,7 +150,7 @@ def get_statistics():
         total_tasks = Task.query.filter(Task.assignee_id.in_(member_ids)).count()
         completed_tasks = Task.query.filter(
             Task.assignee_id.in_(member_ids),
-            Task.status == TaskStatus.DONE
+            Task.status == 'done'
         ).count()
     else:
         # 只能看个人
@@ -200,7 +200,7 @@ def get_statistics():
         User,
         func.count(Task.id).label('completed_count')
     ).join(Task, Task.assignee_id == User.id).filter(
-        Task.status == TaskStatus.DONE
+        Task.status == 'done'
     ).group_by(User.id).order_by(func.count(Task.id).desc()).limit(5).all()
     
     # 7. 项目进度排行
@@ -225,7 +225,7 @@ def get_statistics():
             'task_completion_rate': task_completion_rate
         },
         'task_status_distribution': [
-            {'status': s.value, 'count': c} for s, c in task_status_dist
+            {'status': s, 'count': c} for s, c in task_status_dist
         ],
         'task_trend': {
             'dates': dates,
@@ -250,11 +250,11 @@ def get_personal_statistics(user_id):
     total_tasks = Task.query.filter_by(assignee_id=user_id).count()
     pending_tasks = Task.query.filter(
         Task.assignee_id == user_id,
-        Task.status != TaskStatus.DONE
+        Task.status != 'done'
     ).count()
     completed_tasks = Task.query.filter_by(
         assignee_id=user_id,
-        status=TaskStatus.DONE
+        status='done'
     ).count()
     
     # 近7天趋势
@@ -310,7 +310,7 @@ def get_performance():
         # 本月完成任务
         month_completed = Task.query.filter(
             Task.assignee_id == u.id,
-            Task.status == TaskStatus.DONE,
+            Task.status == 'done',
             Task.completed_at >= month_start
         ).count()
         
@@ -318,13 +318,13 @@ def get_performance():
         total_assigned = Task.query.filter_by(assignee_id=u.id).count()
         total_completed = Task.query.filter_by(
             assignee_id=u.id,
-            status=TaskStatus.DONE
+            status='done'
         ).count()
         
         # 逾期任务
         overdue = Task.query.filter(
             Task.assignee_id == u.id,
-            Task.status != TaskStatus.DONE,
+            Task.status != 'done',
             Task.due_date < datetime.utcnow()
         ).count()
         
@@ -342,4 +342,150 @@ def get_performance():
     
     return jsonify({
         'performance': user_stats
+    }), 200
+
+
+
+@dashboard_bp.route('/crm-overview', methods=['GET'])
+@jwt_required()
+def get_crm_overview():
+    """获取CRM概览数据"""
+    current_user_id = get_jwt_identity()
+    
+    # DataScope 控制
+    scope = PermissionService.get_user_data_scope(current_user_id)
+    user = User.query.get(current_user_id)
+    
+    if scope.value == 'all':
+        client_query = Client.query
+        contract_query = Contract.query
+        ticket_query = Ticket.query
+    elif scope.value in ('dept', 'dept_and_below'):
+        dept_members = User.query.filter_by(department=user.department).all()
+        member_ids = [m.id for m in dept_members]
+        client_query = Client.query.filter(Client.manager_id.in_(member_ids))
+        contract_query = Contract.query.filter(Contract.created_by.in_(member_ids))
+        ticket_query = Ticket.query.filter(
+            (Ticket.assignee_id.in_(member_ids)) |
+            (Ticket.reporter_id.in_(member_ids))
+        )
+    else:
+        client_query = Client.query.filter_by(manager_id=current_user_id)
+        contract_query = Contract.query.filter_by(created_by=current_user_id)
+        ticket_query = Ticket.query.filter(
+            (Ticket.assignee_id == current_user_id) |
+            (Ticket.reporter_id == current_user_id)
+        )
+    
+    total_clients = client_query.count()
+    active_clients = client_query.filter_by(status='active').count()
+    potential_clients = client_query.filter_by(status='potential').count()
+    
+    total_contracts = contract_query.count()
+    active_contracts = contract_query.filter_by(status='active').count()
+    total_amount = db.session.query(func.sum(Contract.amount)).filter(
+        Contract.id.in_([c.id for c in contract_query.all()])
+    ).scalar() or 0
+    
+    total_tickets = ticket_query.count()
+    open_tickets = ticket_query.filter_by(status='open').count()
+    resolved_tickets = ticket_query.filter_by(status='resolved').count()
+    
+    # 近30天新增客户趋势
+    dates = []
+    client_trend = []
+    ticket_trend = []
+    
+    for i in range(29, -1, -1):
+        date = datetime.utcnow().date() - timedelta(days=i)
+        dates.append(date.strftime('%m-%d'))
+        
+        day_start = datetime.combine(date, datetime.min.time())
+        day_end = datetime.combine(date, datetime.max.time())
+        
+        client_count = client_query.filter(
+            Client.created_at >= day_start,
+            Client.created_at <= day_end
+        ).count()
+        client_trend.append(client_count)
+        
+        ticket_count = ticket_query.filter(
+            Ticket.created_at >= day_start,
+            Ticket.created_at <= day_end
+        ).count()
+        ticket_trend.append(ticket_count)
+    
+    return jsonify({
+        'overview': {
+            'total_clients': total_clients,
+            'active_clients': active_clients,
+            'potential_clients': potential_clients,
+            'total_contracts': total_contracts,
+            'active_contracts': active_contracts,
+            'total_amount': float(total_amount),
+            'total_tickets': total_tickets,
+            'open_tickets': open_tickets,
+            'resolved_tickets': resolved_tickets
+        },
+        'trend': {
+            'dates': dates,
+            'clients': client_trend,
+            'tickets': ticket_trend
+        }
+    }), 200
+
+
+@dashboard_bp.route('/crm-ranking', methods=['GET'])
+@jwt_required()
+def get_crm_ranking():
+    """获取客户金额排行和工单处理排行"""
+    current_user_id = get_jwt_identity()
+    
+    scope = PermissionService.get_user_data_scope(current_user_id)
+    user = User.query.get(current_user_id)
+    
+    if scope.value == 'all':
+        contract_query = Contract.query
+    elif scope.value in ('dept', 'dept_and_below'):
+        dept_members = User.query.filter_by(department=user.department).all()
+        member_ids = [m.id for m in dept_members]
+        contract_query = Contract.query.filter(Contract.created_by.in_(member_ids))
+    else:
+        contract_query = Contract.query.filter_by(created_by=current_user_id)
+    
+    # 客户金额排行 Top 10
+    client_amounts = db.session.query(
+        Client,
+        func.sum(Contract.amount).label('total_amount'),
+        func.count(Contract.id).label('contract_count')
+    ).join(Contract, Contract.client_id == Client.id).filter(
+        Contract.id.in_([c.id for c in contract_query.all()])
+    ).group_by(Client.id).order_by(func.sum(Contract.amount).desc()).limit(10).all()
+    
+    # 客户经理业绩排行
+    manager_stats = db.session.query(
+        User,
+        func.sum(Contract.amount).label('total_amount'),
+        func.count(Contract.id).label('contract_count')
+    ).join(Client, Client.manager_id == User.id).join(
+        Contract, Contract.client_id == Client.id
+    ).filter(
+        Contract.id.in_([c.id for c in contract_query.all()])
+    ).group_by(User.id).order_by(func.sum(Contract.amount).desc()).limit(10).all()
+    
+    return jsonify({
+        'client_ranking': [
+            {
+                'client': c.to_dict(),
+                'total_amount': float(a) if a else 0,
+                'contract_count': cc
+            } for c, a, cc in client_amounts
+        ],
+        'manager_ranking': [
+            {
+                'user': u.to_dict(),
+                'total_amount': float(a) if a else 0,
+                'contract_count': cc
+            } for u, a, cc in manager_stats
+        ]
     }), 200

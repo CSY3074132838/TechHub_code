@@ -1,1 +1,0 @@
-import{J as t}from"./index-Rqf25WMs.js";const r=()=>t.get("/dashboard/overview"),a=s=>t.get("/dashboard/activities",{params:s}),o=()=>t.get("/dashboard/statistics"),i=s=>t.get("/dashboard/todos",{params:s});export{a,i as b,o as c,r as g};

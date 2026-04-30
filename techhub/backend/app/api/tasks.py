@@ -5,32 +5,18 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Task, Project, User, Comment, Activity, ActivityType, TaskStatus, TaskPriority
+from app.models import Task, Project, User, Comment, Activity
 from app.services import AuditService, PermissionService
 
 def parse_task_status(value):
-    """将字符串转换为 TaskStatus 枚举"""
-    if value is None or isinstance(value, TaskStatus):
-        return value
-    mapping = {
-        'todo': TaskStatus.TODO,
-        'in_progress': TaskStatus.IN_PROGRESS,
-        'review': TaskStatus.REVIEW,
-        'done': TaskStatus.DONE
-    }
-    return mapping.get(value)
+    """规范化任务状态字符串"""
+    valid = {'todo', 'in_progress', 'review', 'done'}
+    return value if value in valid else 'todo'
 
 def parse_task_priority(value):
-    """将字符串转换为 TaskPriority 枚举"""
-    if value is None or isinstance(value, TaskPriority):
-        return value
-    mapping = {
-        'low': TaskPriority.LOW,
-        'medium': TaskPriority.MEDIUM,
-        'high': TaskPriority.HIGH,
-        'urgent': TaskPriority.URGENT
-    }
-    return mapping.get(value)
+    """规范化任务优先级字符串"""
+    valid = {'low', 'medium', 'high', 'urgent'}
+    return value if value in valid else 'medium'
 
 def parse_datetime(dt_str):
     """解析日期时间字符串为 datetime 对象"""
@@ -149,7 +135,7 @@ def create_task():
     
     # 记录活动
     activity = Activity(
-        activity_type=ActivityType.TASK_CREATED,
+        activity_type='task_created',
         title=f'创建了任务 "{task.title}"',
         user_id=current_user_id,
         task_id=task.id,
@@ -219,12 +205,12 @@ def update_task(task_id):
         task.due_date = parse_datetime(data['due_date'])
     
     # 如果状态变为完成，记录完成时间
-    if data.get('status') == 'done' and old_status != TaskStatus.DONE:
+    if data.get('status') == 'done' and old_status != 'done':
         task.completed_at = datetime.utcnow()
-        activity_type = ActivityType.TASK_COMPLETED
+        activity_type = 'task_completed'
         activity_title = f'完成了任务 "{task.title}"'
     else:
-        activity_type = ActivityType.TASK_UPDATED
+        activity_type = 'task_updated'
         activity_title = f'更新了任务 "{task.title}"'
     
     db.session.commit()
@@ -236,7 +222,7 @@ def update_task(task_id):
         user_id=current_user_id,
         task_id=task.id,
         project_id=task.project_id,
-        metadata={'old_status': old_status.value if old_status else None}
+        metadata={'old_status': old_status if old_status else None}
     )
     db.session.add(activity)
     db.session.commit()
@@ -246,7 +232,7 @@ def update_task(task_id):
         action=AuditService.TASK_UPDATE,
         resource_type='task',
         resource_id=task_id,
-        detail={'old_status': old_status.value if old_status else None},
+        detail={'old_status': old_status if old_status else None},
         status='success'
     )
     
@@ -303,7 +289,7 @@ def add_comment(task_id):
     
     # 记录活动
     activity = Activity(
-        activity_type=ActivityType.COMMENT_ADDED,
+        activity_type='comment_added',
         title=f'评论了任务 "{task.title}"',
         user_id=current_user_id,
         task_id=task.id,

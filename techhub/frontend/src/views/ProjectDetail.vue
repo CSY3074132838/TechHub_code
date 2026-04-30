@@ -9,6 +9,10 @@
         <div class="project-title">
           <div class="color-dot" :style="{ background: project.color }"></div>
           <h2>{{ project.name }}</h2>
+          <el-tag v-if="project.client" type="primary" size="small" style="margin-left: 12px" @click="goToClient(project.client_id)">
+            <el-icon><OfficeBuilding /></el-icon>
+            {{ project.client.name }}
+          </el-tag>
         </div>
       </div>
       <div class="header-right">

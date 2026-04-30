@@ -103,6 +103,21 @@
             style="width: 100%;"
           />
         </el-form-item>
+        <el-form-item label="关联客户">
+          <el-select
+            v-model="form.client_id"
+            clearable
+            placeholder="选择关联客户（可选）"
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="client in clientOptions"
+              :key="client.id"
+              :label="client.name"
+              :value="client.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="项目成员">
           <el-select
             v-model="form.member_ids"
@@ -133,11 +148,13 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getProjects, createProject } from '@/api/projects'
 import { getUsers } from '@/api/users'
+import { getClientOptions } from '@/api/clients'
 
 const router = useRouter()
 
 const projects = ref([])
 const users = ref([])
+const clientOptions = ref([])
 const showCreateDialog = ref(false)
 const creating = ref(false)
 const formRef = ref(null)
@@ -148,6 +165,7 @@ const form = ref({
   color: '#1890ff',
   start_date: '',
   end_date: '',
+  client_id: '',
   member_ids: []
 })
 
@@ -189,6 +207,7 @@ const handleCreate = async () => {
       color: '#1890ff',
       start_date: '',
       end_date: '',
+      client_id: '',
       member_ids: []
     }
   } catch (error) {
@@ -202,9 +221,19 @@ const goToProject = (id) => {
   router.push(`/projects/${id}`)
 }
 
+const fetchClientOptions = async () => {
+  try {
+    const res = await getClientOptions()
+    clientOptions.value = res.clients
+  } catch (error) {
+    console.error('获取客户选项失败', error)
+  }
+}
+
 onMounted(() => {
   fetchProjects()
   fetchUsers()
+  fetchClientOptions()
 })
 </script>
 

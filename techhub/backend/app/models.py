@@ -57,6 +57,36 @@ class DataScope(enum.Enum):
     SELF = 'self'         # 仅自己的数据
     CUSTOM = 'custom'     # 自定义（指定部门列表）
 
+class ClientStatus(enum.Enum):
+    """客户状态枚举"""
+    POTENTIAL = 'potential'    # 潜在客户
+    ACTIVE = 'active'          # 合作中
+    INACTIVE = 'inactive'      # 暂停合作
+    LOST = 'lost'              # 已流失
+
+class ContractStatus(enum.Enum):
+    """合同状态枚举"""
+    DRAFT = 'draft'            # 草稿
+    PENDING = 'pending'        # 审批中
+    ACTIVE = 'active'          # 生效中
+    COMPLETED = 'completed'    # 已完成
+    TERMINATED = 'terminated'  # 已终止
+
+class TicketStatus(enum.Enum):
+    """工单状态枚举"""
+    OPEN = 'open'              # 待处理
+    IN_PROGRESS = 'in_progress'# 处理中
+    WAITING = 'waiting'        # 等待反馈
+    RESOLVED = 'resolved'      # 已解决
+    CLOSED = 'closed'          # 已关闭
+
+class TicketPriority(enum.Enum):
+    """工单优先级枚举"""
+    LOW = 'low'
+    MEDIUM = 'medium'
+    HIGH = 'high'
+    URGENT = 'urgent'
+
 # ==================== 关联表定义 ====================
 
 # 用户-角色关联表
@@ -207,15 +237,17 @@ class Project(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # 关联关系
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True)
     tasks = db.relationship('Task', backref='project', lazy='dynamic', cascade='all, delete-orphan')
     members = db.relationship('User', secondary=project_members, backref='projects')
+    client = db.relationship('Client', backref='projects')
     
     def get_task_stats(self):
         """获取项目任务统计"""
         total = self.tasks.count()
-        todo = self.tasks.filter_by(status=TaskStatus.TODO).count()
-        in_progress = self.tasks.filter_by(status=TaskStatus.IN_PROGRESS).count()
-        done = self.tasks.filter_by(status=TaskStatus.DONE).count()
+        todo = self.tasks.filter_by(status='todo').count()
+        in_progress = self.tasks.filter_by(status='in_progress').count()
+        done = self.tasks.filter_by(status='done').count()
         return {
             'total': total,
             'todo': todo,
@@ -236,6 +268,8 @@ class Project(db.Model):
             'creator': self.creator.to_dict() if self.creator else None,
             'members': [member.to_dict() for member in self.members],
             'stats': self.get_task_stats(),
+            'client_id': self.client_id,
+            'client': self.client.to_dict() if self.client else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         if include_tasks:
@@ -249,8 +283,8 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.TODO)
-    priority = db.Column(db.Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    status = db.Column(db.String(20), default='todo')
+    priority = db.Column(db.String(20), default='medium')
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=False)
     assignee_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -269,8 +303,8 @@ class Task(db.Model):
             'id': self.id,
             'title': self.title,
             'description': self.description,
-            'status': self.status.value if self.status else None,
-            'priority': self.priority.value if self.priority else None,
+            'status': self.status,
+            'priority': self.priority,
             'project_id': self.project_id,
             'assignee': self.assignee.to_dict() if self.assignee else None,
             'creator': self.task_creator.to_dict() if self.task_creator else None,
@@ -308,8 +342,8 @@ class Approval(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
-    approval_type = db.Column(db.Enum(ApprovalType), nullable=False)
-    status = db.Column(db.Enum(ApprovalStatus), default=ApprovalStatus.PENDING)
+    approval_type = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), default='pending')
     is_urgent = db.Column(db.Boolean, default=False)
     amount = db.Column(db.Numeric(10, 2))  # 金额（报销/采购）
     description = db.Column(db.Text)
@@ -336,8 +370,8 @@ class Approval(db.Model):
         data = {
             'id': self.id,
             'title': self.title,
-            'approval_type': self.approval_type.value if self.approval_type else None,
-            'status': self.status.value if self.status else None,
+            'approval_type': self.approval_type,
+            'status': self.status,
             'is_urgent': self.is_urgent,
             'amount': float(self.amount) if self.amount else None,
             'description': self.description,
@@ -358,7 +392,7 @@ class Activity(db.Model):
     __tablename__ = 'activities'
     
     id = db.Column(db.Integer, primary_key=True)
-    activity_type = db.Column(db.Enum(ActivityType), nullable=False)
+    activity_type = db.Column(db.String(50), nullable=False)
     title = db.Column(db.String(200))
     description = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
@@ -370,7 +404,7 @@ class Activity(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
-            'activity_type': self.activity_type.value if self.activity_type else None,
+            'activity_type': self.activity_type,
             'title': self.title,
             'description': self.description,
             'user': self.user.to_dict() if self.user else None,
@@ -439,6 +473,144 @@ class AuditLog(db.Model):
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class Client(db.Model):
+    """客户模型 - 客户关系管理"""
+    __tablename__ = 'clients'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    industry = db.Column(db.String(50))
+    contact_name = db.Column(db.String(50))
+    contact_phone = db.Column(db.String(20))
+    contact_email = db.Column(db.String(120))
+    address = db.Column(db.Text)
+    status = db.Column(db.String(20), default='potential')
+    level = db.Column(db.String(20), default='b')  # s/a/b/c
+    remark = db.Column(db.Text)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 客户经理
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关联关系
+    manager = db.relationship('User', foreign_keys=[manager_id])
+    contracts = db.relationship('Contract', backref='client', lazy='dynamic', cascade='all, delete-orphan')
+    tickets = db.relationship('Ticket', backref='client', lazy='dynamic', cascade='all, delete-orphan')
+    
+    def to_dict(self, include_projects=False):
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'industry': self.industry,
+            'contact_name': self.contact_name,
+            'contact_phone': self.contact_phone,
+            'contact_email': self.contact_email,
+            'address': self.address,
+            'status': self.status,
+            'level': self.level,
+            'remark': self.remark,
+            'manager': self.manager.to_dict() if self.manager else None,
+            'manager_id': self.manager_id,
+            'project_count': len(self.projects) if self.projects else 0,
+            'contract_count': self.contracts.count() if self.contracts else 0,
+            'ticket_count': self.tickets.count() if self.tickets else 0,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+        if include_projects:
+            data['projects'] = [p.to_dict() for p in self.projects]
+        return data
+
+
+class Contract(db.Model):
+    """合同模型 - 客户合同管理"""
+    __tablename__ = 'contracts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    contract_no = db.Column(db.String(50), unique=True, nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
+    amount = db.Column(db.Numeric(12, 2))
+    sign_date = db.Column(db.Date)
+    start_date = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    status = db.Column(db.String(20), default='draft')
+    payment_terms = db.Column(db.Text)
+    content = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关联关系
+    creator = db.relationship('User', foreign_keys=[created_by])
+    project = db.relationship('Project', backref='contracts')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'contract_no': self.contract_no,
+            'name': self.name,
+            'client_id': self.client_id,
+            'client': self.client.to_dict() if self.client else None,
+            'project_id': self.project_id,
+            'project': self.project.to_dict() if self.project else None,
+            'amount': float(self.amount) if self.amount else None,
+            'sign_date': self.sign_date.isoformat() if self.sign_date else None,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'status': self.status,
+            'payment_terms': self.payment_terms,
+            'content': self.content,
+            'created_by': self.created_by,
+            'creator': self.creator.to_dict() if self.creator else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class Ticket(db.Model):
+    """工单模型 - 客户反馈/问题跟踪"""
+    __tablename__ = 'tickets'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_no = db.Column(db.String(50), unique=True, nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=False)
+    status = db.Column(db.String(20), default='open')
+    priority = db.Column(db.String(20), default='medium')
+    assignee_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    resolved_at = db.Column(db.DateTime)
+    resolution = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关联关系
+    assignee = db.relationship('User', foreign_keys=[assignee_id])
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'ticket_no': self.ticket_no,
+            'title': self.title,
+            'description': self.description,
+            'client_id': self.client_id,
+            'client': self.client.to_dict() if self.client else None,
+            'status': self.status,
+            'priority': self.priority,
+            'assignee_id': self.assignee_id,
+            'assignee': self.assignee.to_dict() if self.assignee else None,
+            'reporter_id': self.reporter_id,
+            'reporter': self.reporter.to_dict() if self.reporter else None,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'resolution': self.resolution,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
 
 class SystemConfig(db.Model):
     """系统配置模型"""

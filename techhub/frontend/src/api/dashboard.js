@@ -19,3 +19,11 @@ export const getPerformance = () => {
 export const getTodos = (params) => {
   return request.get('/dashboard/todos', { params })
 }
+
+export const getCrmOverview = () => {
+  return request.get('/dashboard/crm-overview')
+}
+
+export const getCrmRanking = () => {
+  return request.get('/dashboard/crm-ranking')
+}
