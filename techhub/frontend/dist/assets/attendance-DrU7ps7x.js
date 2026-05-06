@@ -1,1 +1,0 @@
-import{J as t}from"./index-_q19F07U.js";const n=e=>t.get("/attendance/records",{params:e}),r=e=>t.get("/attendance/stats",{params:e}),s=e=>t.get("/attendance/leave-balances",{params:e}),c=e=>t.get("/attendance/work-time",{params:e}),o=e=>t.post("/attendance/work-time",e),d=e=>t.get("/attendance/work-time/stats",{params:e});export{r as a,s as b,c,d,o as e,n as g};

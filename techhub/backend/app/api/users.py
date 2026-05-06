@@ -7,6 +7,7 @@ from app import db
 from app.models import User, Role
 from app.decorators import require_permission
 from app.services import AuditService, RoleService
+from sqlalchemy import extract
 
 users_bp = Blueprint('users', __name__)
 
@@ -42,8 +43,20 @@ def get_users():
     employee_status = request.args.get('employee_status')  # 【第二次迭代】按员工状态筛选
     role_id = request.args.get('role_id', type=int)         # 【第二次迭代】按角色筛选
     is_active = request.args.get('is_active', type=lambda x: x.lower() == 'true')
+    entry_month = request.args.get('entry_month')  # 格式: 2025-05，【第二次迭代】按入职月份筛选
     
     query = User.query
+    
+    # 【第二次迭代】按入职月份筛选（统计卡片点击穿透）
+    if entry_month:
+        try:
+            year, month = map(int, entry_month.split('-'))
+            query = query.filter(
+                extract('year', User.entry_date) == year,
+                extract('month', User.entry_date) == month
+            )
+        except ValueError:
+            pass
     
     if department:
         query = query.filter_by(department=department)
@@ -370,8 +383,8 @@ def get_user_stats():
     current_month = datetime.utcnow().month
     current_year = datetime.utcnow().year
     new_this_month = User.query.filter(
-        db.extract('year', User.entry_date) == current_year,
-        db.extract('month', User.entry_date) == current_month
+        extract('year', User.entry_date) == current_year,
+        extract('month', User.entry_date) == current_month
     ).count()
     
     return jsonify({

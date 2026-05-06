@@ -13,28 +13,28 @@
       </div>
     </div>
 
-    <!-- 统计卡片 -->
+    <!-- 【第二次迭代】统计卡片 - 点击穿透筛选 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="handleStatClick('total')" title="点击查看全部用户">
           <div class="stat-value">{{ stats.total || 0 }}</div>
           <div class="stat-label">总用户</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="handleStatClick('active')" title="点击查看活跃用户">
           <div class="stat-value success">{{ stats.active || 0 }}</div>
           <div class="stat-label">活跃用户</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="handleStatClick('new_this_month')" title="点击查看本月入职">
           <div class="stat-value warning">{{ stats.new_this_month || 0 }}</div>
           <div class="stat-label">本月入职</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="handleStatClick('inactive')" title="点击查看非活跃用户">
           <div class="stat-value info">{{ stats.inactive || 0 }}</div>
           <div class="stat-label">非活跃用户</div>
         </div>
@@ -399,7 +399,8 @@ const filter = ref({
   department_id: '',
   employee_status: '',
   role_id: '',
-  is_active: ''
+  is_active: '',
+  entry_month: ''  // 【第二次迭代】按入职月份筛选（统计卡片穿透）
 })
 const flatDepartments = ref([])
 
@@ -455,10 +456,14 @@ const roleForm = ref({
 const fetchUsers = async () => {
   loading.value = true
   try {
+    // 过滤掉空字符串参数，避免后端误判（如 is_active='' 会被解析为 False）
+    const activeFilters = Object.fromEntries(
+      Object.entries(filter.value).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
+    )
     const params = {
       page: page.value,
       per_page: pageSize.value,
-      ...filter.value
+      ...activeFilters
     }
     const res = await getUsers(params)
     users.value = res.users
@@ -504,8 +509,36 @@ const handleFilterChange = () => {
 }
 
 const resetFilter = () => {
-  filter.value = { search: '', department_id: '', employee_status: '', role_id: '', is_active: '' }
+  filter.value = { search: '', department_id: '', employee_status: '', role_id: '', is_active: '', entry_month: '' }
   handleFilterChange()
+}
+
+// 【第二次迭代】统计卡片点击穿透筛选
+const handleStatClick = (type) => {
+  // 先清空所有筛选
+  filter.value = { search: '', department_id: '', employee_status: '', role_id: '', is_active: '', entry_month: '' }
+  
+  switch (type) {
+    case 'total':
+      // 总用户：不附加任何筛选，直接显示全部
+      break
+    case 'active':
+      // 活跃用户：筛选 is_active = true
+      filter.value.is_active = true
+      break
+    case 'inactive':
+      // 非活跃用户：筛选 is_active = false
+      filter.value.is_active = false
+      break
+    case 'new_this_month':
+      // 本月入职：按入职月份筛选
+      filter.value.entry_month = dayjs().format('YYYY-MM')
+      break
+  }
+  
+  page.value = 1
+  fetchUsers()
+  ElMessage.info(`已筛选：${type === 'total' ? '全部用户' : type === 'active' ? '活跃用户' : type === 'inactive' ? '非活跃用户' : '本月入职用户'}`)
 }
 
 // 【第二次迭代】查看用户详情抽屉
@@ -755,6 +788,7 @@ onMounted(() => {
       padding: 20px;
       text-align: center;
       box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      transition: all 0.2s ease;
       .stat-value {
         font-size: 28px;
         font-weight: 600;
@@ -767,6 +801,17 @@ onMounted(() => {
       .stat-label {
         font-size: 14px;
         color: #666;
+      }
+      // 【第二次迭代】统计卡片可点击样式
+      &.clickable {
+        cursor: pointer;
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        &:active {
+          transform: translateY(0);
+        }
       }
     }
   }
