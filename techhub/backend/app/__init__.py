@@ -47,6 +47,9 @@ def create_app(config_name='default'):
     from app.api.clients import clients_bp
     from app.api.contracts import contracts_bp
     from app.api.tickets import tickets_bp
+    # 【第二次迭代】注册部门管理与考勤工时蓝图
+    from app.api.departments import departments_bp
+    from app.api.attendance import attendance_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -59,6 +62,9 @@ def create_app(config_name='default'):
     app.register_blueprint(clients_bp, url_prefix='/api/clients')
     app.register_blueprint(contracts_bp, url_prefix='/api/contracts')
     app.register_blueprint(tickets_bp, url_prefix='/api/tickets')
+    # 【第二次迭代】注册新蓝图
+    app.register_blueprint(departments_bp, url_prefix='/api/departments')
+    app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     
     # JWT Token 黑名单检查 + 权限版本号校验（实现权限即时生效）
     @jwt.token_in_blocklist_loader

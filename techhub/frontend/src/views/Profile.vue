@@ -1,4 +1,5 @@
 <template>
+  <!-- 【第二次迭代】增强个人中心 - 员工自助与档案查看 -->
   <div class="profile-page">
     <el-row :gutter="20">
       <!-- 左侧个人信息卡片 -->
@@ -20,6 +21,12 @@
                 {{ role.description }}
               </el-tag>
             </div>
+            <!-- 【第二次迭代】员工状态标签 -->
+            <div style="margin-top: 8px;">
+              <el-tag :type="employeeStatusType(userInfo?.employee_status)" size="small">
+                {{ employeeStatusLabel(userInfo?.employee_status) }}
+              </el-tag>
+            </div>
           </div>
           
           <el-divider />
@@ -28,6 +35,10 @@
             <div class="info-item">
               <span class="label">用户名</span>
               <span class="value">{{ userInfo?.username }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">工号</span>
+              <span class="value">{{ userInfo?.employee_no || '-' }}</span>
             </div>
             <div class="info-item">
               <span class="label">部门</span>
@@ -40,6 +51,10 @@
             <div class="info-item">
               <span class="label">电话</span>
               <span class="value">{{ userInfo?.phone || '-' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">入职日期</span>
+              <span class="value">{{ userInfo?.entry_date || '-' }}</span>
             </div>
           </div>
         </el-card>
@@ -69,28 +84,73 @@
       
       <!-- 右侧编辑表单 -->
       <el-col :xs="24" :md="16">
+        <!-- 【第二次迭代】档案详情 Tab 页 -->
         <el-card>
           <template #header>
-            <span>编辑资料</span>
+            <span>我的档案</span>
           </template>
-          
-          <el-form :model="form" label-width="100px">
-            <el-form-item label="真实姓名">
-              <el-input v-model="form.real_name" placeholder="请输入真实姓名" />
-            </el-form-item>
-            <el-form-item label="部门">
-              <el-input v-model="form.department" placeholder="请输入部门" />
-            </el-form-item>
-            <el-form-item label="职位">
-              <el-input v-model="form.position" placeholder="请输入职位" />
-            </el-form-item>
-            <el-form-item label="电话">
-              <el-input v-model="form.phone" placeholder="请输入电话" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="saveProfile" :loading="saving">保存</el-button>
-            </el-form-item>
-          </el-form>
+          <el-tabs v-model="activeTab">
+            <el-tab-pane label="基本信息" name="basic">
+              <el-form :model="form" label-width="100px">
+                <el-form-item label="真实姓名">
+                  <el-input v-model="form.real_name" placeholder="请输入真实姓名" />
+                </el-form-item>
+                <el-form-item label="电话">
+                  <el-input v-model="form.phone" placeholder="请输入电话" />
+                </el-form-item>
+                <el-form-item label="现居地址">
+                  <el-input v-model="form.address" type="textarea" :rows="2" placeholder="请输入现居地址" />
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" @click="saveProfile" :loading="saving">保存</el-button>
+                </el-form-item>
+              </el-form>
+            </el-tab-pane>
+            
+            <!-- 【第二次迭代】档案详情（只读，修改需审批） -->
+            <el-tab-pane label="档案详情" name="detail">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="员工状态">{{ employeeStatusLabel(userInfo?.employee_status) }}</el-descriptions-item>
+                <el-descriptions-item label="工号">{{ userInfo?.employee_no || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="入职日期">{{ userInfo?.entry_date || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="转正日期">{{ userInfo?.probation_end_date || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="性别">{{ userInfo?.gender || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="生日">{{ userInfo?.birthday || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="籍贯">{{ userInfo?.native_place || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="身份证号">{{ maskIdCard(userInfo?.id_card) }}</el-descriptions-item>
+                <el-descriptions-item label="学历">{{ userInfo?.education || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="毕业院校">{{ userInfo?.school || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="专业">{{ userInfo?.major || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="紧急联系人">{{ userInfo?.emergency_contact || '-' }}</el-descriptions-item>
+                <el-descriptions-item label="紧急电话">{{ maskPhone(userInfo?.emergency_phone) }}</el-descriptions-item>
+                <el-descriptions-item label="直属上级">
+                  {{ userInfo?.manager?.real_name || '-' }}
+                </el-descriptions-item>
+              </el-descriptions>
+              <el-alert
+                title="如需修改档案信息，请联系HR"
+                type="info"
+                :closable="false"
+                style="margin-top: 16px;"
+              />
+            </el-tab-pane>
+            
+            <!-- 【第二次迭代】我的考勤 -->
+            <el-tab-pane label="我的考勤" name="attendance">
+              <el-empty v-if="attendanceRecords.length === 0" description="暂无考勤记录" />
+              <el-timeline v-else>
+                <el-timeline-item
+                  v-for="record in attendanceRecords"
+                  :key="record.id"
+                  :type="record.status === 'normal' ? 'primary' : 'warning'"
+                  :timestamp="formatDate(record.work_date)"
+                >
+                  <p>工时：{{ record.work_hours }}h {{ record.overtime_hours > 0 ? `(加班 ${record.overtime_hours}h)` : '' }}</p>
+                  <p v-if="record.remark">备注：{{ record.remark }}</p>
+                </el-timeline-item>
+              </el-timeline>
+            </el-tab-pane>
+          </el-tabs>
         </el-card>
         
         <el-card style="margin-top: 20px;">
@@ -117,34 +177,15 @@
     </el-row>
 
     <!-- 申请权限对话框 -->
-    <el-dialog
-      v-model="showApplyDialog"
-      title="申请权限"
-      width="500px"
-      :close-on-click-modal="false"
-    >
+    <el-dialog v-model="showApplyDialog" title="申请权限" width="500px" :close-on-click-modal="false">
       <el-form :model="applyForm" label-width="100px">
         <el-form-item label="申请权限">
-          <el-select
-            v-model="applyForm.permission"
-            placeholder="请选择要申请的权限"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="perm in availablePermissions"
-              :key="perm.code"
-              :label="perm.label"
-              :value="perm.code"
-            />
+          <el-select v-model="applyForm.permission" placeholder="请选择要申请的权限" style="width: 100%">
+            <el-option v-for="perm in availablePermissions" :key="perm.code" :label="perm.label" :value="perm.code" />
           </el-select>
         </el-form-item>
         <el-form-item label="申请理由">
-          <el-input
-            v-model="applyForm.reason"
-            type="textarea"
-            :rows="3"
-            placeholder="请描述申请该权限的理由"
-          />
+          <el-input v-model="applyForm.reason" type="textarea" :rows="3" placeholder="请描述申请该权限的理由" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -156,22 +197,37 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { updateUser, getPermissions } from '@/api/users'
+import { updateUser, getPermissions, getMyDetail } from '@/api/users'
 import { changePassword as apiChangePassword } from '@/api/auth'
 import { createApproval } from '@/api/approvals'
+import { getAttendanceRecords } from '@/api/attendance'
+import dayjs from 'dayjs'
 
 const userStore = useUserStore()
 const userInfo = computed(() => userStore.userInfo)
 const permissions = computed(() => userStore.permissions)
+const activeTab = ref('basic')
+
+// 【第二次迭代】获取完整档案
+const fetchMyDetail = async () => {
+  try {
+    const res = await getMyDetail()
+    if (res.user) {
+      // 合并到 userStore 的 userInfo 中
+      userStore.userInfo = { ...userStore.userInfo, ...res.user }
+    }
+  } catch (error) {
+    console.error('获取档案详情失败', error)
+  }
+}
 
 const form = ref({
   real_name: userInfo.value?.real_name || '',
-  department: userInfo.value?.department || '',
-  position: userInfo.value?.position || '',
-  phone: userInfo.value?.phone || ''
+  phone: userInfo.value?.phone || '',
+  address: userInfo.value?.address || ''
 })
 
 const saving = ref(false)
@@ -179,7 +235,11 @@ const saving = ref(false)
 const saveProfile = async () => {
   saving.value = true
   try {
-    await updateUser(userInfo.value.id, form.value)
+    await updateUser(userInfo.value.id, {
+      real_name: form.value.real_name,
+      phone: form.value.phone,
+      address: form.value.address
+    })
     ElMessage.success('资料更新成功')
     await userStore.fetchUserInfo()
   } catch (error) {
@@ -190,11 +250,7 @@ const saveProfile = async () => {
 }
 
 const pwdFormRef = ref(null)
-const pwdForm = ref({
-  old_password: '',
-  new_password: '',
-  confirm_password: ''
-})
+const pwdForm = ref({ old_password: '', new_password: '', confirm_password: '' })
 const pwdLoading = ref(false)
 
 const pwdRules = {
@@ -233,7 +289,7 @@ const openApplyDialog = async () => {
   showApplyDialog.value = true
   try {
     const res = await getPermissions()
-    allPermissions.value = res.data?.permissions || []
+    allPermissions.value = res.permissions || []
   } catch (error) {
     console.error('获取权限列表失败', error)
   }
@@ -283,6 +339,54 @@ const changePassword = async () => {
     pwdLoading.value = false
   }
 }
+
+// 【第二次迭代】员工状态显示转换
+const employeeStatusLabel = (status) => {
+  const map = { probation: '试用期', active: '正式员工', pending_leave: '待离职', left: '已离职', suspended: '停薪留职' }
+  return map[status] || status || '试用期'
+}
+
+const employeeStatusType = (status) => {
+  const map = { probation: 'warning', active: 'success', pending_leave: 'danger', left: 'info', suspended: 'info' }
+  return map[status] || ''
+}
+
+// 【第二次迭代】敏感信息脱敏
+const maskIdCard = (idCard) => {
+  if (!idCard) return '-'
+  if (idCard.length === 18) {
+    return idCard.slice(0, 6) + '********' + idCard.slice(14)
+  }
+  return idCard.slice(0, 3) + '****' + idCard.slice(-4)
+}
+
+const maskPhone = (phone) => {
+  if (!phone) return '-'
+  if (phone.length === 11) {
+    return phone.slice(0, 3) + '****' + phone.slice(7)
+  }
+  return phone
+}
+
+// 【第二次迭代】考勤记录
+const attendanceRecords = ref([])
+const fetchAttendance = async () => {
+  try {
+    const res = await getAttendanceRecords({ per_page: 10 })
+    attendanceRecords.value = res.records || []
+  } catch (error) {
+    console.error('获取考勤记录失败', error)
+  }
+}
+
+const formatDate = (dateStr) => {
+  return dateStr ? dayjs(dateStr).format('YYYY-MM-DD') : '-'
+}
+
+onMounted(() => {
+  fetchMyDetail()
+  fetchAttendance()
+})
 </script>
 
 <style scoped lang="scss">
@@ -291,18 +395,8 @@ const changePassword = async () => {
     .profile-header {
       text-align: center;
       padding: 20px 0;
-      
-      h3 {
-        margin: 12px 0 4px;
-        font-size: 20px;
-      }
-      
-      .text-muted {
-        color: #999;
-        font-size: 14px;
-        margin-bottom: 12px;
-      }
-      
+      h3 { margin: 12px 0 4px; font-size: 20px; }
+      .text-muted { color: #999; font-size: 14px; margin-bottom: 12px; }
       .role-tags {
         display: flex;
         justify-content: center;
@@ -310,35 +404,20 @@ const changePassword = async () => {
         gap: 4px;
       }
     }
-    
     .profile-info {
       .info-item {
         display: flex;
         justify-content: space-between;
         padding: 12px 0;
         border-bottom: 1px solid #f0f0f0;
-        
-        &:last-child {
-          border-bottom: none;
-        }
-        
-        .label {
-          color: #666;
-          font-size: 14px;
-        }
-        
-        .value {
-          color: #333;
-          font-weight: 500;
-        }
+        &:last-child { border-bottom: none; }
+        .label { color: #666; font-size: 14px; }
+        .value { color: #333; font-weight: 500; }
       }
     }
   }
-  
   .permissions-card {
-    .el-tag {
-      margin: 2px;
-    }
+    .el-tag { margin: 2px; }
   }
 }
 </style>

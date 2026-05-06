@@ -1,1 +1,0 @@
-import{J as t}from"./index-DyXe4QCV.js";const s=()=>t.get("/dashboard/overview"),a=e=>t.get("/dashboard/activities",{params:e}),o=()=>t.get("/dashboard/statistics"),i=e=>t.get("/dashboard/todos",{params:e}),n=()=>t.get("/dashboard/crm-overview"),d=()=>t.get("/dashboard/crm-ranking");export{a,i as b,o as c,n as d,d as e,s as g};

@@ -1,0 +1,1 @@
+import{J as e}from"./index-_q19F07U.js";const a=()=>e.get("/departments/"),n=()=>e.get("/departments/flat"),m=t=>e.post("/departments/",t),p=(t,r)=>e.put(`/departments/${t}`,r),d=t=>e.delete(`/departments/${t}`),o=(t,r={})=>e.get(`/departments/${t}/members`,{params:r}),u=()=>e.get("/departments/stats");export{a,u as b,o as c,d,m as e,n as g,p as u};

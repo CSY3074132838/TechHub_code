@@ -92,6 +92,20 @@ const routes = [
         component: () => import('@/views/Users.vue'),
         meta: { title: '用户管理', icon: 'UserFilled', admin: true }
       },
+      // 【第二次迭代】组织架构管理
+      {
+        path: '/departments',
+        name: 'Departments',
+        component: () => import('@/views/Departments.vue'),
+        meta: { title: '组织架构', icon: 'OfficeBuilding', admin: true }
+      },
+      // 【第二次迭代】考勤与工时
+      {
+        path: '/attendance',
+        name: 'Attendance',
+        component: () => import('@/views/Attendance.vue'),
+        meta: { title: '考勤工时', icon: 'Clock' }
+      },
       {
         path: '/audit-logs',
         name: 'AuditLogs',

@@ -123,8 +123,12 @@ const menuItems = computed(() => [
   { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
   { path: '/analytics', title: '数据中心', icon: 'TrendCharts' },
   ...(userStore.hasPermission('user_manage') ? [
-    { path: '/users', title: '用户管理', icon: 'UserFilled' }
+    { path: '/users', title: '用户管理', icon: 'UserFilled' },
+    // 【第二次迭代】组织架构菜单
+    { path: '/departments', title: '组织架构', icon: 'OfficeBuilding' }
   ] : []),
+  // 【第二次迭代】考勤工时菜单（所有登录用户可见）
+  { path: '/attendance', title: '考勤工时', icon: 'Clock' },
   ...(userStore.hasPermission('audit_view') ? [
     { path: '/audit-logs', title: '审计日志', icon: 'Document' }
   ] : [])

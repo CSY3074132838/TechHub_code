@@ -87,6 +87,17 @@ class TicketPriority(enum.Enum):
     HIGH = 'high'
     URGENT = 'urgent'
 
+
+# ==================== 【第二次迭代】员工状态枚举 ====================
+class EmployeeStatus(enum.Enum):
+    """员工在职状态枚举"""
+    PROBATION = 'probation'      # 试用期
+    ACTIVE = 'active'            # 正式员工
+    PENDING_LEAVE = 'pending_leave'  # 待离职
+    LEFT = 'left'                # 已离职
+    SUSPENDED = 'suspended'      # 停薪留职
+
+
 # ==================== 关联表定义 ====================
 
 # 用户-角色关联表
@@ -172,6 +183,27 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # ==================== 【第二次迭代】员工档案扩展字段 ====================
+    employee_no = db.Column(db.String(50), unique=True, index=True)  # 工号
+    employee_status = db.Column(db.String(20), default='probation')  # 员工状态：probation/active/pending_leave/left/suspended
+    entry_date = db.Column(db.Date)           # 入职日期
+    probation_end_date = db.Column(db.Date)   # 转正日期
+    leave_date = db.Column(db.Date)           # 离职日期
+    id_card = db.Column(db.String(18))        # 身份证号
+    gender = db.Column(db.String(10))         # 性别
+    birthday = db.Column(db.Date)             # 生日
+    native_place = db.Column(db.String(100))  # 籍贯
+    address = db.Column(db.Text)              # 现居地址
+    education = db.Column(db.String(50))      # 学历
+    school = db.Column(db.String(100))        # 毕业院校
+    major = db.Column(db.String(100))         # 专业
+    emergency_contact = db.Column(db.String(50))   # 紧急联系人
+    emergency_phone = db.Column(db.String(20))     # 紧急联系人电话
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 直属上级ID
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'))  # 所属部门ID
+    attachments = db.Column(db.JSON, default=list)   # 附件列表（入职材料、证书等）
+    # ==================== 【第二次迭代】扩展字段结束 ====================
+    
     # 关联关系
     roles = db.relationship('Role', secondary=user_roles, back_populates='users')
     created_projects = db.relationship('Project', backref='creator', lazy='dynamic')
@@ -181,6 +213,10 @@ class User(db.Model):
     processed_approvals = db.relationship('Approval', foreign_keys='Approval.processor_id', backref='processor', lazy='dynamic')
     activities = db.relationship('Activity', backref='user', lazy='dynamic')
     comments = db.relationship('Comment', backref='author', lazy='dynamic')
+    # ==================== 【第二次迭代】自关联：直属上级与下属 ====================
+    manager = db.relationship('User', remote_side=[id], backref='subordinates')
+    department_ref = db.relationship('Department', foreign_keys=[department_id], backref='members')
+    # ==================== 【第二次迭代】自关联结束 ====================
     
     def set_password(self, password):
         """设置密码"""
@@ -203,7 +239,7 @@ class User(db.Model):
             return 4
         return min(role.level for role in self.roles)
     
-    def to_dict(self, include_email=False):
+    def to_dict(self, include_email=False, include_detail=False):
         data = {
             'id': self.id,
             'username': self.username,
@@ -219,7 +255,80 @@ class User(db.Model):
         if include_email:
             data['email'] = self.email
             data['phone'] = self.phone
+        # ==================== 【第二次迭代】员工档案详情序列化 ====================
+        if include_detail:
+            data.update({
+                'employee_no': self.employee_no,
+                'employee_status': self.employee_status,
+                'entry_date': self.entry_date.isoformat() if self.entry_date else None,
+                'probation_end_date': self.probation_end_date.isoformat() if self.probation_end_date else None,
+                'leave_date': self.leave_date.isoformat() if self.leave_date else None,
+                'id_card': self.id_card,
+                'gender': self.gender,
+                'birthday': self.birthday.isoformat() if self.birthday else None,
+                'native_place': self.native_place,
+                'address': self.address,
+                'education': self.education,
+                'school': self.school,
+                'major': self.major,
+                'emergency_contact': self.emergency_contact,
+                'emergency_phone': self.emergency_phone,
+                'manager_id': self.manager_id,
+                'manager': self.manager.to_dict() if self.manager else None,
+                'department_id': self.department_id,
+                'attachments': self.attachments or []
+            })
+        # ==================== 【第二次迭代】详情序列化结束 ====================
         return data
+
+# ==================== 【第二次迭代】部门模型 ====================
+class Department(db.Model):
+    """部门模型 - 支持层级组织架构"""
+    __tablename__ = 'departments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    code = db.Column(db.String(50), unique=True, nullable=False)   # 部门编码，如 DEV-001
+    description = db.Column(db.String(200))
+    parent_id = db.Column(db.Integer, db.ForeignKey('departments.id'))  # 父部门ID
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))       # 部门负责人ID
+    sort_order = db.Column(db.Integer, default=0)                       # 排序号
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关联关系
+    manager = db.relationship('User', foreign_keys=[manager_id])
+    parent = db.relationship('Department', remote_side=[id], backref='children')
+    
+    def get_member_count(self):
+        """获取部门成员数量（仅直属成员）"""
+        return User.query.filter_by(department_id=self.id).count()
+    
+    def get_total_member_count(self):
+        """获取部门及所有子部门成员数量"""
+        count = self.get_member_count()
+        for child in self.children:
+            count += child.get_total_member_count()
+        return count
+    
+    def to_dict(self, include_children=False):
+        data = {
+            'id': self.id,
+            'name': self.name,
+            'code': self.code,
+            'description': self.description,
+            'parent_id': self.parent_id,
+            'manager_id': self.manager_id,
+            'manager': self.manager.to_dict() if self.manager else None,
+            'sort_order': self.sort_order,
+            'member_count': self.get_member_count(),
+            'total_member_count': self.get_total_member_count(),
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+        if include_children:
+            data['children'] = [child.to_dict(include_children=True) for child in self.children]
+        return data
+
 
 class Project(db.Model):
     """项目模型"""
@@ -621,3 +730,99 @@ class SystemConfig(db.Model):
     value = db.Column(db.Text)
     description = db.Column(db.String(200))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ==================== 【第二次迭代】考勤与工时模型 ====================
+class Attendance(db.Model):
+    """考勤记录模型 - 工时填报"""
+    __tablename__ = 'attendances'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    work_date = db.Column(db.Date, nullable=False)           # 工作日期
+    check_in = db.Column(db.DateTime)                        # 上班打卡时间
+    check_out = db.Column(db.DateTime)                       # 下班打卡时间
+    work_hours = db.Column(db.Numeric(4, 2), default=0)      # 工作时长（小时）
+    overtime_hours = db.Column(db.Numeric(4, 2), default=0)  # 加班时长
+    status = db.Column(db.String(20), default='normal')      # normal/late/early/leave/absent
+    remark = db.Column(db.Text)                              # 备注
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user': self.user.to_dict() if self.user else None,
+            'work_date': self.work_date.isoformat() if self.work_date else None,
+            'check_in': self.check_in.isoformat() if self.check_in else None,
+            'check_out': self.check_out.isoformat() if self.check_out else None,
+            'work_hours': float(self.work_hours) if self.work_hours else 0,
+            'overtime_hours': float(self.overtime_hours) if self.overtime_hours else 0,
+            'status': self.status,
+            'remark': self.remark,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class LeaveBalance(db.Model):
+    """假期余额模型"""
+    __tablename__ = 'leave_balances'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    leave_type = db.Column(db.String(20), nullable=False)    # annual/sick/personal/marriage/maternity
+    total_days = db.Column(db.Numeric(5, 1), default=0)      # 总天数
+    used_days = db.Column(db.Numeric(5, 1), default=0)       # 已用天数
+    year = db.Column(db.Integer, nullable=False)             # 所属年份
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'leave_type': self.leave_type,
+            'total_days': float(self.total_days) if self.total_days else 0,
+            'used_days': float(self.used_days) if self.used_days else 0,
+            'remaining_days': float(self.total_days or 0) - float(self.used_days or 0),
+            'year': self.year,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class WorkTimeRecord(db.Model):
+    """工时记录模型 - 关联项目/任务"""
+    __tablename__ = 'work_time_records'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'))
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
+    work_date = db.Column(db.Date, nullable=False)
+    hours = db.Column(db.Numeric(4, 2), default=0)           # 投入工时
+    description = db.Column(db.Text)                         # 工作内容描述
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User')
+    project = db.relationship('Project')
+    task = db.relationship('Task')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user': self.user.to_dict() if self.user else None,
+            'project_id': self.project_id,
+            'project': self.project.to_dict() if self.project else None,
+            'task_id': self.task_id,
+            'task': self.task.to_dict() if self.task else None,
+            'work_date': self.work_date.isoformat() if self.work_date else None,
+            'hours': float(self.hours) if self.hours else 0,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+# ==================== 【第二次迭代】考勤与工时模型结束 ====================
