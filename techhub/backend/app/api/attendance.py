@@ -145,9 +145,9 @@ def get_leave_balances():
     # 如果没有记录，初始化默认值
     if not balances:
         default_types = [
-            ('annual', 5),    # 年假默认5天
-            ('sick', 10),     # 病假默认10天
-            ('personal', 3),  # 事假默认3天
+            ('annual', 10),   # 年假默认10天
+            ('sick', 15),     # 病假默认15天
+            ('personal', 7),  # 事假默认7天
         ]
         for leave_type, days in default_types:
             balance = LeaveBalance(
