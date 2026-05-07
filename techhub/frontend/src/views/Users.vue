@@ -22,9 +22,9 @@
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card clickable" @click="handleStatClick('active')" title="点击查看活跃用户">
+        <div class="stat-card clickable" @click="handleStatClick('active')" title="点击查看在职用户">
           <div class="stat-value success">{{ stats.active || 0 }}</div>
-          <div class="stat-label">活跃用户</div>
+          <div class="stat-label">在职用户</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
@@ -34,9 +34,9 @@
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card clickable" @click="handleStatClick('inactive')" title="点击查看非活跃用户">
+        <div class="stat-card clickable" @click="handleStatClick('inactive')" title="点击查看离职用户">
           <div class="stat-value info">{{ stats.inactive || 0 }}</div>
-          <div class="stat-label">非活跃用户</div>
+          <div class="stat-label">离职用户</div>
         </div>
       </el-col>
     </el-row>
@@ -523,11 +523,11 @@ const handleStatClick = (type) => {
       // 总用户：不附加任何筛选，直接显示全部
       break
     case 'active':
-      // 活跃用户：筛选 is_active = true
+      // 在职用户：筛选 is_active = true
       filter.value.is_active = true
       break
     case 'inactive':
-      // 非活跃用户：筛选 is_active = false
+      // 离职用户：筛选 is_active = false
       filter.value.is_active = false
       break
     case 'new_this_month':
@@ -538,7 +538,7 @@ const handleStatClick = (type) => {
   
   page.value = 1
   fetchUsers()
-  ElMessage.info(`已筛选：${type === 'total' ? '全部用户' : type === 'active' ? '活跃用户' : type === 'inactive' ? '非活跃用户' : '本月入职用户'}`)
+  ElMessage.info(`已筛选：${type === 'total' ? '全部用户' : type === 'active' ? '在职用户' : type === 'inactive' ? '离职用户' : '本月入职用户'}`)
 }
 
 // 【第二次迭代】查看用户详情抽屉
