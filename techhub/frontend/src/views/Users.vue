@@ -300,6 +300,9 @@
             <el-form-item label="转正日期">
               <el-date-picker v-model="detailForm.probation_end_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
+            <el-form-item label="离职日期">
+              <el-date-picker v-model="detailForm.leave_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
             <el-form-item label="身份证号">
               <el-input v-model="detailForm.id_card" placeholder="请输入身份证号" />
             </el-form-item>
@@ -308,6 +311,12 @@
                 <el-radio label="男">男</el-radio>
                 <el-radio label="女">女</el-radio>
               </el-radio-group>
+            </el-form-item>
+            <el-form-item label="生日">
+              <el-date-picker v-model="detailForm.birthday" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+            </el-form-item>
+            <el-form-item label="籍贯">
+              <el-input v-model="detailForm.native_place" placeholder="请输入籍贯" />
             </el-form-item>
             <el-form-item label="学历">
               <el-select v-model="detailForm.education" placeholder="选择学历" clearable style="width: 100%">
@@ -381,8 +390,9 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { getUsers, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole, getPermissions, exportUsers } from '@/api/users'
+import { getUsers, getUser, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole, getPermissions, exportUsers } from '@/api/users'
 import { getDepartmentsFlat } from '@/api/departments'
+import dayjs from 'dayjs'
 
 const userStore = useUserStore()
 const users = ref([])
@@ -428,8 +438,11 @@ const detailForm = ref({
   employee_status: 'probation',
   entry_date: '',
   probation_end_date: '',
+  leave_date: '',
   id_card: '',
   gender: '',
+  birthday: '',
+  native_place: '',
   education: '',
   school: '',
   major: '',
@@ -572,8 +585,11 @@ const editUser = (row) => {
     employee_status: row.employee_status || 'probation',
     entry_date: row.entry_date || '',
     probation_end_date: row.probation_end_date || '',
+    leave_date: row.leave_date || '',
     id_card: row.id_card || '',
     gender: row.gender || '',
+    birthday: row.birthday || '',
+    native_place: row.native_place || '',
     education: row.education || '',
     school: row.school || '',
     major: row.major || '',
