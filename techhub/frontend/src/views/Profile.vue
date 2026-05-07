@@ -1,9 +1,9 @@
 <template>
   <!-- 【第二次迭代】增强个人中心 - 员工自助与档案查看 -->
   <div class="profile-page">
-    <el-row :gutter="20">
+    <el-row :gutter="20" class="profile-row">
       <!-- 左侧个人信息卡片 -->
-      <el-col :xs="24" :md="8">
+      <el-col :xs="24" :md="8" class="profile-col">
         <el-card class="profile-card">
           <div class="profile-header">
             <el-avatar :size="80" :src="userInfo?.avatar">
@@ -83,9 +83,9 @@
       </el-col>
       
       <!-- 右侧编辑表单 -->
-      <el-col :xs="24" :md="16">
+      <el-col :xs="24" :md="16" class="profile-col">
         <!-- 【第二次迭代】档案详情 Tab 页 -->
-        <el-card>
+        <el-card class="archive-card">
           <template #header>
             <span>我的档案</span>
           </template>
@@ -153,7 +153,7 @@
           </el-tabs>
         </el-card>
         
-        <el-card style="margin-top: 20px;">
+        <el-card class="password-card">
           <template #header>
             <span>修改密码</span>
           </template>
@@ -391,7 +391,20 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .profile-page {
+  height: calc(100vh - 40px);
+
+  .profile-row {
+    height: 100%;
+  }
+
+  .profile-col {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
   .profile-card {
+    flex-shrink: 0;
     .profile-header {
       text-align: center;
       padding: 20px 0;
@@ -416,8 +429,29 @@ onMounted(() => {
       }
     }
   }
+
   .permissions-card {
+    flex: 1;
+    margin-top: 20px;
+    overflow-y: auto;
     .el-tag { margin: 2px; }
+  }
+
+  .archive-card {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+
+    :deep(.el-card__body) {
+      flex: 1;
+      overflow-y: auto;
+    }
+  }
+
+  .password-card {
+    flex-shrink: 0;
+    margin-top: 20px;
   }
 }
 </style>
