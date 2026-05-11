@@ -49,6 +49,121 @@ def get_overview():
         'today_completed': today_completed
     }), 200
 
+
+@dashboard_bp.route('/finance-overview', methods=['GET'])
+@jwt_required()
+def get_finance_overview():
+    """【第二次迭代】财务概览看板"""
+    current_user_id = get_jwt_identity()
+    
+    # 权限控制：仅管理员/财务可查看全部
+    if not PermissionService.check_permission(current_user_id, 'all'):
+        return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
+    
+    from app.models import Expense, PaymentRecord
+    from datetime import date
+    
+    today = datetime.utcnow().date()
+    month_start = today.replace(day=1)
+    year_start = today.replace(month=1, day=1)
+    
+    # 本月报销统计
+    month_expenses = Expense.query.filter(
+        db.extract('year', Expense.created_at) == today.year,
+        db.extract('month', Expense.created_at) == today.month
+    )
+    pending_expenses = month_expenses.filter_by(status='pending').count()
+    month_expense_amount = db.session.query(db.func.sum(Expense.amount)).filter(
+        db.extract('year', Expense.created_at) == today.year,
+        db.extract('month', Expense.created_at) == today.month,
+        Expense.status.in_(['approved', 'reimbursed'])
+    ).scalar() or 0
+    
+    # 本月收支
+    month_income = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
+        PaymentRecord.payment_type == 'income',
+        PaymentRecord.status == 'completed',
+        db.extract('year', PaymentRecord.payment_date) == today.year,
+        db.extract('month', PaymentRecord.payment_date) == today.month
+    ).scalar() or 0
+    
+    month_payment_expense = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
+        PaymentRecord.payment_type == 'expense',
+        PaymentRecord.status == 'completed',
+        db.extract('year', PaymentRecord.payment_date) == today.year,
+        db.extract('month', PaymentRecord.payment_date) == today.month
+    ).scalar() or 0
+    
+    # 应收（合同总金额 - 已收款）
+    total_contract_amount = db.session.query(db.func.sum(Contract.amount)).scalar() or 0
+    total_received = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
+        PaymentRecord.payment_type == 'income',
+        PaymentRecord.status == 'completed'
+    ).scalar() or 0
+    
+    # 近6个月财务趋势
+    from datetime import timedelta
+    trend = []
+    for i in range(5, -1, -1):
+        d = datetime.utcnow().replace(day=1) - timedelta(days=i*30)
+        ty, tm = d.year, d.month
+        inc = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
+            PaymentRecord.payment_type == 'income',
+            PaymentRecord.status == 'completed',
+            db.extract('year', PaymentRecord.payment_date) == ty,
+            db.extract('month', PaymentRecord.payment_date) == tm
+        ).scalar() or 0
+        exp = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
+            PaymentRecord.payment_type == 'expense',
+            PaymentRecord.status == 'completed',
+            db.extract('year', PaymentRecord.payment_date) == ty,
+            db.extract('month', PaymentRecord.payment_date) == tm
+        ).scalar() or 0
+        reimb = db.session.query(db.func.sum(Expense.amount)).filter(
+            Expense.status.in_(['approved', 'reimbursed']),
+            db.extract('year', Expense.created_at) == ty,
+            db.extract('month', Expense.created_at) == tm
+        ).scalar() or 0
+        trend.append({
+            'month': f'{ty}-{tm:02d}',
+            'income': round(float(inc), 2),
+            'expense': round(float(exp), 2),
+            'reimbursement': round(float(reimb), 2)
+        })
+    
+    # 报销类别分布
+    category_dist = db.session.query(
+        Expense.category,
+        db.func.count(Expense.id),
+        db.func.sum(Expense.amount)
+    ).filter(
+        db.extract('year', Expense.created_at) == today.year,
+        db.extract('month', Expense.created_at) == today.month
+    ).group_by(Expense.category).all()
+    
+    # 待审批报销 Top5
+    pending_expense_list = Expense.query.filter_by(status='pending').order_by(
+        Expense.created_at.desc()
+    ).limit(5).all()
+    
+    return jsonify({
+        'overview': {
+            'month_income': round(float(month_income), 2),
+            'month_expense': round(float(month_payment_expense), 2),
+            'month_reimbursement': round(float(month_expense_amount), 2),
+            'pending_expenses': pending_expenses,
+            'total_contract_amount': round(float(total_contract_amount), 2),
+            'total_received': round(float(total_received), 2),
+            'receivable': round(float(total_contract_amount) - float(total_received), 2)
+        },
+        'trend': trend,
+        'category_distribution': [
+            {'category': c[0], 'count': c[1], 'amount': round(float(c[2] or 0), 2)}
+            for c in category_dist
+        ],
+        'pending_expense_list': [e.to_dict() for e in pending_expense_list]
+    }), 200
+
 @dashboard_bp.route('/todos', methods=['GET'])
 @jwt_required()
 def get_todos():

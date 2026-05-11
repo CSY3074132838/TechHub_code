@@ -50,6 +50,10 @@ def create_app(config_name='default'):
     # 【第二次迭代】注册部门管理与考勤工时蓝图
     from app.api.departments import departments_bp
     from app.api.attendance import attendance_bp
+    # 【第二次迭代】注册财务管理蓝图
+    from app.api.expenses import expenses_bp
+    from app.api.payments import payments_bp
+    from app.api.notifications import notifications_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -65,6 +69,10 @@ def create_app(config_name='default'):
     # 【第二次迭代】注册新蓝图
     app.register_blueprint(departments_bp, url_prefix='/api/departments')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
+    # 【第二次迭代】注册财务管理蓝图
+    app.register_blueprint(expenses_bp, url_prefix='/api/expenses')
+    app.register_blueprint(payments_bp, url_prefix='/api/payments')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     
     # JWT Token 黑名单检查 + 权限版本号校验（实现权限即时生效）
     @jwt.token_in_blocklist_loader

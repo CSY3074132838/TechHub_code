@@ -826,3 +826,120 @@ class WorkTimeRecord(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 # ==================== 【第二次迭代】考勤与工时模型结束 ====================
+
+
+# ==================== 【第二次迭代】财务管理模型 ====================
+class Expense(db.Model):
+    """费用报销模型"""
+    __tablename__ = 'expenses'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    category = db.Column(db.String(50), default='other')  # travel/office/entertainment/training/meal/transport/other
+    description = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')  # draft/pending/approved/rejected/reimbursed
+    attachments = db.Column(db.JSON, default=list)
+    approval_id = db.Column(db.Integer, db.ForeignKey('approvals.id'))  # 关联审批
+    reimbursed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', foreign_keys=[user_id])
+    approval = db.relationship('Approval', foreign_keys=[approval_id])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user': self.user.to_dict() if self.user else None,
+            'title': self.title,
+            'amount': float(self.amount) if self.amount else 0,
+            'category': self.category,
+            'description': self.description,
+            'status': self.status,
+            'attachments': self.attachments or [],
+            'approval_id': self.approval_id,
+            'reimbursed_at': self.reimbursed_at.isoformat() if self.reimbursed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class PaymentRecord(db.Model):
+    """收付款记录模型 - 合同/项目资金跟踪"""
+    __tablename__ = 'payment_records'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True)
+    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), nullable=True)
+    client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True)
+    title = db.Column(db.String(200), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    payment_date = db.Column(db.Date, nullable=False)
+    payment_type = db.Column(db.String(20), nullable=False)  # income/expense
+    payment_method = db.Column(db.String(50), default='bank_transfer')  # bank_transfer/alipay/wechat/cash
+    status = db.Column(db.String(20), default='pending')  # pending/completed/cancelled
+    description = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    contract = db.relationship('Contract', foreign_keys=[contract_id])
+    project = db.relationship('Project', foreign_keys=[project_id])
+    client = db.relationship('Client', foreign_keys=[client_id])
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'contract_id': self.contract_id,
+            'contract': self.contract.to_dict() if self.contract else None,
+            'project_id': self.project_id,
+            'project': self.project.to_dict() if self.project else None,
+            'client_id': self.client_id,
+            'client': self.client.to_dict() if self.client else None,
+            'title': self.title,
+            'amount': float(self.amount) if self.amount else 0,
+            'payment_date': self.payment_date.isoformat() if self.payment_date else None,
+            'payment_type': self.payment_type,
+            'payment_method': self.payment_method,
+            'status': self.status,
+            'description': self.description,
+            'created_by': self.created_by,
+            'creator': self.creator.to_dict() if self.creator else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class Notification(db.Model):
+    """消息通知模型"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text)
+    notification_type = db.Column(db.String(50), default='system')  # approval/task/finance/system
+    is_read = db.Column(db.Boolean, default=False)
+    related_type = db.Column(db.String(50))  # approval/task/expense/payment
+    related_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'content': self.content,
+            'notification_type': self.notification_type,
+            'is_read': self.is_read,
+            'related_type': self.related_type,
+            'related_id': self.related_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+# ==================== 【第二次迭代】财务管理模型结束 ====================

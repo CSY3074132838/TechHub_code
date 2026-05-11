@@ -111,6 +111,25 @@ const routes = [
         name: 'AuditLogs',
         component: () => import('@/views/AuditLogs.vue'),
         meta: { title: '审计日志', icon: 'Document', admin: true }
+      },
+      // 【第二次迭代】财务管理路由
+      {
+        path: '/finance',
+        name: 'Finance',
+        component: () => import('@/views/Finance.vue'),
+        meta: { title: '财务看板', icon: 'TrendCharts', admin: true }
+      },
+      {
+        path: '/expenses',
+        name: 'Expenses',
+        component: () => import('@/views/Expenses.vue'),
+        meta: { title: '费用报销', icon: 'Money' }
+      },
+      {
+        path: '/payments',
+        name: 'Payments',
+        component: () => import('@/views/Payments.vue'),
+        meta: { title: '收付款', icon: 'Wallet' }
       }
     ]
   },
@@ -127,7 +146,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   
   // 公开页面直接放行
@@ -137,6 +156,17 @@ router.beforeEach((to, from, next) => {
   }
   
   // 检查登录状态
+  if (!userStore.token) {
+    next('/login')
+    return
+  }
+  
+  // 【修复】如果已登录但用户信息未加载（如刷新页面），先加载用户信息
+  if (!userStore.userInfo) {
+    await userStore.fetchUserInfo()
+  }
+  
+  // 加载后再次检查（可能token已过期）
   if (!userStore.token) {
     next('/login')
     return

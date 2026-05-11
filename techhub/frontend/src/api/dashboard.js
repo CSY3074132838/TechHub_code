@@ -27,3 +27,8 @@ export const getCrmOverview = () => {
 export const getCrmRanking = () => {
   return request.get('/dashboard/crm-ranking')
 }
+
+// 【第二次迭代】财务概览
+export const getFinanceOverview = () => {
+  return request.get('/dashboard/finance-overview')
+}

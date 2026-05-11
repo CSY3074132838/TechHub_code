@@ -59,6 +59,62 @@
       </el-col>
     </el-row>
 
+    <!-- 【第二次迭代】行政财务概览卡片 -->
+    <el-row :gutter="20" class="stat-row" style="margin-top: 20px;">
+      <el-col :xs="24" :sm="12" :lg="6">
+        <div class="stat-card" @click="$router.push('/attendance')" style="cursor: pointer;">
+          <div class="stat-header">
+            <div class="stat-icon" style="background: #e6fffb; color: #13c2c2;">
+              <el-icon size="24"><Clock /></el-icon>
+            </div>
+            <div>
+              <div class="stat-title">本月工时</div>
+              <div class="stat-value">{{ attendanceStats.total_hours || 0 }}h</div>
+            </div>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <div class="stat-card" @click="$router.push('/attendance')" style="cursor: pointer;">
+          <div class="stat-header">
+            <div class="stat-icon" style="background: #fff2f0; color: #ff4d4f;">
+              <el-icon size="24"><AlarmClock /></el-icon>
+            </div>
+            <div>
+              <div class="stat-title">加班时长</div>
+              <div class="stat-value">{{ attendanceStats.total_overtime || 0 }}h</div>
+            </div>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <div class="stat-card" @click="$router.push('/attendance')" style="cursor: pointer;">
+          <div class="stat-header">
+            <div class="stat-icon" style="background: #f0f5ff; color: #2f54eb;">
+              <el-icon size="24"><Calendar /></el-icon>
+            </div>
+            <div>
+              <div class="stat-title">年假余额</div>
+              <div class="stat-value">{{ annualLeaveBalance }}天</div>
+            </div>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="12" :lg="6" v-if="userStore.hasPermission('all')">
+        <div class="stat-card" @click="$router.push('/expenses')" style="cursor: pointer;">
+          <div class="stat-header">
+            <div class="stat-icon" style="background: #fff7e6; color: #fa8c16;">
+              <el-icon size="24"><Money /></el-icon>
+            </div>
+            <div>
+              <div class="stat-title">待审批报销</div>
+              <div class="stat-value">{{ pendingExpenseCount }}笔</div>
+            </div>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
     <!-- 快捷操作和团队动态 -->
     <el-row :gutter="20" class="content-row">
       <el-col :xs="24" :lg="16">
@@ -231,25 +287,45 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 import { getOverview, getActivities, getTodos } from '@/api/dashboard'
 import { createTask as apiCreateTask } from '@/api/tasks'
 import { getProjects, createProject as apiCreateProject } from '@/api/projects'
+// 【第二次迭代】财务行政工作台增强
+import { getAttendanceStats, getLeaveBalances } from '@/api/attendance'
+import { getExpenseStats } from '@/api/expenses'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const overview = ref({})
 const activities = ref([])
 const myTasks = ref([])
 const projects = ref([])
+// 【第二次迭代】财务行政数据
+const attendanceStats = ref({})
+const leaveBalances = ref([])
+const expenseStats = ref({})
 
 const showCreateTask = ref(false)
 const showCreateProject = ref(false)
 const creating = ref(false)
 const creatingProject = ref(false)
+
+// 【第二次迭代】计算属性
+const annualLeaveBalance = computed(() => {
+  const annual = leaveBalances.value.find(b => b.leave_type === 'annual')
+  return annual ? annual.remaining_days : 0
+})
+
+const pendingExpenseCount = computed(() => {
+  const pending = expenseStats.value.by_status?.find(s => s.status === 'pending')
+  return pending ? pending.count : 0
+})
 
 const taskForm = ref({
   title: '',
@@ -279,6 +355,20 @@ const fetchData = async () => {
     activities.value = activitiesRes.activities || []
     myTasks.value = todosRes.tasks || []
     projects.value = projectsRes.projects || []
+    
+    // 【第二次迭代】获取财务行政数据
+    try {
+      const [attRes, leaveRes, expRes] = await Promise.all([
+        getAttendanceStats({ month: dayjs().format('YYYY-MM') }),
+        getLeaveBalances({ year: dayjs().year() }),
+        getExpenseStats({ month: dayjs().format('YYYY-MM') })
+      ])
+      attendanceStats.value = attRes
+      leaveBalances.value = leaveRes.balances || []
+      expenseStats.value = expRes
+    } catch (e) {
+      console.error('获取行政财务数据失败', e)
+    }
   } catch (error) {
     console.error('获取数据失败', error)
   }

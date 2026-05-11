@@ -1,0 +1,1 @@
+import{z as e}from"./index-Dce5g9q0.js";const s=t=>e.get("/projects/",{params:t}),o=t=>e.get(`/projects/${t}`),c=t=>e.post("/projects/",t),a=t=>e.get(`/projects/${t}/tasks`);export{o as a,a as b,c,s as g};

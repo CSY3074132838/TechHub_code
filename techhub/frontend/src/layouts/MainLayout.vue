@@ -31,39 +31,70 @@
           <breadcrumb />
         </div>
         <div class="header-right">
+          <!-- 【第二次迭代】消息通知中心 -->
           <el-popover
             placement="bottom"
-            :width="320"
+            :width="360"
             trigger="click"
-            v-if="pendingCount > 0"
           >
             <template #reference>
-              <el-badge :value="pendingCount" class="message-badge">
+              <el-badge :value="totalUnreadCount" :hidden="totalUnreadCount === 0" class="message-badge">
                 <el-icon size="20"><Bell /></el-icon>
               </el-badge>
             </template>
             <div class="notification-popover">
               <div class="notification-header">
-                <span>待处理审批 ({{ pendingCount }})</span>
-                <el-button link type="primary" size="small" @click="goToApprovals">查看全部</el-button>
+                <span>消息通知</span>
+                <div>
+                  <el-button link type="primary" size="small" @click="markAllRead">全部已读</el-button>
+                </div>
               </div>
-              <div class="notification-list">
-                <div
-                  v-for="item in pendingApprovals"
-                  :key="item.id"
-                  class="notification-item"
-                  @click="goToApprovalDetail(item)"
-                >
-                  <div class="notification-title">
-                    <el-tag v-if="item.is_urgent" type="danger" size="small">紧急</el-tag>
-                    <span>{{ item.title }}</span>
-                  </div>
-                  <div class="notification-meta">
-                    <span>{{ item.applicant?.real_name }}</span>
-                    <span class="time">{{ formatTime(item.created_at) }}</span>
+              <!-- 审批待办 Tab -->
+              <div v-if="pendingCount > 0" class="notification-section">
+                <div class="section-title">待处理审批 ({{ pendingCount }})</div>
+                <div class="notification-list">
+                  <div
+                    v-for="item in pendingApprovals"
+                    :key="'approval-'+item.id"
+                    class="notification-item"
+                    @click="goToApprovals"
+                  >
+                    <div class="notification-title">
+                      <el-tag v-if="item.is_urgent" type="danger" size="small">紧急</el-tag>
+                      <span>{{ item.title }}</span>
+                    </div>
+                    <div class="notification-meta">
+                      <span>{{ item.applicant?.real_name }}</span>
+                      <span class="time">{{ formatTime(item.created_at) }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
+              <!-- 系统消息 -->
+              <div v-if="notifications.length > 0" class="notification-section">
+                <div class="section-title">系统消息</div>
+                <div class="notification-list">
+                  <div
+                    v-for="item in notifications"
+                    :key="item.id"
+                    class="notification-item"
+                    :class="{ unread: !item.is_read }"
+                    @click="readNotification(item)"
+                  >
+                    <div class="notification-title">
+                      <el-tag :type="item.notification_type === 'approval' ? 'warning' : 'info'" size="small">
+                        {{ item.notification_type === 'approval' ? '审批' : '系统' }}
+                      </el-tag>
+                      <span>{{ item.title }}</span>
+                    </div>
+                    <div class="notification-meta">
+                      <span>{{ item.content }}</span>
+                      <span class="time">{{ formatTime(item.created_at) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <el-empty v-if="pendingCount === 0 && notifications.length === 0" description="暂无消息" />
             </div>
           </el-popover>
           
@@ -104,6 +135,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPendingCount, getApprovals } from '@/api/approvals'
+import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notifications'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -112,6 +144,10 @@ const userStore = useUserStore()
 
 const pendingCount = ref(0)
 const pendingApprovals = ref([])
+const notifications = ref([])
+const unreadCount = ref(0)
+
+const totalUnreadCount = computed(() => pendingCount.value + unreadCount.value)
 
 const menuItems = computed(() => [
   { path: '/dashboard', title: '工作台', icon: 'HomeFilled' },
@@ -131,7 +167,13 @@ const menuItems = computed(() => [
   { path: '/attendance', title: '考勤工时', icon: 'Clock' },
   ...(userStore.hasPermission('audit_view') ? [
     { path: '/audit-logs', title: '审计日志', icon: 'Document' }
-  ] : [])
+  ] : []),
+  // 【第二次迭代】财务管理菜单
+  ...(userStore.hasPermission('all') ? [
+    { path: '/finance', title: '财务看板', icon: 'TrendCharts' }
+  ] : []),
+  { path: '/expenses', title: '费用报销', icon: 'Money' },
+  { path: '/payments', title: '收付款', icon: 'Wallet' }
 ])
 
 const fetchPendingCount = async () => {
@@ -149,6 +191,39 @@ const fetchPendingApprovals = async () => {
     pendingApprovals.value = res.approvals || []
   } catch (error) {
     console.error('获取待办列表失败', error)
+  }
+}
+
+const fetchNotifications = async () => {
+  try {
+    const [listRes, countRes] = await Promise.all([
+      getNotifications({ per_page: 5, is_read: false }),
+      getUnreadCount()
+    ])
+    notifications.value = listRes.notifications || []
+    unreadCount.value = countRes.unread_count || 0
+  } catch (error) {
+    console.error('获取通知失败', error)
+  }
+}
+
+const readNotification = async (item) => {
+  try {
+    await markAsRead(item.id)
+    item.is_read = true
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+  } catch (error) {
+    console.error('标记已读失败', error)
+  }
+}
+
+const markAllRead = async () => {
+  try {
+    await markAllAsRead()
+    notifications.value.forEach(n => n.is_read = true)
+    unreadCount.value = 0
+  } catch (error) {
+    console.error('全部已读失败', error)
   }
 }
 
@@ -186,8 +261,18 @@ const handleCommand = (command) => {
 }
 
 onMounted(() => {
-  fetchPendingCount()
-  fetchPendingApprovals()
+  // 【修复】刷新页面后确保用户信息已加载
+  if (!userStore.userInfo && userStore.token) {
+    userStore.fetchUserInfo().then(() => {
+      fetchPendingCount()
+      fetchPendingApprovals()
+      fetchNotifications()
+    })
+  } else {
+    fetchPendingCount()
+    fetchPendingApprovals()
+    fetchNotifications()
+  }
 })
 </script>
 
@@ -265,6 +350,16 @@ onMounted(() => {
         font-weight: 500;
       }
       
+      .notification-section {
+        margin-bottom: 12px;
+        .section-title {
+          font-size: 12px;
+          color: #999;
+          margin-bottom: 8px;
+          padding-left: 4px;
+        }
+      }
+      
       .notification-list {
         max-height: 300px;
         overflow-y: auto;
@@ -280,6 +375,13 @@ onMounted(() => {
           
           &:hover {
             background-color: #f5f7fa;
+            margin: 0 -12px;
+            padding-left: 12px;
+            padding-right: 12px;
+          }
+          
+          &.unread {
+            background-color: #f0f5ff;
             margin: 0 -12px;
             padding-left: 12px;
             padding-right: 12px;
