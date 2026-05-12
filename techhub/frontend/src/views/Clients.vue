@@ -139,7 +139,7 @@
             <el-option
               v-for="user in users"
               :key="user.id"
-              :label="user.real_name"
+              :label="user.real_name || user.username"
               :value="user.id"
             />
           </el-select>

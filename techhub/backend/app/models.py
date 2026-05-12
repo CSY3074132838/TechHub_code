@@ -243,7 +243,7 @@ class User(db.Model):
         data = {
             'id': self.id,
             'username': self.username,
-            'real_name': self.real_name,
+            'real_name': self.real_name or self.username,
             'avatar': self.avatar,
             'department': self.department,
             'position': self.position,

@@ -20,4 +20,14 @@ app.use(createPinia())
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
 
+// 全局错误处理 —— 捕获组件渲染和生命周期中的未处理错误
+app.config.errorHandler = (err, vm, info) => {
+  console.error('Vue 全局错误:', err, info)
+}
+
+// 捕获 Promise 未处理的 rejection
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('未处理的 Promise 错误:', event.reason)
+})
+
 app.mount('#app')

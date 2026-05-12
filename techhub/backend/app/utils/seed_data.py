@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from faker import Faker
 from app import db
 from app.models import (
-    User, Role, Project, Task, Approval, Activity, Comment,
+    User, Role, Project, Task, Approval, Activity, Comment, Department,
     TaskStatus, TaskPriority, ApprovalType, ApprovalStatus, ActivityType
 )
 
@@ -16,10 +16,84 @@ def seed_roles():
     Role.init_roles()
     print("✓ 角色数据已初始化")
 
+# 预定义部门列表（name -> code）
+DEPARTMENT_MAP = {
+    '研发部': 'RD',
+    '产品部': 'PD',
+    '设计部': 'DES',
+    '测试部': 'QA',
+    '运营部': 'OP',
+    '行政部': 'ADM',
+    '技术部': 'TECH',
+}
+
+def seed_departments():
+    """初始化部门数据，并同步已有用户的 department_id"""
+    created_depts = {}
+    
+    # 1. 创建预定义部门（如果不存在）
+    for name, code in DEPARTMENT_MAP.items():
+        dept = Department.query.filter_by(code=code).first()
+        if not dept:
+            dept = Department(
+                name=name,
+                code=code,
+                description=f'{name} - 公司核心部门',
+                sort_order=len(created_depts)
+            )
+            db.session.add(dept)
+            db.session.flush()  # 获取 ID 但不提交
+            print(f"  + 创建部门: {name} ({code})")
+        created_depts[name] = dept
+    
+    # 2. 扫描所有已有用户，为未在映射中的部门名创建记录
+    all_dept_names = db.session.query(User.department).distinct().all()
+    for (dept_name,) in all_dept_names:
+        if not dept_name:
+            continue
+        if dept_name not in created_depts:
+            # 生成唯一 code
+            base_code = ''.join([c for c in dept_name if c.isalnum()]).upper()[:10] or 'DEPT'
+            code = base_code
+            suffix = 1
+            while Department.query.filter_by(code=code).first():
+                code = f"{base_code}{suffix}"
+                suffix += 1
+            
+            dept = Department(
+                name=dept_name,
+                code=code,
+                description=f'{dept_name}',
+                sort_order=len(created_depts)
+            )
+            db.session.add(dept)
+            db.session.flush()
+            created_depts[dept_name] = dept
+            print(f"  + 创建部门: {dept_name} ({code})")
+    
+    db.session.commit()
+    
+    # 3. 同步所有用户的 department_id
+    synced = 0
+    for user in User.query.all():
+        if user.department and user.department in created_depts and not user.department_id:
+            user.department_id = created_depts[user.department].id
+            synced += 1
+    
+    if synced > 0:
+        db.session.commit()
+        print(f"  ↻ 同步 {synced} 位用户的部门关联")
+    
+    print(f"✓ 部门数据已初始化，共 {len(created_depts)} 个部门")
+    return created_depts
+
 def seed_users(count=20):
     """创建测试用户"""
-    departments = ['研发部', '产品部', '设计部', '测试部', '运营部', '行政部']
+    dept_names = list(DEPARTMENT_MAP.keys())
     positions = ['工程师', '高级工程师', '产品经理', '设计师', '测试工程师', '运营专员']
+    
+    # 先确保部门数据存在
+    dept_map = seed_departments()
     
     users = []
     
@@ -31,6 +105,7 @@ def seed_users(count=20):
             email='admin@techhub.com',
             real_name='系统管理员',
             department='技术部',
+            department_id=dept_map.get('技术部', {}).id if isinstance(dept_map.get('技术部'), Department) else None,
             position='技术总监',
             is_active=True
         )
@@ -51,6 +126,7 @@ def seed_users(count=20):
             email='test@techhub.com',
             real_name='测试用户',
             department='研发部',
+            department_id=dept_map.get('研发部', {}).id if isinstance(dept_map.get('研发部'), Department) else None,
             position='工程师',
             is_active=True
         )
@@ -75,13 +151,17 @@ def seed_users(count=20):
         if User.query.filter_by(username=username).first():
             i += 1
             continue
+        
+        dept_name = fake.random_element(dept_names)
+        dept = dept_map.get(dept_name)
             
         user = User(
             username=username,
             email=fake.email(),
             real_name=fake.name(),
             phone=fake.phone_number(),
-            department=fake.random_element(departments),
+            department=dept_name,
+            department_id=dept.id if dept else None,
             position=fake.random_element(positions),
             is_active=True
         )

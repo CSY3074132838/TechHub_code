@@ -154,7 +154,11 @@ def update_user(user_id):
         ]
         for field in detail_fields:
             if field in data:
-                setattr(user, field, data[field])
+                value = data[field]
+                # 将空字符串转为 None，避免 SQLAlchemy Date/Integer 类型转换报错
+                if value == '':
+                    value = None
+                setattr(user, field, value)
     
     # 只有管理员可以修改角色
     roles_changed = False

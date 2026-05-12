@@ -89,7 +89,7 @@
           <template #default="{ row }">
             <div class="user-cell">
               <el-avatar v-if="row.assignee" :size="24" :src="row.assignee.avatar">
-                {{ row.assignee.real_name?.charAt(0) }}
+                {{ (row.assignee.real_name || row.assignee.username)?.charAt(0) }}
               </el-avatar>
               <span>{{ row.assignee?.real_name || '未分配' }}</span>
             </div>
@@ -148,7 +148,7 @@
             <el-option
               v-for="u in users"
               :key="u.id"
-              :label="u.real_name"
+              :label="u.real_name || u.username"
               :value="u.id"
             />
           </el-select>
@@ -180,8 +180,8 @@
                 {{ getStatusLabel(currentTicket.status) }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="创建人">{{ currentTicket.reporter?.real_name }}</el-descriptions-item>
-            <el-descriptions-item label="负责人">{{ currentTicket.assignee?.real_name || '未分配' }}</el-descriptions-item>
+            <el-descriptions-item label="创建人">{{ currentTicket.reporter?.real_name || currentTicket.reporter?.username || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="负责人">{{ currentTicket.assignee?.real_name || currentTicket.assignee?.username || '未分配' }}</el-descriptions-item>
           </el-descriptions>
         </div>
         

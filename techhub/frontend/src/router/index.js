@@ -148,37 +148,55 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
-  
+
   // 公开页面直接放行
   if (to.meta.public) {
     next()
     return
   }
-  
+
   // 检查登录状态
   if (!userStore.token) {
     next('/login')
     return
   }
-  
-  // 【修复】如果已登录但用户信息未加载（如刷新页面），先加载用户信息
+
+  // 如果已登录但用户信息未加载（如刷新页面），先加载用户信息
   if (!userStore.userInfo) {
-    await userStore.fetchUserInfo()
+    try {
+      await userStore.fetchUserInfo()
+    } catch (error) {
+      console.error('获取用户信息失败', error)
+    }
   }
-  
-  // 加载后再次检查（可能token已过期）
+
+  // 加载后再次检查（可能 token 已过期）
   if (!userStore.token) {
     next('/login')
     return
   }
-  
+
   // 检查管理员权限
   if (to.meta.admin && !userStore.isAdmin) {
     next('/')
     return
   }
-  
+
   next()
+})
+
+// 捕获路由懒加载失败（如代码分割 chunk 更新后旧缓存失效），自动刷新页面
+router.onError((error) => {
+  const isChunkLoadError = error.message?.includes('Failed to fetch dynamically imported module')
+    || error.message?.includes('Loading chunk')
+    || error.message?.includes('Loading CSS chunk')
+
+  if (isChunkLoadError) {
+    console.warn('路由组件加载失败，尝试刷新页面', error)
+    window.location.reload()
+  } else {
+    console.error('路由错误', error)
+  }
 })
 
 export default router
