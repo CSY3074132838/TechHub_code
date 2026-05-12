@@ -17,19 +17,31 @@
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div
+          class="stat-card clickable"
+          :class="{ active: filterStatus === 'pending' }"
+          @click="filterStatus = 'pending'"
+        >
           <div class="stat-value success">{{ pendingCount }}</div>
           <div class="stat-label">待审批</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div
+          class="stat-card clickable"
+          :class="{ active: filterStatus === 'approved' }"
+          @click="filterStatus = 'approved'"
+        >
           <div class="stat-value warning">{{ approvedCount }}</div>
           <div class="stat-label">已审批</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div
+          class="stat-card clickable"
+          :class="{ active: !filterStatus && !filterCategory }"
+          @click="resetFilter"
+        >
           <div class="stat-value">{{ expenses.length }}</div>
           <div class="stat-label">本月记录</div>
         </div>
@@ -394,6 +406,17 @@ onMounted(() => {
       padding: 20px;
       text-align: center;
       box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+      transition: all 0.2s ease;
+      &.clickable {
+        cursor: pointer;
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        &.active {
+          box-shadow: 0 0 0 2px #1890ff, 0 4px 16px rgba(0,0,0,0.1);
+        }
+      }
       .stat-value {
         font-size: 28px;
         font-weight: 600;
