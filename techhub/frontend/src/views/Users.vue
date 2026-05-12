@@ -267,10 +267,24 @@
               <el-input v-model="form.employee_no" placeholder="如：TECH-2025-001" />
             </el-form-item>
             <el-form-item label="部门">
-              <el-input v-model="form.department" placeholder="请输入部门" />
+              <el-select v-model="form.department" placeholder="选择部门" clearable style="width: 100%">
+                <el-option
+                  v-for="dept in flatDepartments"
+                  :key="dept.id"
+                  :label="dept.name"
+                  :value="dept.name"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item label="职位">
-              <el-input v-model="form.position" placeholder="请输入职位" />
+              <el-select v-model="form.position" placeholder="选择职位" clearable style="width: 100%">
+                <el-option
+                  v-for="pos in positionOptions"
+                  :key="pos"
+                  :label="pos"
+                  :value="pos"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item label="电话">
               <el-input v-model="form.phone" placeholder="请输入电话" />
@@ -413,6 +427,20 @@ const filter = ref({
   entry_month: ''  // 【第二次迭代】按入职月份筛选（统计卡片穿透）
 })
 const flatDepartments = ref([])
+
+// 预定义职位选项
+const positionOptions = [
+  '工程师',
+  '高级工程师',
+  '产品经理',
+  '设计师',
+  '测试工程师',
+  '运营专员',
+  '技术总监',
+  '项目经理',
+  '部门经理',
+  '行政专员'
+]
 
 const showCreateDialog = ref(false)
 const showDetailDrawer = ref(false)
