@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Client, ClientStatus, Project, Contract, Ticket, User
+from app.models import Client, ClientStatus, Project, Contract, Ticket, User, PaymentRecord
 from app.decorators import require_permission, data_scope_required
 from app.services import AuditService, PermissionService
 
@@ -181,6 +181,39 @@ def delete_client(client_id):
     )
     
     return jsonify({'message': '客户已标记为流失'}), 200
+
+
+@clients_bp.route('/<int:client_id>/permanent', methods=['DELETE'])
+@jwt_required()
+def permanently_delete_client(client_id):
+    """彻底删除客户（从数据库中永久删除）"""
+    current_user_id = get_jwt_identity()
+    client = Client.query.get_or_404(client_id)
+    
+    # 权限检查：仅允许该客户的负责人或管理员
+    if client.manager_id != current_user_id:
+        if not PermissionService.check_permission(current_user_id, 'all'):
+            return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
+    
+    # 解除关联数据的外键引用，避免外键约束错误
+    Project.query.filter_by(client_id=client_id).update({'client_id': None})
+    PaymentRecord.query.filter_by(client_id=client_id).update({'client_id': None})
+    
+    client_name = client.name
+    
+    # 删除客户（关联的 contracts 和 tickets 会级联删除）
+    db.session.delete(client)
+    db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action='CLIENT_PERMANENT_DELETE',
+        resource_type='client',
+        resource_id=client_id,
+        detail={'name': client_name, 'permanent_delete': True},
+        status='success'
+    )
+    
+    return jsonify({'message': '客户已彻底删除'}), 200
 
 
 @clients_bp.route('/<int:client_id>/projects', methods=['GET'])

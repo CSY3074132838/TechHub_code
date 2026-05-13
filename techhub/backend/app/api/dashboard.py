@@ -236,12 +236,6 @@ def get_statistics():
     """获取数据中心统计 - 带 DataScope 控制"""
     current_user_id = get_jwt_identity()
     
-    # 检查权限
-    if not PermissionService.check_permission(current_user_id, 'dashboard_view') and \
-       not PermissionService.check_permission(current_user_id, 'all'):
-        # 只能看自己的数据
-        return get_personal_statistics(current_user_id)
-    
     # DataScope：管理员看全部，部门负责人看部门，普通成员看自己
     scope = PermissionService.get_user_data_scope(current_user_id)
     user = User.query.get(current_user_id)

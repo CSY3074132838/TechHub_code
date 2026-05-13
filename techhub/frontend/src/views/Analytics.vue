@@ -29,7 +29,11 @@
         <!-- 概览统计 -->
         <el-row :gutter="20" class="overview-row">
           <el-col :xs="12" :sm="6" v-for="stat in overviewStats" :key="stat.key">
-            <div class="overview-card">
+            <div
+              class="overview-card"
+              :class="{ clickable: stat.route }"
+              @click="stat.route && router.push(stat.route)"
+            >
               <div class="card-icon" :style="{ background: stat.bgColor, color: stat.color }">
                 <el-icon size="24">
                   <component :is="stat.icon" />
@@ -126,7 +130,11 @@
       <el-tab-pane label="CRM数据" name="crm">
         <el-row :gutter="20" class="overview-row">
           <el-col :xs="12" :sm="6" v-for="stat in crmOverviewStats" :key="stat.key">
-            <div class="overview-card">
+            <div
+              class="overview-card"
+              :class="{ clickable: stat.route }"
+              @click="stat.route && router.push(stat.route)"
+            >
               <div class="card-icon" :style="{ background: stat.bgColor, color: stat.color }">
                 <el-icon size="24">
                   <component :is="stat.icon" />
@@ -215,7 +223,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/stores/user'
 import { getStatistics, getCrmOverview, getCrmRanking } from '@/api/dashboard'
@@ -228,6 +237,7 @@ const deptChart = ref(null)
 const crmTrendChart = ref(null)
 const clientRankingChart = ref(null)
 
+const router = useRouter()
 const userStore = useUserStore()
 
 const statistics = ref({})
@@ -264,10 +274,10 @@ const accessSubtitle = computed(() => {
 const crmOverviewStats = computed(() => {
   const o = crmOverview.value.overview || {}
   return [
-    { key: 'clients', value: o.total_clients || 0, label: '客户总数', icon: 'OfficeBuilding', bgColor: '#e6f7ff', color: '#1890ff' },
-    { key: 'contracts', value: o.total_contracts || 0, label: '合同数', icon: 'DocumentCopy', bgColor: '#f6ffed', color: '#52c41a' },
+    { key: 'clients', value: o.total_clients || 0, label: '客户总数', icon: 'OfficeBuilding', bgColor: '#e6f7ff', color: '#1890ff', route: '/clients' },
+    { key: 'contracts', value: o.total_contracts || 0, label: '合同数', icon: 'DocumentCopy', bgColor: '#f6ffed', color: '#52c41a', route: '/contracts' },
     { key: 'amount', value: o.total_amount ? `¥${o.total_amount.toLocaleString()}` : '¥0', label: '合同总金额', icon: 'Money', bgColor: '#fff7e6', color: '#faad14' },
-    { key: 'tickets', value: o.total_tickets || 0, label: '工单总数', icon: 'ChatDotSquare', bgColor: '#f9f0ff', color: '#722ed1' }
+    { key: 'tickets', value: o.total_tickets || 0, label: '工单总数', icon: 'ChatDotSquare', bgColor: '#f9f0ff', color: '#722ed1', route: '/tickets' }
   ]
 })
 
@@ -292,10 +302,10 @@ const fetchStatistics = async () => {
     
     const overview = res.overview
     overviewStats.value = [
-      { key: 'users', value: overview.total_users, label: '总用户', icon: 'User', bgColor: '#e6f7ff', color: '#1890ff' },
-      { key: 'projects', value: overview.total_projects, label: '项目数', icon: 'Folder', bgColor: '#f6ffed', color: '#52c41a' },
-      { key: 'tasks', value: overview.total_tasks, label: '总任务', icon: 'Document', bgColor: '#fff7e6', color: '#faad14' },
-      { key: 'rate', value: overview.task_completion_rate + '%', label: '完成率', icon: 'TrendCharts', bgColor: '#f9f0ff', color: '#722ed1' }
+      { key: 'users', value: overview.total_users ?? 0, label: '总用户', icon: 'User', bgColor: '#e6f7ff', color: '#1890ff', route: '/users' },
+      { key: 'projects', value: overview.total_projects ?? 0, label: '项目数', icon: 'Folder', bgColor: '#f6ffed', color: '#52c41a', route: '/projects' },
+      { key: 'tasks', value: overview.total_tasks ?? 0, label: '总任务', icon: 'Document', bgColor: '#fff7e6', color: '#faad14', route: '/tasks' },
+      { key: 'rate', value: (overview.task_completion_rate ?? 0) + '%', label: '完成率', icon: 'TrendCharts', bgColor: '#f9f0ff', color: '#722ed1' }
     ]
     
     topPerformers.value = res.top_performers || []
@@ -329,7 +339,15 @@ const fetchCrmData = async () => {
 const initCharts = (data) => {
   // 任务趋势图
   if (trendChart.value) {
+    if (trendChartInstance) {
+      trendChartInstance.dispose()
+    }
     trendChartInstance = echarts.init(trendChart.value)
+    const trendDates = data.task_trend?.dates || []
+    const trendCreated = data.task_trend?.created || []
+    const trendCompleted = data.task_trend?.completed || []
+    // 如果全是0，显示提示
+    const hasData = trendCreated.some(v => v > 0) || trendCompleted.some(v => v > 0)
     trendChartInstance.setOption({
       tooltip: { trigger: 'axis' },
       legend: { data: ['新建任务', '完成任务'] },
@@ -337,7 +355,7 @@ const initCharts = (data) => {
       xAxis: {
         type: 'category',
         boundaryGap: false,
-        data: data.task_trend?.dates || []
+        data: trendDates
       },
       yAxis: { type: 'value' },
       series: [
@@ -345,7 +363,7 @@ const initCharts = (data) => {
           name: '新建任务',
           type: 'line',
           smooth: true,
-          data: data.task_trend?.created || [],
+          data: trendCreated,
           itemStyle: { color: '#1890ff' },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -358,7 +376,7 @@ const initCharts = (data) => {
           name: '完成任务',
           type: 'line',
           smooth: true,
-          data: data.task_trend?.completed || [],
+          data: trendCompleted,
           itemStyle: { color: '#52c41a' },
           areaStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -367,14 +385,31 @@ const initCharts = (data) => {
             ])
           }
         }
-      ]
+      ],
+      graphic: hasData ? [] : [{
+        type: 'text',
+        left: 'center',
+        top: 'middle',
+        style: {
+          text: '近7天无任务动态',
+          fill: '#999',
+          fontSize: 14
+        }
+      }]
     })
   }
   
   // 任务状态分布图
   if (statusChart.value) {
+    if (statusChartInstance) {
+      statusChartInstance.dispose()
+    }
     statusChartInstance = echarts.init(statusChart.value)
     const statusData = data.task_status_distribution || []
+    const pieData = statusData.map(item => ({
+      name: getStatusLabel(item.status),
+      value: item.count
+    })).filter(item => item.value > 0)
     statusChartInstance.setOption({
       tooltip: { trigger: 'item' },
       legend: { bottom: '5%' },
@@ -396,32 +431,33 @@ const initCharts = (data) => {
               fontWeight: 'bold'
             }
           },
-          data: statusData.map(item => ({
-            name: getStatusLabel(item.status),
-            value: item.count
-          }))
+          data: pieData.length > 0 ? pieData : [{ name: '暂无数据', value: 1 }]
         }
       ],
-      color: ['#909399', '#e6a23c', '#1890ff', '#67c23a']
+      color: pieData.length > 0 ? ['#909399', '#e6a23c', '#1890ff', '#67c23a'] : ['#e0e0e0']
     })
   }
   
   // 部门分布图
   if (deptChart.value) {
+    if (deptChartInstance) {
+      deptChartInstance.dispose()
+    }
     deptChartInstance = echarts.init(deptChart.value)
-    const deptData = data.department_distribution || []
+    const deptData = (data.department_distribution || []).filter(item => item.department && item.count > 0)
+    const hasDeptData = deptData.length > 0
     deptChartInstance.setOption({
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { type: 'value' },
       yAxis: {
         type: 'category',
-        data: deptData.map(item => item.department).reverse()
+        data: hasDeptData ? deptData.map(item => item.department).reverse() : ['暂无数据']
       },
       series: [
         {
           type: 'bar',
-          data: deptData.map(item => item.count).reverse(),
+          data: hasDeptData ? deptData.map(item => item.count).reverse() : [0],
           itemStyle: {
             color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
               { offset: 0, color: '#1890ff' },
@@ -430,7 +466,17 @@ const initCharts = (data) => {
             borderRadius: [0, 4, 4, 0]
           }
         }
-      ]
+      ],
+      graphic: hasDeptData ? [] : [{
+        type: 'text',
+        left: 'center',
+        top: 'middle',
+        style: {
+          text: '暂无部门任务数据',
+          fill: '#999',
+          fontSize: 14
+        }
+      }]
     })
   }
 }
@@ -463,6 +509,9 @@ window.addEventListener('resize', () => {
 const initCrmCharts = (overviewData, rankingData) => {
   // CRM趋势图
   if (crmTrendChart.value) {
+    if (crmTrendChartInstance) {
+      crmTrendChartInstance.dispose()
+    }
     crmTrendChartInstance = echarts.init(crmTrendChart.value)
     const trend = overviewData.trend || {}
     crmTrendChartInstance.setOption({
@@ -504,6 +553,9 @@ const initCrmCharts = (overviewData, rankingData) => {
   
   // 客户金额排行图
   if (clientRankingChart.value) {
+    if (clientRankingChartInstance) {
+      clientRankingChartInstance.dispose()
+    }
     clientRankingChartInstance = echarts.init(clientRankingChart.value)
     const ranking = rankingData.client_ranking || []
     clientRankingChartInstance.setOption({
@@ -563,6 +615,23 @@ const requestAccess = async () => {
   }
 }
 
+// 监听标签切换，初始化对应图表
+watch(activeTab, (tab) => {
+  if (tab === 'crm' && crmOverview.value.trend) {
+    nextTick(() => {
+      initCrmCharts(crmOverview.value, crmRanking.value)
+    })
+  } else if (tab === 'team' && statistics.value.task_trend) {
+    nextTick(() => {
+      initCharts(statistics.value)
+      // 重新调整大小以确保图表正确显示
+      trendChartInstance?.resize()
+      statusChartInstance?.resize()
+      deptChartInstance?.resize()
+    })
+  }
+})
+
 onMounted(() => {
   if (hasAccess.value) {
     fetchStatistics()
@@ -586,6 +655,16 @@ onMounted(() => {
       align-items: center;
       gap: 16px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s ease;
+      
+      &.clickable {
+        cursor: pointer;
+        
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+      }
       
       .card-icon {
         width: 56px;

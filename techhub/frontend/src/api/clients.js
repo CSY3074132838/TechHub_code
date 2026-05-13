@@ -20,6 +20,10 @@ export const deleteClient = (id) => {
   return request.delete(`/clients/${id}`)
 }
 
+export const permanentlyDeleteClient = (id) => {
+  return request.delete(`/clients/${id}/permanent`)
+}
+
 export const getClientProjects = (id) => {
   return request.get(`/clients/${id}/projects`)
 }

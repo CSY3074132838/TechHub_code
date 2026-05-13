@@ -93,10 +93,17 @@ class PermissionService:
         for role in user.roles:
             if not role.data_scope:
                 continue
-            p = scope_priority.get(role.data_scope, 1)
+            # 支持字符串和枚举两种类型
+            scope_key = role.data_scope
+            if isinstance(scope_key, str):
+                try:
+                    scope_key = DataScope(scope_key)
+                except ValueError:
+                    continue
+            p = scope_priority.get(scope_key, 1)
             if p > highest_priority:
                 highest_priority = p
-                highest_scope = role.data_scope
+                highest_scope = scope_key
         
         return highest_scope
 

@@ -3,7 +3,7 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stat-row">
       <el-col :xs="24" :sm="12" :lg="6">
-        <div class="stat-card">
+        <div class="stat-card" @click="$router.push('/tasks')" style="cursor: pointer;">
           <div class="stat-header">
             <div class="stat-icon" style="background: #e6f7ff; color: #1890ff;">
               <el-icon size="24"><Document /></el-icon>
@@ -17,7 +17,7 @@
       </el-col>
       
       <el-col :xs="24" :sm="12" :lg="6">
-        <div class="stat-card">
+        <div class="stat-card" @click="$router.push('/projects')" style="cursor: pointer;">
           <div class="stat-header">
             <div class="stat-icon" style="background: #f6ffed; color: #52c41a;">
               <el-icon size="24"><Folder /></el-icon>
@@ -31,7 +31,7 @@
       </el-col>
       
       <el-col :xs="24" :sm="12" :lg="6">
-        <div class="stat-card">
+        <div class="stat-card" @click="$router.push('/approvals')" style="cursor: pointer;">
           <div class="stat-header">
             <div class="stat-icon" style="background: #fff7e6; color: #faad14;">
               <el-icon size="24"><Timer /></el-icon>
@@ -45,7 +45,7 @@
       </el-col>
       
       <el-col :xs="24" :sm="12" :lg="6">
-        <div class="stat-card">
+        <div class="stat-card" @click="$router.push('/tasks')" style="cursor: pointer;">
           <div class="stat-header">
             <div class="stat-icon" style="background: #f9f0ff; color: #722ed1;">
               <el-icon size="24"><CircleCheck /></el-icon>

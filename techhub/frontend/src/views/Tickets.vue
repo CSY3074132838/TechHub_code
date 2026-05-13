@@ -10,7 +10,12 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6" v-for="stat in statsCards" :key="stat.key">
-        <div class="stat-card" :style="{ borderLeft: `4px solid ${stat.color}` }">
+        <div
+          class="stat-card"
+          :class="{ active: filterForm.status === stat.filterStatus }"
+          :style="{ borderLeft: `4px solid ${stat.color}` }"
+          @click="handleStatClick(stat.filterStatus)"
+        >
           <div class="stat-value">{{ stat.value }}</div>
           <div class="stat-label">{{ stat.label }}</div>
         </div>
@@ -273,12 +278,17 @@ const rules = {
 const statsCards = computed(() => {
   const s = stats.value
   return [
-    { key: 'total', value: s.total || 0, label: '工单总数', color: '#1890ff' },
-    { key: 'open', value: s.open || 0, label: '待处理', color: '#f56c6c' },
-    { key: 'in_progress', value: s.in_progress || 0, label: '处理中', color: '#faad14' },
-    { key: 'resolved', value: s.resolved || 0, label: '已解决', color: '#52c41a' }
+    { key: 'total', value: s.total || 0, label: '工单总数', color: '#1890ff', filterStatus: '' },
+    { key: 'open', value: s.open || 0, label: '待处理', color: '#f56c6c', filterStatus: 'open' },
+    { key: 'in_progress', value: s.in_progress || 0, label: '处理中', color: '#faad14', filterStatus: 'in_progress' },
+    { key: 'resolved', value: s.resolved || 0, label: '已解决', color: '#52c41a', filterStatus: 'resolved' }
   ]
 })
+
+const handleStatClick = (status) => {
+  filterForm.status = status
+  handleSearch()
+}
 
 const fetchTickets = async () => {
   loading.value = true
@@ -488,6 +498,18 @@ onMounted(() => {
       border-radius: 8px;
       padding: 20px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+      
+      &.active {
+        background-color: #f0f7ff;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      }
       
       .stat-value {
         font-size: 28px;

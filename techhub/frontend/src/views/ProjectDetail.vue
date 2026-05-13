@@ -16,7 +16,7 @@
         </div>
       </div>
       <div class="header-right">
-        <el-button @click="showEditDialog = true">
+        <el-button @click="openEditDialog">
           <el-icon><Edit /></el-icon>编辑
         </el-button>
         <el-button type="primary" @click="showCreateTask = true">
@@ -126,17 +126,93 @@
       </template>
     </el-dialog>
 
+    <!-- 编辑项目对话框 -->
+    <el-dialog v-model="showEditDialog" title="编辑项目" width="600px">
+      <el-form :model="editForm" label-width="100px" :rules="editRules" ref="editFormRef">
+        <el-form-item label="项目名称" prop="name">
+          <el-input v-model="editForm.name" placeholder="请输入项目名称" />
+        </el-form-item>
+        <el-form-item label="项目描述">
+          <el-input
+            v-model="editForm.description"
+            type="textarea"
+            rows="3"
+            placeholder="请输入项目描述"
+          />
+        </el-form-item>
+        <el-form-item label="项目颜色">
+          <el-color-picker v-model="editForm.color" />
+        </el-form-item>
+        <el-form-item label="开始日期">
+          <el-date-picker
+            v-model="editForm.start_date"
+            type="date"
+            placeholder="选择开始日期"
+            style="width: 100%;"
+          />
+        </el-form-item>
+        <el-form-item label="结束日期">
+          <el-date-picker
+            v-model="editForm.end_date"
+            type="date"
+            placeholder="选择结束日期"
+            style="width: 100%;"
+          />
+        </el-form-item>
+        <el-form-item label="关联客户">
+          <el-select
+            v-model="editForm.client_id"
+            clearable
+            placeholder="选择关联客户（可选）"
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="client in clientOptions"
+              :key="client.id"
+              :label="client.name"
+              :value="client.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="项目成员">
+          <el-select
+            v-model="editForm.member_ids"
+            multiple
+            placeholder="选择项目成员"
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="user in users"
+              :key="user.id"
+              :label="user.real_name"
+              :value="user.id"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleUpdate" :loading="updating">保存</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 任务详情对话框 -->
     <el-dialog v-model="showTaskDetail" title="任务详情" width="700px">
       <div v-if="currentTask" class="task-detail">
         <div class="detail-header">
           <h3>{{ currentTask.title }}</h3>
-          <el-tag :type="getStatusType(currentTask.status)">
-            {{ getStatusLabel(currentTask.status) }}
-          </el-tag>
+          <div class="header-actions">
+            <el-tag :type="getStatusType(currentTask.status)">
+              {{ getStatusLabel(currentTask.status) }}
+            </el-tag>
+            <el-button v-if="!taskEditMode" link type="primary" @click="startTaskEdit">
+              <el-icon><Edit /></el-icon>编辑
+            </el-button>
+          </div>
         </div>
         
-        <div class="detail-info">
+        <!-- 展示模式 -->
+        <div v-if="!taskEditMode" class="detail-info">
           <div class="info-item">
             <span class="label">负责人：</span>
             <span>{{ currentTask.assignee?.real_name || '未分配' }}</span>
@@ -153,9 +229,48 @@
           </div>
         </div>
         
+        <!-- 编辑模式 -->
+        <div v-else class="detail-info edit-mode">
+          <el-form :model="taskEditForm" label-width="80px">
+            <el-form-item label="负责人">
+              <el-select v-model="taskEditForm.assignee_id" clearable placeholder="选择负责人" style="width: 100%;">
+                <el-option
+                  v-for="member in project.members"
+                  :key="member.id"
+                  :label="member.real_name"
+                  :value="member.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="优先级">
+              <el-select v-model="taskEditForm.priority" style="width: 100%;">
+                <el-option label="紧急" value="urgent" />
+                <el-option label="高" value="high" />
+                <el-option label="中" value="medium" />
+                <el-option label="低" value="low" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="截止日期">
+              <el-date-picker
+                v-model="taskEditForm.due_date"
+                type="datetime"
+                placeholder="选择截止日期"
+                style="width: 100%;"
+              />
+            </el-form-item>
+          </el-form>
+        </div>
+        
         <div class="detail-desc">
           <h4>任务描述</h4>
-          <p>{{ currentTask.description || '暂无描述' }}</p>
+          <p v-if="!taskEditMode">{{ currentTask.description || '暂无描述' }}</p>
+          <el-input
+            v-else
+            v-model="taskEditForm.description"
+            type="textarea"
+            rows="4"
+            placeholder="请输入任务描述"
+          />
         </div>
         
         <!-- 评论区域 -->
@@ -194,14 +309,20 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="showTaskDetail = false">关闭</el-button>
-        <el-button
-          v-if="currentTask?.status !== 'done'"
-          type="success"
-          @click="completeTask"
-        >
-          完成任务
-        </el-button>
+        <template v-if="taskEditMode">
+          <el-button @click="cancelTaskEdit">取消</el-button>
+          <el-button type="primary" @click="saveTaskEdit" :loading="taskSaving">保存</el-button>
+        </template>
+        <template v-else>
+          <el-button @click="showTaskDetail = false">关闭</el-button>
+          <el-button
+            v-if="currentTask?.status !== 'done'"
+            type="success"
+            @click="completeTask"
+          >
+            完成任务
+          </el-button>
+        </template>
       </template>
     </el-dialog>
   </div>
@@ -212,8 +333,10 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
-import { getProject, getProjectTasks } from '@/api/projects'
+import { getProject, getProjectTasks, updateProject } from '@/api/projects'
 import { createTask as apiCreateTask, updateTask, getTask, addComment as apiAddComment } from '@/api/tasks'
+import { getUsers } from '@/api/users'
+import { getClientOptions } from '@/api/clients'
 
 const route = useRoute()
 const projectId = route.params.id
@@ -237,9 +360,15 @@ const showCreateTask = ref(false)
 const showTaskDetail = ref(false)
 const showEditDialog = ref(false)
 const creating = ref(false)
+const updating = ref(false)
 const addingComment = ref(false)
+const taskEditMode = ref(false)
+const taskSaving = ref(false)
 const currentTask = ref(null)
 const newComment = ref('')
+const editFormRef = ref(null)
+const users = ref([])
+const clientOptions = ref([])
 
 const taskForm = ref({
   title: '',
@@ -249,12 +378,82 @@ const taskForm = ref({
   description: ''
 })
 
+const taskEditForm = ref({
+  assignee_id: '',
+  priority: 'medium',
+  due_date: '',
+  description: ''
+})
+
+const editForm = ref({
+  name: '',
+  description: '',
+  color: '#1890ff',
+  start_date: '',
+  end_date: '',
+  client_id: '',
+  member_ids: []
+})
+
+const editRules = {
+  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }]
+}
+
 const fetchProject = async () => {
   try {
     const res = await getProject(projectId)
     project.value = res.project
   } catch (error) {
     console.error('获取项目失败', error)
+  }
+}
+
+const fetchUsers = async () => {
+  try {
+    const res = await getUsers({ per_page: 100 })
+    users.value = res.users
+  } catch (error) {
+    console.error('获取用户失败', error)
+  }
+}
+
+const fetchClientOptions = async () => {
+  try {
+    const res = await getClientOptions()
+    clientOptions.value = res.clients
+  } catch (error) {
+    console.error('获取客户选项失败', error)
+  }
+}
+
+const openEditDialog = () => {
+  editForm.value = {
+    name: project.value.name || '',
+    description: project.value.description || '',
+    color: project.value.color || '#1890ff',
+    start_date: project.value.start_date || '',
+    end_date: project.value.end_date || '',
+    client_id: project.value.client_id || '',
+    member_ids: project.value.members?.map(m => m.id) || []
+  }
+  showEditDialog.value = true
+}
+
+const handleUpdate = async () => {
+  const valid = await editFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  updating.value = true
+  try {
+    await updateProject(projectId, { ...editForm.value })
+    ElMessage.success('项目更新成功')
+    showEditDialog.value = false
+    fetchProject()
+  } catch (error) {
+    console.error('更新项目失败', error)
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  } finally {
+    updating.value = false
   }
 }
 
@@ -325,6 +524,39 @@ const addComment = async () => {
     console.error('添加评论失败', error)
   } finally {
     addingComment.value = false
+  }
+}
+
+const startTaskEdit = () => {
+  taskEditForm.value = {
+    assignee_id: currentTask.value.assignee?.id || '',
+    priority: currentTask.value.priority || 'medium',
+    due_date: currentTask.value.due_date || '',
+    description: currentTask.value.description || ''
+  }
+  taskEditMode.value = true
+}
+
+const cancelTaskEdit = () => {
+  taskEditMode.value = false
+}
+
+const saveTaskEdit = async () => {
+  taskSaving.value = true
+  try {
+    await updateTask(currentTask.value.id, { ...taskEditForm.value })
+    ElMessage.success('任务更新成功')
+    taskEditMode.value = false
+    // 刷新任务详情
+    const res = await getTask(currentTask.value.id)
+    currentTask.value = res.task
+    // 刷新看板
+    fetchBoard()
+  } catch (error) {
+    console.error('更新任务失败', error)
+    ElMessage.error(error.response?.data?.message || '操作失败')
+  } finally {
+    taskSaving.value = false
   }
 }
 
@@ -428,6 +660,8 @@ const getStatusLabel = (status) => {
 onMounted(() => {
   fetchProject()
   fetchBoard()
+  fetchUsers()
+  fetchClientOptions()
 })
 </script>
 
@@ -565,6 +799,12 @@ onMounted(() => {
       h3 {
         margin: 0;
         font-size: 18px;
+      }
+      
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
       }
     }
     

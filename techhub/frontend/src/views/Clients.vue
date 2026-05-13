@@ -10,7 +10,12 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6" v-for="stat in statsCards" :key="stat.key">
-        <div class="stat-card" :style="{ borderLeft: `4px solid ${stat.color}` }">
+        <div
+          class="stat-card"
+          :class="{ active: filterForm.status === stat.filterStatus }"
+          :style="{ borderLeft: `4px solid ${stat.color}` }"
+          @click="handleStatClick(stat.filterStatus)"
+        >
           <div class="stat-value">{{ stat.value }}</div>
           <div class="stat-label">{{ stat.label }}</div>
         </div>
@@ -86,10 +91,11 @@
             </el-space>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="row.status === 'lost'" link type="danger" @click="handleDelete(row)">彻底删除此客户</el-button>
+            <el-button v-else link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -169,7 +175,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
-import { getClients, createClient, updateClient, deleteClient, getClientStats } from '@/api/clients'
+import { getClients, createClient, updateClient, deleteClient, permanentlyDeleteClient, getClientStats } from '@/api/clients'
 import { getUsers } from '@/api/users'
 
 const router = useRouter()
@@ -218,12 +224,17 @@ const rules = {
 const statsCards = computed(() => {
   const s = stats.value
   return [
-    { key: 'total', value: s.total || 0, label: '客户总数', color: '#1890ff' },
-    { key: 'active', value: s.active || 0, label: '合作中', color: '#52c41a' },
-    { key: 'potential', value: s.potential || 0, label: '潜在客户', color: '#faad14' },
-    { key: 'lost', value: s.lost || 0, label: '已流失', color: '#f56c6c' }
+    { key: 'total', value: s.total || 0, label: '客户总数', color: '#1890ff', filterStatus: '' },
+    { key: 'active', value: s.active || 0, label: '合作中', color: '#52c41a', filterStatus: 'active' },
+    { key: 'potential', value: s.potential || 0, label: '潜在客户', color: '#faad14', filterStatus: 'potential' },
+    { key: 'lost', value: s.lost || 0, label: '已流失', color: '#f56c6c', filterStatus: 'lost' }
   ]
 })
+
+const handleStatClick = (status) => {
+  filterForm.status = status
+  handleSearch()
+}
 
 const fetchClients = async () => {
   loading.value = true
@@ -326,13 +337,23 @@ const handleSubmit = async () => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定要将客户 "${row.name}" 标记为流失吗？`, '提示', {
+    const isLost = row.status === 'lost'
+    const message = isLost
+      ? `是否删除该客户，该客户无法找回`
+      : `确定要将客户 "${row.name}" 标记为流失吗？`
+    const title = isLost ? '警告' : '提示'
+    await ElMessageBox.confirm(message, title, {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
-    await deleteClient(row.id)
-    ElMessage.success('操作成功')
+    if (isLost) {
+      await permanentlyDeleteClient(row.id)
+      ElMessage.success('客户已彻底删除')
+    } else {
+      await deleteClient(row.id)
+      ElMessage.success('客户已标记为流失')
+    }
     if (clients.value.length === 1 && pagination.page > 1) {
       pagination.page -= 1
     }
@@ -392,6 +413,18 @@ onMounted(() => {
       border-radius: 8px;
       padding: 20px;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+      
+      &.active {
+        background-color: #f0f7ff;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      }
       
       .stat-value {
         font-size: 28px;
