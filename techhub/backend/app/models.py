@@ -147,7 +147,7 @@ class Role(db.Model):
             {'name': 'tech_director', 'description': '技术总监', 'level': 3,
              'permissions': ['dashboard_view', 'team_manage', 'project_manage', 'task_manage']},
             {'name': 'department_manager', 'description': '部门负责人', 'level': 4,
-             'permissions': ['dashboard_view', 'team_manage', 'approval_urgent']},
+             'permissions': ['team_manage', 'approval_urgent']},
             {'name': 'project_manager', 'description': '项目经理', 'level': 5,
              'permissions': ['project_manage', 'task_assign', 'team_view']},
             {'name': 'team_leader', 'description': '项目组长', 'level': 6,
@@ -216,7 +216,7 @@ class User(db.Model):
     
     # 关联关系
     roles = db.relationship('Role', secondary=user_roles, back_populates='users')
-    created_projects = db.relationship('Project', backref='creator', lazy='dynamic')
+    created_projects = db.relationship('Project', foreign_keys='Project.creator_id', backref='creator', lazy='dynamic')
     assigned_tasks = db.relationship('Task', foreign_keys='Task.assignee_id', backref='assignee', lazy='dynamic')
     created_tasks = db.relationship('Task', foreign_keys='Task.creator_id', backref='task_creator', lazy='dynamic')
     approvals = db.relationship('Approval', foreign_keys='Approval.applicant_id', backref='applicant', lazy='dynamic')
@@ -357,9 +357,11 @@ class Project(db.Model):
     
     # 关联关系
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True)
+    leader_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 项目负责人
     tasks = db.relationship('Task', backref='project', lazy='dynamic', cascade='all, delete-orphan')
     members = db.relationship('User', secondary=project_members, backref='projects')
     client = db.relationship('Client', backref='projects')
+    leader = db.relationship('User', foreign_keys=[leader_id])
     
     def get_task_stats(self):
         """获取项目任务统计"""
@@ -385,6 +387,8 @@ class Project(db.Model):
             'start_date': self.start_date.isoformat() if self.start_date else None,
             'end_date': self.end_date.isoformat() if self.end_date else None,
             'creator': self.creator.to_dict() if self.creator else None,
+            'leader_id': self.leader_id,
+            'leader': self.leader.to_dict() if self.leader else None,
             'members': [member.to_dict() for member in self.members],
             'stats': self.get_task_stats(),
             'client_id': self.client_id,

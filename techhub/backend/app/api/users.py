@@ -4,7 +4,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import User, Role
+from app.models import User, Role, Department
 from app.decorators import require_permission
 from app.services import AuditService, RoleService
 from sqlalchemy import extract
@@ -142,6 +142,24 @@ def update_user(user_id):
     for field in allowed_fields:
         if field in data:
             setattr(user, field, data[field])
+    
+    # 如果修改了 department（字符串字段），同步更新 department_id
+    if 'department' in data:
+        # 根据部门名称查找对应的 department_id
+        dept = Department.query.filter_by(name=data['department']).first()
+        if dept:
+            user.department_id = dept.id
+        else:
+            user.department_id = None
+    
+    # 如果直接修改了 department_id，同步更新 department 名称
+    if 'department_id' in data:
+        user.department_id = data['department_id']
+        dept = Department.query.get(data['department_id'])
+        if dept:
+            user.department = dept.name
+        else:
+            user.department = None
     
     # 【第二次迭代】管理员可更新员工档案扩展字段
     if current_user.has_permission('all'):

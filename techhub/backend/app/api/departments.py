@@ -207,3 +207,110 @@ def get_department_stats():
             {'id': d[0], 'name': d[1], 'count': d[2]} for d in dept_stats
         ]
     }), 200
+
+
+# ==================== 部门成员管理 ====================
+
+@departments_bp.route('/<int:dept_id>/members', methods=['POST'])
+@jwt_required()
+def add_department_member(dept_id):
+    """添加成员到部门"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({'message': '请提供用户ID', 'error': 'missing_user_id'}), 400
+    
+    dept = Department.query.get_or_404(dept_id)
+    user = User.query.get_or_404(user_id)
+    
+    # 更新用户的 department_id 和 department 字段
+    user.department_id = dept_id
+    user.department = dept.name
+    db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action='DEPT_MEMBER_ADD',
+        resource_type='department',
+        resource_id=dept_id,
+        detail={'user_id': user_id, 'username': user.username},
+        status='success'
+    )
+    
+    return jsonify({
+        'message': f'已将 {user.real_name or user.username} 添加到 {dept.name}',
+        'user': user.to_dict(include_email=True)
+    }), 200
+
+
+@departments_bp.route('/<int:dept_id>/members/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def remove_department_member(dept_id, user_id):
+    """从部门移除成员"""
+    dept = Department.query.get_or_404(dept_id)
+    user = User.query.get_or_404(user_id)
+    
+    # 验证用户是否属于该部门
+    if user.department_id != dept_id:
+        return jsonify({'message': '该用户不在此部门', 'error': 'not_in_department'}), 400
+    
+    # 清空用户的部门信息
+    user.department_id = None
+    user.department = None
+    db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action='DEPT_MEMBER_REMOVE',
+        resource_type='department',
+        resource_id=dept_id,
+        detail={'user_id': user_id, 'username': user.username},
+        status='success'
+    )
+    
+    return jsonify({
+        'message': f'已将 {user.real_name or user.username} 从 {dept.name} 移除'
+    }), 200
+
+
+@departments_bp.route('/<int:dept_id>/members/transfer', methods=['POST'])
+@jwt_required()
+def transfer_department_member(dept_id):
+    """转移部门成员到另一个部门"""
+    data = request.get_json()
+    user_id = data.get('user_id')
+    target_dept_id = data.get('target_dept_id')
+    
+    if not user_id or not target_dept_id:
+        return jsonify({'message': '请提供用户ID和目标部门ID', 'error': 'missing_fields'}), 400
+    
+    # 验证用户是否在当前部门
+    user = User.query.get_or_404(user_id)
+    if user.department_id != dept_id:
+        return jsonify({'message': '该用户不在当前部门', 'error': 'not_in_source_department'}), 400
+    
+    # 验证目标部门
+    target_dept = Department.query.get_or_404(target_dept_id)
+    
+    # 执行转移
+    old_dept_name = user.department
+    user.department_id = target_dept_id
+    user.department = target_dept.name
+    db.session.commit()
+    
+    AuditService.log_from_current_user(
+        action='DEPT_MEMBER_TRANSFER',
+        resource_type='department',
+        resource_id=dept_id,
+        detail={
+            'user_id': user_id,
+            'username': user.username,
+            'from_dept': old_dept_name,
+            'to_dept': target_dept.name
+        },
+        status='success'
+    )
+    
+    return jsonify({
+        'message': f'已将 {user.real_name or user.username} 从 {old_dept_name or "原部门"} 转移到 {target_dept.name}',
+        'user': user.to_dict(include_email=True)
+    }), 200

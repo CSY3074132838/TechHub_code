@@ -53,11 +53,21 @@ def get_projects():
             (Project.members.any(id=current_user_id))
         )
     
+    # 默认过滤掉已删除的项目
+    query = query.filter(Project.status != 'deleted')
+    
     if status:
         query = query.filter_by(status=status)
     
     if search:
-        query = query.filter(Project.name.contains(search))
+        # 支持按项目名称、成员名、客户名、负责人名搜索
+        search_filter = db.or_(
+            Project.name.contains(search),
+            Project.members.any(User.real_name.contains(search)),
+            Project.client.has(Client.name.contains(search)),
+            Project.leader.has(User.real_name.contains(search))
+        )
+        query = query.filter(search_filter)
     
     pagination = query.order_by(Project.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -82,6 +92,9 @@ def create_project():
     if not data or not data.get('name'):
         return jsonify({'message': '项目名称不能为空', 'error': 'missing_name'}), 400
     
+    # 确定项目负责人：如果前端传了leader_id就用，否则用创建者
+    leader_id = data.get('leader_id', current_user_id)
+    
     project = Project(
         name=data['name'],
         description=data.get('description', ''),
@@ -89,7 +102,8 @@ def create_project():
         start_date=parse_date(data.get('start_date')),
         end_date=parse_date(data.get('end_date')),
         creator_id=current_user_id,
-        client_id=data.get('client_id')
+        client_id=data.get('client_id'),
+        leader_id=leader_id
     )
     
     # 添加成员
@@ -101,6 +115,11 @@ def create_project():
     creator = User.query.get(current_user_id)
     if creator not in project.members:
         project.members.append(creator)
+    
+    # 项目负责人如果不是创建者，也自动加入成员
+    leader = User.query.get(leader_id)
+    if leader and leader not in project.members:
+        project.members.append(leader)
     
     db.session.add(project)
     db.session.commit()
@@ -143,8 +162,8 @@ def update_project(project_id):
     current_user_id = get_jwt_identity()
     project = Project.query.get_or_404(project_id)
     
-    # 检查权限（创建者可直接修改，非创建者需要 project_manage 权限）
-    if project.creator_id != current_user_id:
+    # 检查权限（只有项目负责人可直接修改，其他需要 project_manage 权限）
+    if project.leader_id != current_user_id:
         if not PermissionService.check_permission(current_user_id, 'project_manage'):
             AuditService.log_from_current_user(
                 action=AuditService.PERMISSION_DENIED,
@@ -159,7 +178,7 @@ def update_project(project_id):
     before_data = {'name': project.name, 'status': project.status, 'description': project.description}
     
     # 更新字段
-    allowed_fields = ['name', 'description', 'color', 'status', 'client_id']
+    allowed_fields = ['name', 'description', 'color', 'status', 'client_id', 'leader_id']
     for field in allowed_fields:
         if field in data:
             setattr(project, field, data[field])
@@ -197,8 +216,8 @@ def delete_project(project_id):
     current_user_id = get_jwt_identity()
     project = Project.query.get_or_404(project_id)
     
-    # 检查权限
-    if project.creator_id != current_user_id:
+    # 检查权限：只有项目负责人或管理员可删除
+    if project.leader_id != current_user_id:
         if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
@@ -328,3 +347,22 @@ def remove_project_member(project_id, user_id):
         db.session.commit()
     
     return jsonify({'message': '成员已移除'}), 200
+
+
+@projects_bp.route('/<int:project_id>/activities', methods=['GET'])
+@jwt_required()
+def get_project_activities(project_id):
+    """获取项目最近动态"""
+    project = Project.query.get_or_404(project_id)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    query = Activity.query.filter_by(project_id=project_id).order_by(Activity.created_at.desc())
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'activities': [activity.to_dict() for activity in pagination.items],
+        'total': pagination.total,
+        'page': page,
+        'per_page': per_page
+    }), 200

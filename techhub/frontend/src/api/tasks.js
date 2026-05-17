@@ -35,3 +35,13 @@ export const getComments = (taskId) => {
 export const updateBoard = (updates) => {
   return request.put('/tasks/board/update', { updates })
 }
+
+// 提交任务审核
+export const submitTaskForReview = (taskId) => {
+  return request.post(`/tasks/${taskId}/submit-review`)
+}
+
+// 审核任务（通过/驳回）
+export const reviewTask = (taskId, action) => {
+  return request.post(`/tasks/${taskId}/review`, { action })
+}

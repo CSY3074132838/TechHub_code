@@ -25,59 +25,165 @@
       </div>
     </div>
 
-    <!-- 看板 -->
-    <div class="kanban-board">
-      <div
-        v-for="column in columns"
-        :key="column.key"
-        class="kanban-column"
-        @dragover.prevent
-        @drop="handleDrop(column.key, $event)"
-      >
-        <div class="kanban-header">
-          <span class="column-title">{{ column.title }}</span>
-          <span class="column-count">{{ getTasksByStatus(column.key).length }}</span>
-        </div>
-        
-        <div class="kanban-tasks">
-          <div
-            v-for="task in getTasksByStatus(column.key)"
-            :key="task.id"
-            class="kanban-card"
-            draggable="true"
-            @dragstart="handleDragStart(task, $event)"
-            @click="openTaskDetail(task)"
-          >
-            <div class="card-title">{{ task.title }}</div>
-            <div class="card-meta">
-              <div class="card-tags">
-                <el-tag
-                  :type="getPriorityType(task.priority)"
-                  size="small"
-                  effect="plain"
-                >
-                  {{ getPriorityLabel(task.priority) }}
-                </el-tag>
+    <!-- 主内容区：左侧看板 + 右侧动态 -->
+    <el-row :gutter="20">
+      <!-- 左侧：看板 + 任务流程进度条 -->
+      <el-col :xs="24" :lg="17">
+        <!-- 任务流程可视化进度条 -->
+        <el-card class="workflow-card" style="margin-bottom: 16px;">
+          <div class="workflow-header">
+            <span class="workflow-title">任务开发流程</span>
+            <span class="workflow-subtitle">拖拽任务卡片可变更状态 · 审核中任务需项目负责人审批</span>
+          </div>
+          <div class="workflow-steps">
+            <div 
+              v-for="(step, idx) in workflowSteps" 
+              :key="step.key"
+              class="workflow-step"
+              :class="{ active: currentWorkflowStep >= idx, current: currentWorkflowStep === idx }"
+            >
+              <div class="step-icon-wrapper">
+                <el-icon size="20"><component :is="step.icon" /></el-icon>
               </div>
-              <el-avatar
-                v-if="task.assignee"
-                :size="24"
-                :src="task.assignee.avatar"
-                :title="task.assignee.real_name"
-              >
-                {{ task.assignee.real_name?.charAt(0) }}
-              </el-avatar>
+              <div class="step-info">
+                <div class="step-name">{{ step.name }}</div>
+                <div class="step-desc">{{ step.desc }}</div>
+              </div>
+              <div v-if="idx < workflowSteps.length - 1" class="step-arrow">
+                <el-icon><ArrowRight /></el-icon>
+              </div>
             </div>
-            <div v-if="task.due_date" class="card-due">
-              <el-icon><Calendar /></el-icon>
-              <span :class="{ overdue: isOverdue(task.due_date) }">
-                {{ formatDate(task.due_date) }}
-              </span>
+          </div>
+        </el-card>
+
+        <!-- 看板 -->
+        <div class="kanban-board">
+          <div
+            v-for="column in columns"
+            :key="column.key"
+            class="kanban-column"
+            @dragover.prevent
+            @drop="handleDrop(column.key, $event)"
+          >
+            <div class="kanban-header">
+              <span class="column-title">{{ column.title }}</span>
+              <span class="column-count">{{ getTasksByStatus(column.key).length }}</span>
+            </div>
+            
+            <div class="kanban-tasks">
+              <div
+                v-for="task in getTasksByStatus(column.key)"
+                :key="task.id"
+                class="kanban-card"
+                :class="{ 'review-pending': task.status === 'review' }"
+                draggable="true"
+                @dragstart="handleDragStart(task, $event)"
+                @click="openTaskDetail(task)"
+              >
+                <div class="card-title">{{ task.title }}</div>
+                <div class="card-meta">
+                  <div class="card-tags">
+                    <el-tag :type="getPriorityType(task.priority)" size="small" effect="plain">
+                      {{ getPriorityLabel(task.priority) }}
+                    </el-tag>
+                    <el-tag v-if="task.status === 'review'" type="warning" size="small" effect="dark">
+                      待审核
+                    </el-tag>
+                  </div>
+                  <el-avatar
+                    v-if="task.assignee"
+                    :size="24"
+                    :src="task.assignee.avatar"
+                    :title="task.assignee.real_name"
+                  >
+                    {{ task.assignee.real_name?.charAt(0) }}
+                  </el-avatar>
+                </div>
+                <div v-if="task.due_date" class="card-due">
+                  <el-icon><Calendar /></el-icon>
+                  <span :class="{ overdue: isOverdue(task.due_date) }">
+                    {{ formatDate(task.due_date) }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </el-col>
+
+      <!-- 右侧：项目最近动态看板 -->
+      <el-col :xs="24" :lg="7">
+        <el-card class="activity-card">
+          <template #header>
+            <div class="activity-header">
+              <span class="activity-title">
+                <el-icon><Bell /></el-icon>
+                项目最近动态
+              </span>
+              <el-button text size="small" @click="fetchActivities">
+                <el-icon><Refresh /></el-icon>
+              </el-button>
+            </div>
+          </template>
+          <div class="activity-list" v-loading="activityLoading">
+            <div v-if="activities.length === 0" class="activity-empty">
+              <el-empty description="暂无动态" :image-size="60" />
+            </div>
+            <div
+              v-for="activity in activities"
+              :key="activity.id"
+              class="activity-item"
+            >
+              <div class="activity-avatar">
+                <el-avatar :size="32" :src="activity.user?.avatar">
+                  {{ activity.user?.real_name?.charAt(0) || 'U' }}
+                </el-avatar>
+              </div>
+              <div class="activity-content">
+                <div class="activity-text">
+                  <span class="user-name">{{ activity.user?.real_name || '未知用户' }}</span>
+                  <span class="action">{{ formatActivityTitle(activity) }}</span>
+                </div>
+                <div class="activity-time">{{ formatDateTime(activity.created_at) }}</div>
+              </div>
+              <div class="activity-icon" :class="activity.activity_type">
+                <el-icon size="14">
+                  <component :is="getActivityIcon(activity.activity_type)" />
+                </el-icon>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 项目成员 -->
+        <el-card class="members-card" style="margin-top: 16px;">
+          <template #header>
+            <div class="members-header">
+              <span>项目成员</span>
+              <span class="members-count">{{ project.members?.length || 0 }}人</span>
+            </div>
+          </template>
+          <div class="members-list">
+            <div
+              v-for="member in project.members"
+              :key="member.id"
+              class="member-item"
+            >
+              <el-avatar :size="36" :src="member.avatar">
+                {{ member.real_name?.charAt(0) || 'U' }}
+              </el-avatar>
+              <div class="member-info">
+                <div class="member-name">{{ member.real_name || member.username }}</div>
+                <div class="member-role">
+                  <el-tag v-if="member.id === project.leader_id" type="warning" size="small">负责人</el-tag>
+                  <span v-else class="member-position">{{ member.position || '成员' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
 
     <!-- 新建任务对话框 -->
     <el-dialog v-model="showCreateTask" title="新建任务" width="600px">
@@ -174,6 +280,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="项目负责人">
+          <el-select v-model="editForm.leader_id" placeholder="选择项目负责人" style="width: 100%;">
+            <el-option
+              v-for="user in users"
+              :key="user.id"
+              :label="user.real_name"
+              :value="user.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="项目成员">
           <el-select
             v-model="editForm.member_ids"
@@ -209,6 +325,54 @@
               <el-icon><Edit /></el-icon>编辑
             </el-button>
           </div>
+        </div>
+        
+        <!-- 任务流程进度条（任务详情内） -->
+        <div class="task-workflow">
+          <el-steps :active="getTaskStepIndex(currentTask.status)" finish-status="success" simple>
+            <el-step title="待处理" />
+            <el-step title="进行中" />
+            <el-step title="审核中" />
+            <el-step title="已完成" />
+          </el-steps>
+        </div>
+        
+        <!-- 审核操作区：仅项目负责人可见 -->
+        <div v-if="currentTask.status === 'review' && isProjectLeader" class="review-actions">
+          <el-alert
+            title="该任务正在等待审核"
+            description="作为项目负责人，您可以审核此任务"
+            type="warning"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 12px;"
+          />
+          <div class="review-buttons">
+            <el-button type="danger" @click="handleReview('reject')">
+              <el-icon><Close /></el-icon>驳回
+            </el-button>
+            <el-button type="success" @click="handleReview('approve')">
+              <el-icon><Check /></el-icon>通过审核
+            </el-button>
+          </div>
+        </div>
+        
+        <!-- 非负责人看到审核中提示 -->
+        <div v-else-if="currentTask.status === 'review' && !isProjectLeader" class="review-waiting">
+          <el-alert
+            title="该任务正在审核中"
+            description="等待项目负责人审核..."
+            type="info"
+            :closable="false"
+            show-icon
+          />
+        </div>
+
+        <!-- 提交审核按钮：任务负责人可见，且任务在进行中 -->
+        <div v-if="currentTask.status === 'in_progress' && canSubmitReview" class="submit-review">
+          <el-button type="primary" @click="handleSubmitReview">
+            <el-icon><Upload /></el-icon>提交审核
+          </el-button>
         </div>
         
         <!-- 展示模式 -->
@@ -316,7 +480,7 @@
         <template v-else>
           <el-button @click="showTaskDetail = false">关闭</el-button>
           <el-button
-            v-if="currentTask?.status !== 'done'"
+            v-if="currentTask?.status !== 'done' && currentTask?.status !== 'review' && canEditTask"
             type="success"
             @click="completeTask"
           >
@@ -329,16 +493,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
-import { getProject, getProjectTasks, updateProject } from '@/api/projects'
-import { createTask as apiCreateTask, updateTask, getTask, addComment as apiAddComment } from '@/api/tasks'
+import { useUserStore } from '@/stores/user'
+import { getProject, getProjectTasks, updateProject, getProjectActivities } from '@/api/projects'
+import { 
+  createTask as apiCreateTask, updateTask, getTask, addComment as apiAddComment,
+  submitTaskForReview, reviewTask 
+} from '@/api/tasks'
 import { getUsers } from '@/api/users'
 import { getClientOptions } from '@/api/clients'
 
 const route = useRoute()
+const userStore = useUserStore()
 const projectId = route.params.id
 
 const project = ref({})
@@ -355,6 +524,50 @@ const columns = [
   { key: 'review', title: '审核中' },
   { key: 'done', title: '已完成' }
 ]
+
+// 任务流程步骤
+const workflowSteps = [
+  { key: 'todo', name: '待处理', desc: '任务已创建', icon: 'Document' },
+  { key: 'in_progress', name: '进行中', desc: '开发处理中', icon: 'Loading' },
+  { key: 'review', name: '审核中', desc: '等待负责人审核', icon: 'View' },
+  { key: 'done', name: '已完成', desc: '审核通过', icon: 'CircleCheck' }
+]
+
+const currentWorkflowStep = computed(() => {
+  // 根据当前选中任务或整体项目进度计算
+  if (!currentTask.value) return -1
+  const stepMap = { todo: 0, in_progress: 1, review: 2, done: 3 }
+  return stepMap[currentTask.value.status] || 0
+})
+
+// 权限计算
+const isProjectLeader = computed(() => {
+  const currentUserId = userStore.userInfo?.id
+  return project.value.leader_id === currentUserId || 
+         project.value.creator?.id === currentUserId || 
+         userStore.hasPermission('project_manage')
+})
+
+const canSubmitReview = computed(() => {
+  if (!currentTask.value) return false
+  // 项目成员均可提交审核
+  const memberIds = project.value.members?.map(m => m.id) || []
+  const isMember = memberIds.includes(userStore.userInfo?.id)
+  const isAssignee = currentTask.value.assignee?.id === userStore.userInfo?.id
+  const isCreator = currentTask.value.creator?.id === userStore.userInfo?.id
+  return currentTask.value.status === 'in_progress' && (isMember || isAssignee || isCreator || isProjectLeader.value)
+})
+
+const canEditTask = computed(() => {
+  if (!currentTask.value) return false
+  const isAssignee = currentTask.value.assignee?.id === userStore.userInfo?.id
+  const isCreator = currentTask.value.creator?.id === userStore.userInfo?.id
+  return isAssignee || isCreator || isProjectLeader.value
+})
+
+// 动态数据
+const activities = ref([])
+const activityLoading = ref(false)
 
 const showCreateTask = ref(false)
 const showTaskDetail = ref(false)
@@ -392,6 +605,7 @@ const editForm = ref({
   start_date: '',
   end_date: '',
   client_id: '',
+  leader_id: '',
   member_ids: []
 })
 
@@ -426,6 +640,18 @@ const fetchClientOptions = async () => {
   }
 }
 
+const fetchActivities = async () => {
+  activityLoading.value = true
+  try {
+    const res = await getProjectActivities(projectId, { per_page: 50 })
+    activities.value = res.activities || []
+  } catch (error) {
+    console.error('获取动态失败', error)
+  } finally {
+    activityLoading.value = false
+  }
+}
+
 const openEditDialog = () => {
   editForm.value = {
     name: project.value.name || '',
@@ -434,6 +660,7 @@ const openEditDialog = () => {
     start_date: project.value.start_date || '',
     end_date: project.value.end_date || '',
     client_id: project.value.client_id || '',
+    leader_id: project.value.leader_id || project.value.creator?.id || '',
     member_ids: project.value.members?.map(m => m.id) || []
   }
   showEditDialog.value = true
@@ -485,6 +712,7 @@ const createTask = async () => {
     ElMessage.success('任务创建成功')
     showCreateTask.value = false
     fetchBoard()
+    fetchActivities()
     taskForm.value = {
       title: '',
       assignee_id: '',
@@ -517,9 +745,9 @@ const addComment = async () => {
     await apiAddComment(currentTask.value.id, newComment.value)
     ElMessage.success('评论添加成功')
     newComment.value = ''
-    // 刷新任务详情
     const res = await getTask(currentTask.value.id)
     currentTask.value = res.task
+    fetchActivities()
   } catch (error) {
     console.error('添加评论失败', error)
   } finally {
@@ -547,11 +775,10 @@ const saveTaskEdit = async () => {
     await updateTask(currentTask.value.id, { ...taskEditForm.value })
     ElMessage.success('任务更新成功')
     taskEditMode.value = false
-    // 刷新任务详情
     const res = await getTask(currentTask.value.id)
     currentTask.value = res.task
-    // 刷新看板
     fetchBoard()
+    fetchActivities()
   } catch (error) {
     console.error('更新任务失败', error)
     ElMessage.error(error.response?.data?.message || '操作失败')
@@ -566,8 +793,39 @@ const completeTask = async () => {
     ElMessage.success('任务已完成')
     showTaskDetail.value = false
     fetchBoard()
+    fetchActivities()
   } catch (error) {
     console.error('完成任务失败', error)
+  }
+}
+
+// 提交审核
+const handleSubmitReview = async () => {
+  try {
+    await submitTaskForReview(currentTask.value.id)
+    ElMessage.success('任务已提交审核')
+    const res = await getTask(currentTask.value.id)
+    currentTask.value = res.task
+    fetchBoard()
+    fetchActivities()
+  } catch (error) {
+    console.error('提交审核失败', error)
+    ElMessage.error(error.response?.data?.message || '提交审核失败')
+  }
+}
+
+// 审核任务
+const handleReview = async (action) => {
+  try {
+    await reviewTask(currentTask.value.id, action)
+    ElMessage.success(action === 'approve' ? '审核通过' : '已驳回')
+    const res = await getTask(currentTask.value.id)
+    currentTask.value = res.task
+    fetchBoard()
+    fetchActivities()
+  } catch (error) {
+    console.error('审核失败', error)
+    ElMessage.error(error.response?.data?.message || '审核失败')
   }
 }
 
@@ -586,7 +844,33 @@ const handleDrop = async (newStatus, event) => {
   const oldStatus = draggedTask.status
   const taskId = draggedTask.id
   
-  // 乐观更新：先更新本地状态
+  // 限制：只能拖拽到相邻状态，不能直接跳过
+  const statusFlow = ['todo', 'in_progress', 'review', 'done']
+  const oldIdx = statusFlow.indexOf(oldStatus)
+  const newIdx = statusFlow.indexOf(newStatus)
+  
+  // 禁止从待处理直接跳到已完成，或反向跳
+  if (Math.abs(newIdx - oldIdx) > 1 && newStatus !== 'done') {
+    ElMessage.warning('请按流程顺序推进任务')
+    draggedTask = null
+    return
+  }
+  
+  // 禁止从已完成往回拖
+  if (oldStatus === 'done' && newIdx < oldIdx) {
+    ElMessage.warning('已完成的任务不能回退')
+    draggedTask = null
+    return
+  }
+  
+  // 审核中只能由负责人处理，普通成员不能拖拽
+  if (oldStatus === 'review' && !isProjectLeader.value) {
+    ElMessage.warning('审核中的任务只能由项目负责人操作')
+    draggedTask = null
+    return
+  }
+  
+  // 乐观更新
   const taskIndex = board.value[oldStatus].findIndex(t => t.id === taskId)
   if (taskIndex > -1) {
     const task = board.value[oldStatus].splice(taskIndex, 1)[0]
@@ -598,10 +882,11 @@ const handleDrop = async (newStatus, event) => {
   try {
     await updateTask(taskId, { status: newStatus })
     ElMessage.success('任务状态已更新')
+    fetchActivities()
   } catch (error) {
     console.error('更新任务状态失败', error)
     ElMessage.error('更新失败，正在刷新')
-    fetchBoard() // 失败时回退
+    fetchBoard()
   }
 }
 
@@ -657,11 +942,35 @@ const getStatusLabel = (status) => {
   return labelMap[status] || status
 }
 
+const getTaskStepIndex = (status) => {
+  const map = { todo: 0, in_progress: 1, review: 2, done: 3 }
+  return map[status] || 0
+}
+
+// 动态相关
+const formatActivityTitle = (activity) => {
+  const title = activity.title || ''
+  // 移除用户名前缀，只保留动作
+  return title.replace(/^.*?(创建了|完成了|更新了|评论了)/, '$1')
+}
+
+const getActivityIcon = (type) => {
+  const iconMap = {
+    'task_created': 'Document',
+    'task_updated': 'Edit',
+    'task_completed': 'CircleCheck',
+    'comment_added': 'ChatDotRound',
+    'project_created': 'FolderOpened'
+  }
+  return iconMap[type] || 'Notification'
+}
+
 onMounted(() => {
   fetchProject()
   fetchBoard()
   fetchUsers()
   fetchClientOptions()
+  fetchActivities()
 })
 </script>
 
@@ -704,6 +1013,95 @@ onMounted(() => {
       gap: 12px;
     }
   }
+
+  // 任务流程可视化
+  .workflow-card {
+    :deep(.el-card__body) {
+      padding: 16px 20px;
+    }
+
+    .workflow-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+
+      .workflow-title {
+        font-size: 15px;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .workflow-subtitle {
+        font-size: 12px;
+        color: #999;
+      }
+    }
+
+    .workflow-steps {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+
+      .workflow-step {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        background: #f5f7fa;
+        transition: all 0.3s;
+
+        &.active {
+          background: #e6f7ff;
+          .step-icon-wrapper { background: #1890ff; color: #fff; }
+          .step-name { color: #1890ff; }
+        }
+
+        &.current {
+          box-shadow: 0 0 0 2px #1890ff;
+          background: #e6f7ff;
+        }
+
+        .step-icon-wrapper {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #e4e7ed;
+          color: #909399;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.3s;
+        }
+
+        .step-info {
+          flex: 1;
+          min-width: 0;
+
+          .step-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+          }
+
+          .step-desc {
+            font-size: 12px;
+            color: #999;
+          }
+        }
+
+        .step-arrow {
+          color: #c0c4cc;
+          margin-left: 4px;
+        }
+      }
+    }
+  }
   
   .kanban-board {
     display: flex;
@@ -712,8 +1110,8 @@ onMounted(() => {
     padding-bottom: 16px;
     
     .kanban-column {
-      min-width: 280px;
-      max-width: 280px;
+      min-width: 260px;
+      max-width: 260px;
       background: #f5f7fa;
       border-radius: 8px;
       padding: 12px;
@@ -752,10 +1150,16 @@ onMounted(() => {
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border-left: 3px solid transparent;
     
     &:hover {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       transform: translateY(-2px);
+    }
+
+    &.review-pending {
+      border-left-color: #e6a23c;
+      background: #fdf6ec;
     }
     
     .card-title {
@@ -773,6 +1177,7 @@ onMounted(() => {
       .card-tags {
         display: flex;
         gap: 4px;
+        flex-wrap: wrap;
       }
     }
     
@@ -785,6 +1190,149 @@ onMounted(() => {
       
       .overdue {
         color: #f56c6c;
+      }
+    }
+  }
+
+  // 右侧动态看板
+  .activity-card {
+    :deep(.el-card__header) {
+      padding: 12px 16px;
+    }
+
+    .activity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .activity-title {
+        font-size: 15px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    }
+
+    .activity-list {
+      max-height: 500px;
+      overflow-y: auto;
+
+      .activity-empty {
+        padding: 20px 0;
+      }
+
+      .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .activity-avatar {
+          flex-shrink: 0;
+        }
+
+        .activity-content {
+          flex: 1;
+          min-width: 0;
+
+          .activity-text {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #333;
+
+            .user-name {
+              font-weight: 500;
+              margin-right: 4px;
+            }
+
+            .action {
+              color: #666;
+            }
+          }
+
+          .activity-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+          }
+        }
+
+        .activity-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          background: #f5f5f5;
+          color: #999;
+
+          &.task_created { background: #e6f7ff; color: #1890ff; }
+          &.task_completed { background: #f6ffed; color: #52c41a; }
+          &.task_updated { background: #fff7e6; color: #fa8c16; }
+          &.comment_added { background: #f9f0ff; color: #722ed1; }
+        }
+      }
+    }
+  }
+
+  // 成员卡片
+  .members-card {
+    :deep(.el-card__header) {
+      padding: 12px 16px;
+    }
+
+    .members-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 500;
+
+      .members-count {
+        font-size: 12px;
+        color: #999;
+        font-weight: normal;
+      }
+    }
+
+    .members-list {
+      .member-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f5f5f5;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .member-info {
+          flex: 1;
+
+          .member-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+          }
+
+          .member-role {
+            margin-top: 2px;
+
+            .member-position {
+              font-size: 12px;
+              color: #999;
+            }
+          }
+        }
       }
     }
   }
@@ -806,6 +1354,36 @@ onMounted(() => {
         align-items: center;
         gap: 12px;
       }
+    }
+
+    .task-workflow {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #f5f7fa;
+      border-radius: 8px;
+    }
+
+    .review-actions {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #fdf6ec;
+      border-radius: 8px;
+      border: 1px solid #f5dab1;
+
+      .review-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+      }
+    }
+
+    .review-waiting {
+      margin-bottom: 20px;
+    }
+
+    .submit-review {
+      margin-bottom: 20px;
+      text-align: center;
     }
     
     .detail-info {

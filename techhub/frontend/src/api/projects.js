@@ -35,3 +35,8 @@ export const addProjectMember = (id, userId) => {
 export const removeProjectMember = (id, userId) => {
   return request.delete(`/projects/${id}/members/${userId}`)
 }
+
+// 获取项目动态
+export const getProjectActivities = (id, params = {}) => {
+  return request.get(`/projects/${id}/activities`, { params })
+}

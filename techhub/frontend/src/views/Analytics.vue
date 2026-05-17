@@ -258,13 +258,15 @@ let clientRankingChartInstance = null
 const crmOverview = ref({})
 const crmRanking = ref({})
 
-// 可直接访问数据中心的角色（无需申请）
+// 可直接访问数据中心的角色（无需申请）：总经理、副总经理、数据分析员
+// 部门负责人、项目经理、项目组长、普通成员无法查看，需申请
 const DIRECT_ACCESS_ROLES = ['super_admin', 'deputy_general_manager', 'data_analyst']
 
 const hasAccess = computed(() => {
   if (!userStore.userInfo) return false
+  // 只有指定角色可以直接访问，其他角色即使有 dashboard_view 权限也无法访问
   return userStore.userInfo.roles?.some(r =>
-    DIRECT_ACCESS_ROLES.includes(r.name) || r.permissions?.includes('all') || r.permissions?.includes('dashboard_view')
+    DIRECT_ACCESS_ROLES.includes(r.name)
   ) || false
 })
 

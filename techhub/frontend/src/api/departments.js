@@ -38,3 +38,23 @@ export const getDepartmentMembers = (id, params = {}) => {
 export const getDepartmentStats = () => {
   return request.get('/departments/stats')
 }
+
+// ==================== 部门成员管理 ====================
+
+// 添加成员到部门
+export const addDepartmentMember = (deptId, userId) => {
+  return request.post(`/departments/${deptId}/members`, { user_id: userId })
+}
+
+// 从部门移除成员
+export const removeDepartmentMember = (deptId, userId) => {
+  return request.delete(`/departments/${deptId}/members/${userId}`)
+}
+
+// 转移部门成员到另一个部门
+export const transferDepartmentMember = (deptId, userId, targetDeptId) => {
+  return request.post(`/departments/${deptId}/members/transfer`, {
+    user_id: userId,
+    target_dept_id: targetDeptId
+  })
+}

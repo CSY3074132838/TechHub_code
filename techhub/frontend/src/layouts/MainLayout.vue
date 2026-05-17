@@ -161,8 +161,11 @@ const menuItems = computed(() => [
   { path: '/tickets', title: '客户工单', icon: 'ChatDotSquare' },
   { path: '/tasks', title: '我的任务', icon: 'List' },
   { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
-  // 数据中心：总经理、副总经理、数据分析员直接可见，其他人需申请
-  ...(userStore.hasPermission('dashboard_view') || userStore.isAdmin ? [
+  // 数据中心：仅总经理、副总经理、数据分析员可见
+  // 部门负责人、项目经理、项目组长、普通成员无法查看，需申请权限
+  ...(userStore.userInfo?.roles?.some(r =>
+    ['super_admin', 'deputy_general_manager', 'data_analyst'].includes(r.name)
+  ) ? [
     { path: '/analytics', title: '数据中心', icon: 'TrendCharts' }
   ] : []),
   // 用户管理、组织架构：高管可见

@@ -173,10 +173,10 @@ def update_task(task_id):
     task = Task.query.get_or_404(task_id)
     data = request.get_json()
     
-    # 检查权限
+    # 检查权限：任务负责人/创建者/项目负责人/管理员可修改
     if task.assignee_id != current_user_id and task.creator_id != current_user_id:
         project = Project.query.get(task.project_id)
-        if project.creator_id != current_user_id:
+        if project.leader_id != current_user_id:
             if not PermissionService.check_permission(current_user_id, 'task_manage'):
                 AuditService.log_from_current_user(
                     action=AuditService.PERMISSION_DENIED,
@@ -248,11 +248,10 @@ def delete_task(task_id):
     current_user_id = get_jwt_identity()
     task = Task.query.get_or_404(task_id)
     
-    # 检查权限
-    if task.creator_id != current_user_id:
-        project = Project.query.get(task.project_id)
-        if project.creator_id != current_user_id:
-            if not PermissionService.check_permission(current_user_id, 'task_manage'):
+    # 检查权限：项目负责人或管理员可删除
+    project = Project.query.get(task.project_id)
+    if project.leader_id != current_user_id:
+        if not PermissionService.check_permission(current_user_id, 'task_manage'):
                 return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     db.session.delete(task)
@@ -365,4 +364,103 @@ def get_my_tasks():
     
     return jsonify({
         'tasks': [task.to_dict() for task in tasks]
+    }), 200
+
+
+@tasks_bp.route('/<int:task_id>/review', methods=['POST'])
+@jwt_required()
+def review_task(task_id):
+    """审核任务 - 通过或驳回
+    只有项目负责人可以审核
+    """
+    current_user_id = get_jwt_identity()
+    data = request.get_json()
+    action = data.get('action')  # 'approve' 或 'reject'
+    
+    if action not in ('approve', 'reject'):
+        return jsonify({'message': '操作类型错误', 'error': 'invalid_action'}), 400
+    
+    task = Task.query.get_or_404(task_id)
+    project = Project.query.get(task.project_id)
+    
+    if not project:
+        return jsonify({'message': '项目不存在', 'error': 'project_not_found'}), 404
+    
+    # 检查权限：项目负责人或管理员可以审核
+    if project.leader_id != current_user_id and project.creator_id != current_user_id:
+        if not PermissionService.check_permission(current_user_id, 'task_manage'):
+            return jsonify({'message': '只有项目负责人可以审核任务', 'error': 'forbidden'}), 403
+    
+    # 只有审核中的任务可以被审核
+    if task.status != 'review':
+        return jsonify({'message': '只有审核中的任务可以进行审核操作', 'error': 'not_in_review'}), 400
+    
+    if action == 'approve':
+        task.status = 'done'
+        task.completed_at = datetime.utcnow()
+        message = f'任务 "{task.title}" 审核通过'
+        activity_type = 'task_completed'
+    else:
+        task.status = 'in_progress'
+        message = f'任务 "{task.title}" 被驳回，返回进行中'
+        activity_type = 'task_updated'
+    
+    db.session.commit()
+    
+    # 记录活动
+    activity = Activity(
+        activity_type=activity_type,
+        title=message,
+        user_id=current_user_id,
+        task_id=task.id,
+        project_id=task.project_id,
+        meta_data={'action': action, 'reviewer_id': current_user_id}
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({
+        'message': message,
+        'task': task.to_dict()
+    }), 200
+
+
+@tasks_bp.route('/<int:task_id>/submit-review', methods=['POST'])
+@jwt_required()
+def submit_task_for_review(task_id):
+    """提交任务进行审核 - 项目成员均可提交"""
+    current_user_id = get_jwt_identity()
+    task = Task.query.get_or_404(task_id)
+    project = Project.query.get(task.project_id)
+    
+    if not project:
+        return jsonify({'message': '项目不存在', 'error': 'project_not_found'}), 404
+    
+    # 检查权限：项目成员均可提交审核
+    member_ids = [m.id for m in project.members]
+    if current_user_id not in member_ids and project.creator_id != current_user_id and project.leader_id != current_user_id:
+        if not PermissionService.check_permission(current_user_id, 'task_manage'):
+            return jsonify({'message': '只有项目成员可以提交审核', 'error': 'forbidden'}), 403
+    
+    if task.status != 'in_progress':
+        return jsonify({'message': '只有进行中的任务可以提交审核', 'error': 'not_in_progress'}), 400
+    
+    task.status = 'review'
+    db.session.commit()
+    
+    # 记录活动
+    activity = Activity(
+        activity_type='task_updated',
+        title=f'提交了任务 "{task.title}" 进行审核',
+        user_id=current_user_id,
+        task_id=task.id,
+        project_id=task.project_id,
+        meta_data={'action': 'submit_review'}
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    return jsonify({
+        'message': '任务已提交审核',
+        'task': task.to_dict()
     }), 200

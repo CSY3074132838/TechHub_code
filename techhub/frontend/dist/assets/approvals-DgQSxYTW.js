@@ -1,1 +1,0 @@
-import{z as p}from"./index-Dce5g9q0.js";const a=t=>p.get("/approvals/",{params:t}),e=t=>p.get(`/approvals/${t}`),o=t=>p.post("/approvals/",t),n=(t,r)=>p.put(`/approvals/${t}/process`,r),g=()=>p.get("/approvals/stats"),l=()=>p.get("/approvals/types"),v=()=>p.get("/approvals/pending-count");export{a,g as b,o as c,l as d,e,v as g,n as p};
