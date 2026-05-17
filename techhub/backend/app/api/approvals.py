@@ -131,9 +131,67 @@ def get_approval(approval_id):
     approval = Approval.query.get_or_404(approval_id)
     return jsonify({'approval': approval.to_dict(include_chain=True)}), 200
 
+# 高管角色标识（总经理、副总经理）
+MANAGER_ROLE_NAMES = {'super_admin', 'deputy_general_manager'}
+
+
+def _find_managers():
+    """查找系统中的总经理/副总经理用户"""
+    managers = []
+    for role_name in MANAGER_ROLE_NAMES:
+        role = Role.query.filter_by(name=role_name).first()
+        if role and role.users:
+            managers.extend(role.users)
+    # 去重
+    seen = set()
+    unique_managers = []
+    for m in managers:
+        if m.id not in seen:
+            seen.add(m.id)
+            unique_managers.append(m)
+    return unique_managers
+
+
 def create_approval_chain(approval, approval_type, is_urgent, applicant):
     """为审批创建审批链节点"""
     nodes = []
+    
+    # 权限申请：直接提交到总经理/副总经理审批
+    if approval_type == 'permission':
+        managers = _find_managers()
+        if managers:
+            # 创建审批节点，指定第一个找到的高管为处理人
+            nodes.append(ApprovalNode(
+                approval_id=approval.id,
+                node_name='高管审批',
+                handler_id=managers[0].id,
+                status='pending',
+                order=1
+            ))
+        else:
+            # 没有高管时，创建通用节点
+            nodes.append(ApprovalNode(
+                approval_id=approval.id,
+                node_name='高管审批',
+                status='pending',
+                order=1
+            ))
+        
+        # 权限申请加一个归档节点
+        nodes.append(ApprovalNode(
+            approval_id=approval.id,
+            node_name='归档完成',
+            status='pending',
+            order=2
+        ))
+        
+        for node in nodes:
+            db.session.add(node)
+        
+        db.session.flush()
+        approval.current_node_id = nodes[0].id
+        db.session.commit()
+        return
     
     # 节点1：直属上级/项目经理审批
     nodes.append(ApprovalNode(
@@ -148,15 +206,6 @@ def create_approval_chain(approval, approval_type, is_urgent, applicant):
         nodes.append(ApprovalNode(
             approval_id=approval.id,
             node_name='部门负责人审批',
-            status='pending',
-            order=2
-        ))
-    
-    # 权限申请：需要系统管理员审批
-    if approval_type == 'permission':
-        nodes.append(ApprovalNode(
-            approval_id=approval.id,
-            node_name='系统管理员审批',
             status='pending',
             order=2
         ))
@@ -198,8 +247,14 @@ def process_approval(approval_id):
     if not data or not data.get('action'):
         return jsonify({'message': '请指定操作', 'error': 'missing_action'}), 400
     
-    # 检查权限
-    if not PermissionService.check_permission(current_user_id, 'approval_process') and \
+    # 检查权限：拥有审批处理权限、all权限、或是当前节点的指定处理人
+    current_user = User.query.get(current_user_id)
+    is_handler = False
+    if current_node and current_node.handler_id == current_user_id:
+        is_handler = True
+    
+    if not is_handler and \
+       not PermissionService.check_permission(current_user_id, 'approval_process') and \
        not PermissionService.check_permission(current_user_id, 'all'):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
@@ -287,19 +342,19 @@ def _handle_permission_approval(approval, granted=True):
     if not applicant:
         return
     
-    data_viewer_role = Role.query.filter_by(name='data_viewer').first()
-    if not data_viewer_role:
+    data_analyst_role = Role.query.filter_by(name='data_analyst').first()
+    if not data_analyst_role:
         return
     
     if granted:
-        # 授予 data_viewer 角色
-        if data_viewer_role not in applicant.roles:
-            applicant.roles.append(data_viewer_role)
+        # 授予 data_analyst 角色
+        if data_analyst_role not in applicant.roles:
+            applicant.roles.append(data_analyst_role)
             db.session.commit()
     else:
-        # 拒绝时移除 data_viewer 角色
-        if data_viewer_role in applicant.roles:
-            applicant.roles.remove(data_viewer_role)
+        # 拒绝时移除 data_analyst 角色
+        if data_analyst_role in applicant.roles:
+            applicant.roles.remove(data_analyst_role)
             db.session.commit()
     
     return jsonify({

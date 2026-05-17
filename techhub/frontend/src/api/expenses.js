@@ -46,3 +46,14 @@ export const getExpenseStats = (params) => {
 export const getExpenseCategories = () => {
   return request.get('/expenses/categories')
 }
+
+// ==================== 附件上传 ====================
+export const uploadExpenseAttachment = (file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/expenses/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}

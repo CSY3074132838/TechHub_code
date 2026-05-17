@@ -100,7 +100,7 @@
           </div>
         </div>
       </el-col>
-      <el-col :xs="24" :sm="12" :lg="6" v-if="userStore.hasPermission('all')">
+      <el-col :xs="24" :sm="12" :lg="6" v-if="userStore.isAdmin">
         <div class="stat-card" @click="$router.push('/expenses')" style="cursor: pointer;">
           <div class="stat-header">
             <div class="stat-icon" style="background: #fff7e6; color: #fa8c16;">

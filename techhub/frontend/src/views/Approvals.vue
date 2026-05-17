@@ -397,9 +397,21 @@ const handleCreate = async () => {
   }
 }
 
+// 高管角色（总经理、副总经理）
+const MANAGER_ROLES = ['super_admin', 'deputy_general_manager']
+const isManager = computed(() => userStore.userInfo?.roles?.some(r => MANAGER_ROLES.includes(r.name)))
+
 const canProcess = (approval) => {
-  // 简化逻辑：管理员或有权限的用户可以处理
-  return userStore.isAdmin || userStore.canManageTeam
+  // 高管可以处理所有审批
+  if (isManager.value) return true
+  // 有审批处理权限的可以处理
+  if (userStore.hasPermission('approval_process') || userStore.hasPermission('all')) return true
+  // 是当前节点指定处理人的可以处理
+  if (approval.approval_chain && approval.current_node) {
+    const currentNode = approval.approval_chain.find(n => n.id === approval.current_node)
+    if (currentNode && currentNode.handler_id === userStore.userInfo?.id) return true
+  }
+  return false
 }
 
 const openProcessDialog = (approval) => {

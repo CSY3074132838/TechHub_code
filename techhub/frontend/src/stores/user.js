@@ -11,9 +11,15 @@ export const useUserStore = defineStore('user', () => {
 
   // Getters
   const isLoggedIn = computed(() => !!token.value)
+  // 高管角色：拥有 all 权限的用户（总经理、副总经理）
   const isAdmin = computed(() => {
     if (!userInfo.value || !userInfo.value.roles) return false
-    return userInfo.value.roles.some(r => r.name === 'super_admin')
+    return userInfo.value.roles.some(r => r.permissions?.includes('all'))
+  })
+  // 全权限管理角色（总经理、副总经理）
+  const isFullManager = computed(() => {
+    if (!userInfo.value || !userInfo.value.roles) return false
+    return userInfo.value.roles.some(r => r.permissions?.includes('all'))
   })
   const canManageTeam = computed(() => {
     if (!userInfo.value || !userInfo.value.roles) return false
@@ -96,6 +102,7 @@ export const useUserStore = defineStore('user', () => {
     loading,
     isLoggedIn,
     isAdmin,
+    isFullManager,
     canManageTeam,
     permissions,
     hasPermission,

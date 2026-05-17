@@ -149,6 +149,10 @@ const unreadCount = ref(0)
 
 const totalUnreadCount = computed(() => pendingCount.value + unreadCount.value)
 
+// 高管角色（总经理、副总经理）：拥有 all 权限
+const MANAGER_ROLES = ['super_admin', 'deputy_general_manager']
+const isManager = computed(() => userStore.userInfo?.roles?.some(r => MANAGER_ROLES.includes(r.name)))
+
 const menuItems = computed(() => [
   { path: '/dashboard', title: '工作台', icon: 'HomeFilled' },
   { path: '/projects', title: '项目管理', icon: 'FolderOpened' },
@@ -157,19 +161,23 @@ const menuItems = computed(() => [
   { path: '/tickets', title: '客户工单', icon: 'ChatDotSquare' },
   { path: '/tasks', title: '我的任务', icon: 'List' },
   { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
-  { path: '/analytics', title: '数据中心', icon: 'TrendCharts' },
-  ...(userStore.hasPermission('user_manage') ? [
+  // 数据中心：总经理、副总经理、数据分析员直接可见，其他人需申请
+  ...(userStore.hasPermission('dashboard_view') || userStore.isAdmin ? [
+    { path: '/analytics', title: '数据中心', icon: 'TrendCharts' }
+  ] : []),
+  // 用户管理、组织架构：高管可见
+  ...(isManager.value ? [
     { path: '/users', title: '用户管理', icon: 'UserFilled' },
-    // 【第二次迭代】组织架构菜单
     { path: '/departments', title: '组织架构', icon: 'OfficeBuilding' }
   ] : []),
   // 【第二次迭代】考勤工时菜单（所有登录用户可见）
   { path: '/attendance', title: '考勤工时', icon: 'Clock' },
-  ...(userStore.hasPermission('audit_view') ? [
+  // 审计日志：高管可见
+  ...(isManager.value ? [
     { path: '/audit-logs', title: '审计日志', icon: 'Document' }
   ] : []),
-  // 【第二次迭代】财务管理菜单
-  ...(userStore.hasPermission('all') ? [
+  // 财务看板：高管可见
+  ...(isManager.value ? [
     { path: '/finance', title: '财务看板', icon: 'TrendCharts' }
   ] : []),
   { path: '/expenses', title: '费用报销', icon: 'Money' },

@@ -134,16 +134,26 @@ class Role(db.Model):
     def init_roles():
         """初始化系统默认角色"""
         roles = [
-            {'name': 'super_admin', 'description': '超级管理员', 'level': 1, 
+            {'name': 'super_admin', 'description': '总经理', 'level': 1,
              'permissions': ['all']},
-            {'name': 'department_manager', 'description': '部门负责人', 'level': 2,
+            {'name': 'deputy_general_manager', 'description': '副总经理', 'level': 2,
+             'permissions': ['all']},
+            {'name': 'data_analyst', 'description': '数据分析员', 'level': 3,
+             'permissions': ['dashboard_view', 'data_export']},
+            {'name': 'operations_director', 'description': '运营总监', 'level': 3,
+             'permissions': ['dashboard_view', 'team_manage', 'data_export', 'audit_view']},
+            {'name': 'finance_director', 'description': '财务总监', 'level': 3,
+             'permissions': ['dashboard_view', 'audit_view', 'data_export', 'approval_urgent']},
+            {'name': 'tech_director', 'description': '技术总监', 'level': 3,
+             'permissions': ['dashboard_view', 'team_manage', 'project_manage', 'task_manage']},
+            {'name': 'department_manager', 'description': '部门负责人', 'level': 4,
              'permissions': ['dashboard_view', 'team_manage', 'approval_urgent']},
-            {'name': 'project_manager', 'description': '项目经理', 'level': 3,
+            {'name': 'project_manager', 'description': '项目经理', 'level': 5,
              'permissions': ['project_manage', 'task_assign', 'team_view']},
-            {'name': 'member', 'description': '普通成员', 'level': 4,
-             'permissions': ['task_view', 'task_execute', 'approval_submit']},
-            {'name': 'data_viewer', 'description': '数据查看员', 'level': 4,
-             'permissions': ['dashboard_view']}
+            {'name': 'team_leader', 'description': '项目组长', 'level': 6,
+             'permissions': ['task_view', 'task_execute', 'task_assign', 'team_view']},
+            {'name': 'member', 'description': '普通成员', 'level': 7,
+             'permissions': ['task_view', 'task_execute', 'approval_submit']}
         ]
         
         for role_data in roles:

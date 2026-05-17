@@ -2,15 +2,53 @@
 【第二次迭代】费用报销管理 API
 作者: 郝益墨
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
+import os
+import uuid
+from werkzeug.utils import secure_filename
 from app import db
 from app.models import Expense, User, Approval
 from app.decorators import require_permission
 from app.services import AuditService
 
 expenses_bp = Blueprint('expenses', __name__)
+
+# 允许上传的文件类型
+ALLOWED_EXTENSIONS = {
+    'image': {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'},
+    'document': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'}
+}
+
+
+def allowed_file(filename):
+    """检查文件类型是否允许上传"""
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in ALLOWED_EXTENSIONS['image'] or ext in ALLOWED_EXTENSIONS['document']
+
+
+def get_file_type(filename):
+    """获取文件类型（image/document）"""
+    if '.' not in filename:
+        return 'other'
+    ext = filename.rsplit('.', 1)[1].lower()
+    if ext in ALLOWED_EXTENSIONS['image']:
+        return 'image'
+    if ext in ALLOWED_EXTENSIONS['document']:
+        return 'document'
+    return 'other'
+
+
+# 高管角色列表：可查看全部人员报销
+FINANCE_ROLES = {'super_admin', 'deputy_general_manager', 'finance_director'}
+
+
+def _is_finance_manager(user):
+    """判断用户是否为财务高管（可查看全部报销）"""
+    return any(r.name in FINANCE_ROLES for r in user.roles)
 
 
 @expenses_bp.route('/', methods=['GET'])
@@ -26,10 +64,10 @@ def get_expenses():
     
     query = Expense.query
     
-    # 权限控制：非管理员只能看自己的
+    # 权限控制：高管角色可看全部，普通用户只能看自己的
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
-    if not current_user.has_permission('all'):
+    if not _is_finance_manager(current_user):
         query = query.filter_by(user_id=current_user_id)
     elif user_id:
         query = query.filter_by(user_id=user_id)
@@ -103,10 +141,10 @@ def get_expense(expense_id):
     """获取报销单详情"""
     expense = Expense.query.get_or_404(expense_id)
     
-    # 权限检查
+    # 权限检查：本人或高管可查看
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
-    if expense.user_id != current_user_id and not current_user.has_permission('all'):
+    if expense.user_id != current_user_id and not _is_finance_manager(current_user):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     return jsonify({'expense': expense.to_dict()}), 200
@@ -155,7 +193,7 @@ def approve_expense(expense_id):
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     
-    if not current_user.has_permission('all'):
+    if not _is_finance_manager(current_user):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     expense = Expense.query.get_or_404(expense_id)
@@ -180,7 +218,7 @@ def reject_expense(expense_id):
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     
-    if not current_user.has_permission('all'):
+    if not _is_finance_manager(current_user):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     expense = Expense.query.get_or_404(expense_id)
@@ -205,7 +243,7 @@ def reimburse_expense(expense_id):
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     
-    if not current_user.has_permission('all'):
+    if not _is_finance_manager(current_user):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     expense = Expense.query.get_or_404(expense_id)
@@ -233,7 +271,7 @@ def delete_expense(expense_id):
     
     if expense.user_id != current_user_id:
         current_user = User.query.get(current_user_id)
-        if not current_user.has_permission('all'):
+        if not _is_finance_manager(current_user):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     db.session.delete(expense)
@@ -253,13 +291,18 @@ def delete_expense(expense_id):
 @expenses_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_expense_stats():
-    """获取报销统计（按月份/类别聚合）"""
+    """获取报销统计（按月份/类别聚合）
+    高管角色查看全部人员统计，普通用户只看自己的
+    """
     current_user_id = get_jwt_identity()
-    user_id = request.args.get('user_id', current_user_id, type=int)
+    user_id = request.args.get('user_id', type=int)
     month = request.args.get('month', datetime.utcnow().strftime('%Y-%m'))
     
     current_user = User.query.get(current_user_id)
-    if user_id != current_user_id and not current_user.has_permission('all'):
+    is_manager = _is_finance_manager(current_user)
+    
+    # 权限检查：非高管且指定了其他用户ID
+    if user_id and user_id != current_user_id and not is_manager:
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     try:
@@ -267,27 +310,33 @@ def get_expense_stats():
     except ValueError:
         return jsonify({'message': '月份格式错误', 'error': 'invalid_month'}), 400
     
+    # 构建基础查询条件
+    base_filters = [
+        db.extract('year', Expense.created_at) == year,
+        db.extract('month', Expense.created_at) == mon
+    ]
+    
+    # 非高管只能看自己的
+    if not is_manager:
+        base_filters.append(Expense.user_id == current_user_id)
+    elif user_id:
+        base_filters.append(Expense.user_id == user_id)
+    
     # 按状态统计
-    status_stats = db.session.query(
+    status_query = db.session.query(
         Expense.status,
         db.func.count(Expense.id),
         db.func.sum(Expense.amount)
-    ).filter(
-        Expense.user_id == user_id,
-        db.extract('year', Expense.created_at) == year,
-        db.extract('month', Expense.created_at) == mon
-    ).group_by(Expense.status).all()
+    ).filter(*base_filters).group_by(Expense.status)
+    status_stats = status_query.all()
     
     # 按类别统计
-    category_stats = db.session.query(
+    category_query = db.session.query(
         Expense.category,
         db.func.count(Expense.id),
         db.func.sum(Expense.amount)
-    ).filter(
-        Expense.user_id == user_id,
-        db.extract('year', Expense.created_at) == year,
-        db.extract('month', Expense.created_at) == mon
-    ).group_by(Expense.category).all()
+    ).filter(*base_filters).group_by(Expense.category)
+    category_stats = category_query.all()
     
     total_amount = sum(float(s[2] or 0) for s in status_stats)
     
@@ -319,3 +368,53 @@ def get_expense_categories():
         {'value': 'other', 'label': '其他'}
     ]
     return jsonify({'categories': categories}), 200
+
+
+@expenses_bp.route('/upload', methods=['POST'])
+@jwt_required()
+def upload_attachment():
+    """上传报销附件（图片/文档）"""
+    current_user_id = get_jwt_identity()
+    
+    if 'file' not in request.files:
+        return jsonify({'message': '未找到文件', 'error': 'no_file'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'message': '文件名为空', 'error': 'empty_filename'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({
+            'message': '不支持的文件类型，仅允许图片(png/jpg/jpeg/gif/bmp/webp)和文档(pdf/doc/docx/xls/xlsx/ppt/pptx/txt)',
+            'error': 'invalid_file_type'
+        }), 400
+    
+    try:
+        # 生成唯一文件名
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        unique_name = f"{uuid.uuid4().hex}.{ext}"
+        
+        # 按日期创建子目录
+        today = datetime.utcnow().strftime('%Y%m%d')
+        upload_dir = os.path.join(current_app.root_path, '..', 'uploads', 'expenses', today)
+        if not os.path.exists(upload_dir):
+            os.makedirs(upload_dir)
+        
+        filepath = os.path.join(upload_dir, unique_name)
+        file.save(filepath)
+        
+        # 返回文件URL
+        file_url = f"/uploads/expenses/{today}/{unique_name}"
+        
+        return jsonify({
+            'message': '上传成功',
+            'file': {
+                'name': secure_filename(file.filename),
+                'url': file_url,
+                'type': get_file_type(file.filename),
+                'size': os.path.getsize(filepath)
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': f'上传失败: {str(e)}', 'error': 'upload_failed'}), 500

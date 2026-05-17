@@ -63,6 +63,13 @@
             <el-select v-model="filterCategory" placeholder="类别" clearable size="small" style="width: 120px; margin-right: 8px;">
               <el-option v-for="c in categories" :key="c.value" :label="c.label" :value="c.value" />
             </el-select>
+            <el-input
+              v-model="filterUserName"
+              placeholder="按人名筛选"
+              clearable
+              size="small"
+              style="width: 140px; margin-right: 8px;"
+            />
             <el-button size="small" @click="resetFilter">重置</el-button>
           </div>
         </div>
@@ -100,8 +107,9 @@
             {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handleViewDetail(row)">查看详情</el-button>
             <el-button v-if="canApprove(row)" type="primary" link size="small" @click="handleApprove(row)">通过</el-button>
             <el-button v-if="canApprove(row)" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
             <el-button v-if="canReimburse(row)" type="success" link size="small" @click="handleReimburse(row)">打款</el-button>
@@ -140,6 +148,61 @@
       </el-row>
     </el-card>
 
+    <!-- 报销详情抽屉 -->
+    <el-drawer v-model="showDetailDrawer" title="报销详情" size="500px" :destroy-on-close="true">
+      <div v-if="detailExpense" class="expense-detail">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="报销标题">{{ detailExpense.title }}</el-descriptions-item>
+          <el-descriptions-item label="报销金额">
+            <span style="color: #f56c6c; font-weight: 600; font-size: 18px;">¥{{ detailExpense.amount }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="报销类别">
+            <el-tag size="small">{{ categoryLabel(detailExpense.category) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="当前状态">
+            <el-tag :type="statusType(detailExpense.status)" size="small">
+              {{ statusLabel(detailExpense.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="报销人">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <el-avatar :size="32">{{ detailExpense.user?.real_name?.charAt(0) || 'U' }}</el-avatar>
+              <span>{{ detailExpense.user?.real_name || detailExpense.user?.username }}</span>
+            </div>
+          </el-descriptions-item>
+          <el-descriptions-item label="费用说明" :span="1">
+            <div style="white-space: pre-wrap; line-height: 1.6;">{{ detailExpense.description || '无' }}</div>
+          </el-descriptions-item>
+          <el-descriptions-item label="附件">
+            <div v-if="detailExpense.attachments?.length">
+              <el-link
+                v-for="(file, idx) in detailExpense.attachments"
+                :key="idx"
+                type="primary"
+                :href="file.url"
+                target="_blank"
+                style="display: block; margin-bottom: 4px;"
+              >
+                {{ file.name || '附件' + (idx + 1) }}
+              </el-link>
+            </div>
+            <span v-else style="color: #999;">无附件</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ formatDateTime(detailExpense.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="更新时间">{{ formatDateTime(detailExpense.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item v-if="detailExpense.reimbursed_at" label="打款时间">{{ formatDateTime(detailExpense.reimbursed_at) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 操作按钮 -->
+        <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
+          <el-button v-if="canApprove(detailExpense)" type="primary" @click="handleApprove(detailExpense); showDetailDrawer = false">通过</el-button>
+          <el-button v-if="canApprove(detailExpense)" type="danger" @click="handleReject(detailExpense); showDetailDrawer = false">驳回</el-button>
+          <el-button v-if="canReimburse(detailExpense)" type="success" @click="handleReimburse(detailExpense); showDetailDrawer = false">标记打款</el-button>
+          <el-button v-if="canEdit(detailExpense)" type="primary" plain @click="handleEdit(detailExpense); showDetailDrawer = false">编辑</el-button>
+        </div>
+      </div>
+    </el-drawer>
+
     <!-- 新建/编辑对话框 -->
     <el-dialog v-model="showCreateDialog" :title="isEdit ? '编辑报销单' : '新建报销单'" width="500px">
       <el-form :model="form" label-width="100px">
@@ -157,6 +220,36 @@
         <el-form-item label="费用说明">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请描述费用明细" />
         </el-form-item>
+        <el-form-item label="附件上传">
+          <el-upload
+            action="#"
+            :auto-upload="false"
+            :on-change="handleUpload"
+            :before-upload="beforeUpload"
+            :show-file-list="false"
+            :disabled="uploading"
+            accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+          >
+            <el-button type="primary" :loading="uploading" size="small">
+              <el-icon><Upload /></el-icon>选择文件
+            </el-button>
+            <template #tip>
+              <div class="upload-tip">支持图片(png/jpg/jpeg/gif/bmp/webp)和文档(pdf/doc/docx/xls/xlsx/ppt/pptx/txt)，单个文件不超过16MB</div>
+            </template>
+          </el-upload>
+          <!-- 已上传文件列表 -->
+          <div v-if="form.attachments?.length" class="attachment-list">
+            <div v-for="(file, idx) in form.attachments" :key="idx" class="attachment-item">
+              <el-icon v-if="file.type === 'image'" class="file-icon"><Picture /></el-icon>
+              <el-icon v-else-if="file.type === 'document'" class="file-icon"><Document /></el-icon>
+              <el-icon v-else class="file-icon"><Document /></el-icon>
+              <span class="file-name">{{ file.name }}</span>
+              <el-button type="danger" link size="small" @click="removeAttachment(idx)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -169,11 +262,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Upload, Picture, Document, Delete } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import {
   getExpenses, createExpense, updateExpense, deleteExpense,
   approveExpense, rejectExpense, reimburseExpense,
-  getExpenseStats, getExpenseCategories
+  getExpenseStats, getExpenseCategories, uploadExpenseAttachment
 } from '@/api/expenses'
 import { useUserStore } from '@/stores/user'
 
@@ -188,17 +282,25 @@ const pageSize = ref(10)
 const total = ref(0)
 const filterStatus = ref('')
 const filterCategory = ref('')
+const filterUserName = ref('')  // 按人名筛选
+const allUsers = ref([])  // 高管模式下全部用户列表
 
 const showCreateDialog = ref(false)
 const isEdit = ref(false)
 const editingId = ref(null)
 const saving = ref(false)
+const uploading = ref(false)
 const form = ref({
   title: '',
   amount: 0,
   category: 'other',
-  description: ''
+  description: '',
+  attachments: []
 })
+
+// 详情抽屉
+const showDetailDrawer = ref(false)
+const detailExpense = ref(null)
 
 const filteredExpenses = computed(() => {
   let result = expenses.value
@@ -208,13 +310,21 @@ const filteredExpenses = computed(() => {
   if (filterCategory.value) {
     result = result.filter(e => e.category === filterCategory.value)
   }
+  if (filterUserName.value) {
+    const keyword = filterUserName.value.toLowerCase()
+    result = result.filter(e => {
+      const name = (e.user?.real_name || e.user?.username || '').toLowerCase()
+      return name.includes(keyword)
+    })
+  }
   return result
 })
 
 const pendingCount = computed(() => expenses.value.filter(e => e.status === 'pending').length)
 const approvedCount = computed(() => expenses.value.filter(e => e.status === 'approved').length)
 
-const isAdmin = computed(() => userStore.hasPermission('all'))
+// 高管角色：总经理、副总经理（拥有 all 权限）
+const isAdmin = computed(() => userStore.isAdmin)
 
 const canEdit = (row) => {
   return row.user_id === userStore.userInfo?.id && ['draft', 'pending'].includes(row.status)
@@ -224,12 +334,18 @@ const canDelete = (row) => {
   return row.user_id === userStore.userInfo?.id && ['draft', 'pending'].includes(row.status)
 }
 
+// 财务高管角色：总经理、副总经理、财务总监
+const FINANCE_ROLES = ['super_admin', 'deputy_general_manager', 'finance_director']
+const isFinanceManager = computed(() => {
+  return userStore.userInfo?.roles?.some(r => FINANCE_ROLES.includes(r.name))
+})
+
 const canApprove = (row) => {
-  return isAdmin.value && row.status === 'pending'
+  return isFinanceManager.value && row.status === 'pending'
 }
 
 const canReimburse = (row) => {
-  return isAdmin.value && row.status === 'approved'
+  return isFinanceManager.value && row.status === 'approved'
 }
 
 const fetchExpenses = async () => {
@@ -242,6 +358,19 @@ const fetchExpenses = async () => {
     })
     expenses.value = res.expenses || []
     total.value = res.total || 0
+    // 高管模式下收集全部用户列表（用于人名筛选提示）
+    if (isFinanceManager.value) {
+      const users = res.expenses?.map(e => e.user).filter(Boolean) || []
+      const uniqueUsers = []
+      const seen = new Set()
+      for (const u of users) {
+        if (u.id && !seen.has(u.id)) {
+          seen.add(u.id)
+          uniqueUsers.push(u)
+        }
+      }
+      allUsers.value = uniqueUsers
+    }
   } catch (error) {
     console.error('获取报销列表失败', error)
   } finally {
@@ -299,7 +428,8 @@ const handleEdit = (row) => {
     title: row.title,
     amount: row.amount,
     category: row.category,
-    description: row.description
+    description: row.description,
+    attachments: row.attachments || []
   }
   showCreateDialog.value = true
 }
@@ -351,15 +481,60 @@ const handleReimburse = async (row) => {
   }
 }
 
+// 查看报销详情
+const handleViewDetail = (row) => {
+  detailExpense.value = row
+  showDetailDrawer.value = true
+}
+
 const resetFilter = () => {
   filterStatus.value = ''
   filterCategory.value = ''
+  filterUserName.value = ''
 }
 
 const resetForm = () => {
   isEdit.value = false
   editingId.value = null
-  form.value = { title: '', amount: 0, category: 'other', description: '' }
+  form.value = { title: '', amount: 0, category: 'other', description: '', attachments: [] }
+}
+
+// 上传附件
+const handleUpload = async (file) => {
+  uploading.value = true
+  try {
+    const res = await uploadExpenseAttachment(file.raw)
+    if (res.file) {
+      form.value.attachments.push(res.file)
+      ElMessage.success('上传成功')
+    }
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 删除附件
+const removeAttachment = (index) => {
+  form.value.attachments.splice(index, 1)
+}
+
+// 上传前校验
+const beforeUpload = (file) => {
+  const allowedTypes = [
+    'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp', 'image/webp',
+    'application/pdf',
+    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'text/plain'
+  ]
+  const isAllowed = allowedTypes.includes(file.type)
+  if (!isAllowed) {
+    ElMessage.error('仅支持图片(png/jpg/jpeg/gif/bmp/webp)和文档(pdf/doc/docx/xls/xlsx/ppt/pptx/txt)')
+  }
+  return isAllowed
 }
 
 const categoryLabel = (value) => {
@@ -457,6 +632,37 @@ onMounted(() => {
       margin-bottom: 8px;
       .category-name { font-size: 14px; color: #333; }
       .category-amount { font-size: 14px; color: #666; }
+    }
+  }
+
+  .upload-tip {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+  }
+
+  .attachment-list {
+    margin-top: 12px;
+    .attachment-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f5f7fa;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      .file-icon {
+        color: #409eff;
+        font-size: 18px;
+      }
+      .file-name {
+        flex: 1;
+        font-size: 13px;
+        color: #333;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
   }
 }

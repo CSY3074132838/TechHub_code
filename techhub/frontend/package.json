@@ -1,7 +1,7 @@
 {
   "name": "techhub-frontend",
   "version": "1.0.0",
-  "description": "TechHub 研发协同管理平台前端",
+  "description": "TechHub 小型企业管理平台前端",
   "type": "module",
   "scripts": {
     "dev": "vite",

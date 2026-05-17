@@ -258,17 +258,20 @@ let clientRankingChartInstance = null
 const crmOverview = ref({})
 const crmRanking = ref({})
 
+// 可直接访问数据中心的角色（无需申请）
+const DIRECT_ACCESS_ROLES = ['super_admin', 'deputy_general_manager', 'data_analyst']
+
 const hasAccess = computed(() => {
   if (!userStore.userInfo) return false
   return userStore.userInfo.roles?.some(r =>
-    r.permissions?.includes('all') || r.permissions?.includes('dashboard_view')
+    DIRECT_ACCESS_ROLES.includes(r.name) || r.permissions?.includes('all') || r.permissions?.includes('dashboard_view')
   ) || false
 })
 
 const accessSubtitle = computed(() => {
   return wasRejected.value
     ? '您已被拒绝访问，请尝试重新申请'
-    : '您暂无数据中心查看权限，请向管理员申请'
+    : '您暂无数据中心查看权限，请向总经理或副总经理申请'
 })
 
 const crmOverviewStats = computed(() => {
@@ -602,11 +605,11 @@ const requestAccess = async () => {
   try {
     await createApproval({
       title: '[权限申请] 申请查看数据中心',
-      approval_type: 'other',
+      approval_type: 'permission',
       description: '申请查看数据中心权限',
       is_urgent: false
     })
-    ElMessage.success('申请已提交，请等待管理员审批')
+    ElMessage.success('申请已提交，请等待总经理或副总经理审批')
     wasRejected.value = false
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '申请失败')

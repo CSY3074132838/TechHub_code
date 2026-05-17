@@ -525,10 +525,32 @@ const fetchStats = async () => {
   }
 }
 
+// 角色自定义排序顺序：总经理 → 副总经理 → 数据分析员 → 运营总监 → 财务总监 → 技术总监 → 部门负责人 → 项目经理 → 项目组长 → 普通成员
+const ROLE_SORT_ORDER = [
+  'super_admin',
+  'deputy_general_manager',
+  'data_analyst',
+  'operations_director',
+  'finance_director',
+  'tech_director',
+  'department_manager',
+  'project_manager',
+  'team_leader',
+  'member'
+]
+
 const fetchRoles = async () => {
   try {
     const res = await getRoles()
-    roles.value = res.roles
+    // 按自定义顺序排序
+    roles.value = (res.roles || []).sort((a, b) => {
+      const indexA = ROLE_SORT_ORDER.indexOf(a.name)
+      const indexB = ROLE_SORT_ORDER.indexOf(b.name)
+      if (indexA === -1 && indexB === -1) return 0
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return indexA - indexB
+    })
   } catch (error) {
     console.error('获取角色失败', error)
   }

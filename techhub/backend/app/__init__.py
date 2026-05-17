@@ -109,6 +109,17 @@ def create_app(config_name='default'):
     def missing_token_callback(error):
         return {'message': '缺少认证 Token', 'error': 'authorization_required'}, 401
     
+    # 静态文件服务（上传的附件）
+    import os
+    upload_folder = os.path.join(os.path.dirname(app.root_path), 'uploads')
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+    
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        from flask import send_from_directory
+        return send_from_directory(upload_folder, filename)
+    
     # 根路由
     @app.route('/')
     def index():

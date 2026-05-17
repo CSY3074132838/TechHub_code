@@ -233,47 +233,27 @@ def get_activities():
 @dashboard_bp.route('/statistics', methods=['GET'])
 @jwt_required()
 def get_statistics():
-    """获取数据中心统计 - 带 DataScope 控制"""
+    """获取数据中心统计 - 所有有权限的用户都看到全部数据"""
     current_user_id = get_jwt_identity()
     
-    # DataScope：管理员看全部，部门负责人看部门，普通成员看自己
-    scope = PermissionService.get_user_data_scope(current_user_id)
-    user = User.query.get(current_user_id)
+    # 所有能访问数据中心的用户（总经理、副总经理、数据分析员等）都看到全部数据
+    # 不再按 DataScope 区分，统一显示公司全部数据
     
-    # 系统整体统计
-    if scope.value == 'all':
-        # 全部数据
-        total_users = User.query.filter_by(is_active=True).count()
-        total_projects = Project.query.filter_by(status='active').count()
-        total_tasks = Task.query.count()
-        completed_tasks = Task.query.filter_by(status='done').count()
-    elif scope.value in ('dept', 'dept_and_below'):
-        # 本部门数据
-        dept_members = User.query.filter_by(department=user.department).all()
-        member_ids = [m.id for m in dept_members]
-        total_users = len(dept_members)
-        total_projects = Project.query.filter(
-            (Project.creator_id.in_(member_ids)) |
-            (Project.members.any(User.id.in_(member_ids)))
-        ).filter_by(status='active').count()
-        total_tasks = Task.query.filter(Task.assignee_id.in_(member_ids)).count()
-        completed_tasks = Task.query.filter(
-            Task.assignee_id.in_(member_ids),
-            Task.status == 'done'
-        ).count()
-    else:
-        # 只能看个人
-        return get_personal_statistics(current_user_id)
+    # 系统整体统计（全部数据）
+    total_users = User.query.filter_by(is_active=True).count()
+    total_projects = Project.query.filter_by(status='active').count()
+    total_tasks = Task.query.count()
+    completed_tasks = Task.query.filter_by(status='done').count()
     
     task_completion_rate = round(completed_tasks / total_tasks * 100, 1) if total_tasks > 0 else 0
     
-    # 3. 任务状态分布
+    # 3. 任务状态分布（全部数据）
     task_status_dist = db.session.query(
         Task.status,
         func.count(Task.id)
     ).group_by(Task.status).all()
     
-    # 4. 近7天任务趋势
+    # 4. 近7天任务趋势（全部数据）
     dates = []
     created_trend = []
     completed_trend = []
@@ -461,30 +441,10 @@ def get_crm_overview():
     """获取CRM概览数据"""
     current_user_id = get_jwt_identity()
     
-    # DataScope 控制
-    scope = PermissionService.get_user_data_scope(current_user_id)
-    user = User.query.get(current_user_id)
-    
-    if scope.value == 'all':
-        client_query = Client.query
-        contract_query = Contract.query
-        ticket_query = Ticket.query
-    elif scope.value in ('dept', 'dept_and_below'):
-        dept_members = User.query.filter_by(department=user.department).all()
-        member_ids = [m.id for m in dept_members]
-        client_query = Client.query.filter(Client.manager_id.in_(member_ids))
-        contract_query = Contract.query.filter(Contract.created_by.in_(member_ids))
-        ticket_query = Ticket.query.filter(
-            (Ticket.assignee_id.in_(member_ids)) |
-            (Ticket.reporter_id.in_(member_ids))
-        )
-    else:
-        client_query = Client.query.filter_by(manager_id=current_user_id)
-        contract_query = Contract.query.filter_by(created_by=current_user_id)
-        ticket_query = Ticket.query.filter(
-            (Ticket.assignee_id == current_user_id) |
-            (Ticket.reporter_id == current_user_id)
-        )
+    # 数据中心：所有有权限的用户都看到全部数据
+    client_query = Client.query
+    contract_query = Contract.query
+    ticket_query = Ticket.query
     
     total_clients = client_query.count()
     active_clients = client_query.filter_by(status='active').count()
@@ -550,17 +510,8 @@ def get_crm_ranking():
     """获取客户金额排行和工单处理排行"""
     current_user_id = get_jwt_identity()
     
-    scope = PermissionService.get_user_data_scope(current_user_id)
-    user = User.query.get(current_user_id)
-    
-    if scope.value == 'all':
-        contract_query = Contract.query
-    elif scope.value in ('dept', 'dept_and_below'):
-        dept_members = User.query.filter_by(department=user.department).all()
-        member_ids = [m.id for m in dept_members]
-        contract_query = Contract.query.filter(Contract.created_by.in_(member_ids))
-    else:
-        contract_query = Contract.query.filter_by(created_by=current_user_id)
+    # 数据中心：所有有权限的用户都看到全部合同数据
+    contract_query = Contract.query
     
     # 客户金额排行 Top 10
     client_amounts = db.session.query(

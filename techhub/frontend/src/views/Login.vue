@@ -4,7 +4,7 @@
       <div class="login-header">
         <el-icon size="48" color="#1890ff"><Connection /></el-icon>
         <h1>TechHub</h1>
-        <p>研发协同管理平台</p>
+        <p>小型企业管理平台</p>
       </div>
       
       <el-form
