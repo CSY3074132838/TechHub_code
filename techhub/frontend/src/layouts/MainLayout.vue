@@ -31,72 +31,15 @@
           <breadcrumb />
         </div>
         <div class="header-right">
-          <!-- 【第二次迭代】消息通知中心 -->
-          <el-popover
-            placement="bottom"
-            :width="360"
-            trigger="click"
+          <!-- 【自动化迭代】消息通知中心 - 点击跳转消息中心页 -->
+          <el-badge
+            :value="totalUnreadCount"
+            :hidden="totalUnreadCount === 0"
+            class="message-badge"
+            @click="router.push('/notifications')"
           >
-            <template #reference>
-              <el-badge :value="totalUnreadCount" :hidden="totalUnreadCount === 0" class="message-badge">
-                <el-icon size="20"><Bell /></el-icon>
-              </el-badge>
-            </template>
-            <div class="notification-popover">
-              <div class="notification-header">
-                <span>消息通知</span>
-                <div>
-                  <el-button link type="primary" size="small" @click="markAllRead">全部已读</el-button>
-                </div>
-              </div>
-              <!-- 审批待办 Tab -->
-              <div v-if="pendingCount > 0" class="notification-section">
-                <div class="section-title">待处理审批 ({{ pendingCount }})</div>
-                <div class="notification-list">
-                  <div
-                    v-for="item in pendingApprovals"
-                    :key="'approval-'+item.id"
-                    class="notification-item"
-                    @click="goToApprovals"
-                  >
-                    <div class="notification-title">
-                      <el-tag v-if="item.is_urgent" type="danger" size="small">紧急</el-tag>
-                      <span>{{ item.title }}</span>
-                    </div>
-                    <div class="notification-meta">
-                      <span>{{ item.applicant?.real_name }}</span>
-                      <span class="time">{{ formatTime(item.created_at) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- 系统消息 -->
-              <div v-if="notifications.length > 0" class="notification-section">
-                <div class="section-title">系统消息</div>
-                <div class="notification-list">
-                  <div
-                    v-for="item in notifications"
-                    :key="item.id"
-                    class="notification-item"
-                    :class="{ unread: !item.is_read }"
-                    @click="readNotification(item)"
-                  >
-                    <div class="notification-title">
-                      <el-tag :type="item.notification_type === 'approval' ? 'warning' : 'info'" size="small">
-                        {{ item.notification_type === 'approval' ? '审批' : '系统' }}
-                      </el-tag>
-                      <span>{{ item.title }}</span>
-                    </div>
-                    <div class="notification-meta">
-                      <span>{{ item.content }}</span>
-                      <span class="time">{{ formatTime(item.created_at) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <el-empty v-if="pendingCount === 0 && notifications.length === 0" description="暂无消息" />
-            </div>
-          </el-popover>
+            <el-icon size="20"><Bell /></el-icon>
+          </el-badge>
           
           <el-dropdown @command="handleCommand">
             <div class="user-info">
@@ -130,12 +73,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPendingCount, getApprovals } from '@/api/approvals'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notifications'
+import { initSocket, disconnectSocket } from '@/utils/socket'
 import dayjs from 'dayjs'
 
 const route = useRoute()
@@ -278,13 +222,31 @@ onMounted(() => {
       fetchPendingCount()
       fetchPendingApprovals()
       fetchNotifications()
+      // 【自动化】初始化 WebSocket
+      initSocket(userStore.token)
     })
   } else {
     fetchPendingCount()
     fetchPendingApprovals()
     fetchNotifications()
+    // 【自动化】初始化 WebSocket
+    initSocket(userStore.token)
   }
+
+  // 【自动化】监听新通知事件，刷新通知列表
+  window.addEventListener('new-notification', handleNewNotification)
 })
+
+onUnmounted(() => {
+  disconnectSocket()
+  window.removeEventListener('new-notification', handleNewNotification)
+})
+
+const handleNewNotification = () => {
+  // 收到新通知时刷新未读数和通知列表
+  fetchNotifications()
+  fetchPendingCount()
+}
 </script>
 
 <style scoped lang="scss">

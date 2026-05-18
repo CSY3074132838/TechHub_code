@@ -69,7 +69,7 @@ def get_audit_stats():
     from sqlalchemy import func
     from datetime import datetime, timedelta
     
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
     week_ago = today - timedelta(days=7)
     
     # 今日操作数

@@ -151,7 +151,7 @@ def login():
         return jsonify({'message': '账号已被禁用', 'error': 'account_disabled'}), 403
     
     # 更新最后登录时间
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now()
     db.session.commit()
     
     # 登录成功，清除失败计数

@@ -43,13 +43,13 @@ def get_projects():
         dept_members = User.query.filter_by(department=user.department).all()
         member_ids = [m.id for m in dept_members]
         query = Project.query.filter(
-            (Project.creator_id.in_(member_ids)) |
+            (Project.leader_id.in_(member_ids)) |
             (Project.members.any(User.id.in_(member_ids)))
         )
     else:
         # 普通成员：只看自己参与的项目
         query = Project.query.filter(
-            (Project.creator_id == current_user_id) |
+            (Project.leader_id == current_user_id) |
             (Project.members.any(id=current_user_id))
         )
     
@@ -152,7 +152,12 @@ def create_project():
 @jwt_required()
 def get_project(project_id):
     """获取项目详情"""
+    current_user_id = get_jwt_identity()
     project = Project.query.get_or_404(project_id)
+    
+    # 【自动化】项目截止日期预警检查（用户行为触发）
+    _check_deadline_warning_on_view(project, current_user_id)
+    
     return jsonify({'project': project.to_dict(include_tasks=True)}), 200
 
 @projects_bp.route('/<int:project_id>', methods=['PUT'])
@@ -303,8 +308,8 @@ def add_project_member(project_id):
     current_user_id = get_jwt_identity()
     project = Project.query.get_or_404(project_id)
     
-    # 检查权限
-    if project.creator_id != current_user_id:
+    # 检查权限：只有项目负责人或管理员可添加成员
+    if project.leader_id != current_user_id:
         if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
@@ -336,8 +341,8 @@ def remove_project_member(project_id, user_id):
     current_user_id = get_jwt_identity()
     project = Project.query.get_or_404(project_id)
     
-    # 检查权限
-    if project.creator_id != current_user_id:
+    # 检查权限：只有项目负责人或管理员可移除成员
+    if project.leader_id != current_user_id:
         if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
@@ -366,3 +371,70 @@ def get_project_activities(project_id):
         'page': page,
         'per_page': per_page
     }), 200
+
+
+def _check_deadline_warning_on_view(project, user_id):
+    """
+    【自动化】用户查看项目详情时，检查是否需要触发截止日期预警
+    触发条件：
+    1. 项目有 end_date 且状态为 active
+    2. 今天是 end_date 的前一天 或 end_date 当天
+    3. 项目完成度 < 75%
+    4. 该用户今天首次查看该项目
+    5. 该用户是项目成员
+    """
+    try:
+        from datetime import date, timedelta
+        from app.services.notification_service import NotificationService
+        
+        if not project.end_date or project.status != 'active':
+            return
+        
+        today = date.today()
+        deadline = project.end_date
+        
+        # 检查是否在预警窗口内（截止日前一天或当天）
+        warning_start = deadline - timedelta(days=1)
+        if today < warning_start or today > deadline:
+            return
+        
+        # 检查完成度
+        stats = project.get_task_stats()
+        if stats.get('progress', 0) >= 75:
+            return
+        
+        # 检查该用户今天是否已触发过
+        reminder_key = f'project_deadline_view_{project.id}_{user_id}_{today.strftime("%Y-%m-%d")}'
+        if NotificationService.is_reminder_sent(reminder_key):
+            return
+        
+        # 检查该用户是否是项目成员
+        member_ids = {m.id for m in project.members}
+        if project.leader_id:
+            member_ids.add(project.leader_id)
+        if user_id not in member_ids:
+            return
+        
+        # 发送预警通知给该用户
+        days_left = (deadline - today).days
+        if days_left == 0:
+            title = f'【截止日期预警】{project.name}'
+            content = (f'项目「{project.name}」今日截止！当前完成度 {stats["progress"]}%，'
+                       f'未达到75%的目标要求。请尽快处理剩余任务，确保项目按时交付。')
+        else:
+            title = f'【即将截止】{project.name}'
+            content = (f'项目「{project.name}」明日截止！当前完成度 {stats["progress"]}%，'
+                       f'未达到75%的目标要求。请尽快处理剩余任务，确保项目按时交付。')
+        
+        NotificationService.create_notification(
+            user_id=user_id,
+            title=title,
+            content=content,
+            notification_type='system',
+            related_type='project',
+            related_id=project.id
+        )
+        NotificationService.mark_reminder_sent(reminder_key)
+    except Exception as e:
+        # 预警失败不影响主查询
+        print(f"[Project Deadline Warning] 检查失败: {e}")

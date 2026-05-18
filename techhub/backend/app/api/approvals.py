@@ -5,8 +5,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
-from app.models import Approval, User, Activity, ApprovalNode, Role
-from app.services import AuditService, PermissionService
+from app.models import Approval, User, Activity, ApprovalNode, Role, LeaveBalance
+from app.services import AuditService, PermissionService, NotificationService
 
 def parse_approval_type(value):
     """规范化审批类型字符串"""
@@ -118,6 +118,9 @@ def create_approval():
     )
     db.session.add(activity)
     db.session.commit()
+    
+    # 【自动化】审批提交后通知处理人
+    NotificationService.notify_approval_submitted(approval)
     
     return jsonify({
         'message': '审批提交成功',
@@ -247,8 +250,12 @@ def process_approval(approval_id):
     if not data or not data.get('action'):
         return jsonify({'message': '请指定操作', 'error': 'missing_action'}), 400
     
+    # 获取当前节点
+    current_node = None
+    if approval.current_node_id:
+        current_node = ApprovalNode.query.get(approval.current_node_id)
+    
     # 检查权限：拥有审批处理权限、all权限、或是当前节点的指定处理人
-    current_user = User.query.get(current_user_id)
     is_handler = False
     if current_node and current_node.handler_id == current_user_id:
         is_handler = True
@@ -258,59 +265,67 @@ def process_approval(approval_id):
        not PermissionService.check_permission(current_user_id, 'all'):
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
-    # 获取当前节点
-    current_node = None
-    if approval.current_node_id:
-        current_node = ApprovalNode.query.get(approval.current_node_id)
-    
     action = data['action']
     
     if action == 'approve':
-        # 推进到下一个节点
+        # 审批通过：自动完成当前节点及所有后续待处理节点
         if current_node:
             current_node.status = 'completed'
             current_node.handler_id = current_user_id
-            current_node.handled_at = datetime.utcnow()
+            current_node.handled_at = datetime.now()
             current_node.comment = data.get('comment', '')
             
-            # 查找下一个待处理节点
-            next_node = ApprovalNode.query.filter(
+            # 自动完成所有后续待处理节点（包括"归档完成"等自动节点）
+            all_pending_nodes = ApprovalNode.query.filter(
                 ApprovalNode.approval_id == approval.id,
-                ApprovalNode.order > current_node.order,
                 ApprovalNode.status == 'pending'
-            ).order_by(ApprovalNode.order).first()
+            ).order_by(ApprovalNode.order).all()
             
-            if next_node:
-                approval.current_node_id = next_node.id
-                approval.status = 'pending'
-                activity_title = f'审批 "{approval.title}" 通过并进入下一节点'
-            else:
-                # 所有节点完成
-                approval.status = 'approved'
+            if all_pending_nodes:
+                # 还有后续节点，自动完成它们
+                for node in all_pending_nodes:
+                    node.status = 'completed'
+                    node.handler_id = current_user_id
+                    node.handled_at = datetime.now()
+                    node.comment = '系统自动审批'
+                
                 approval.current_node_id = None
+                approval.status = 'approved'
                 activity_title = f'批准了审批 "{approval.title}"'
                 _handle_permission_approval(approval, granted=True)
+                _handle_leave_approval(approval, granted=True)
+            else:
+                # 所有节点已完成
+                approval.current_node_id = None
+                approval.status = 'approved'
+                activity_title = f'批准了审批 "{approval.title}"'
+                _handle_permission_approval(approval, granted=True)
+                _handle_leave_approval(approval, granted=True)
         else:
             approval.status = 'approved'
+            approval.current_node_id = None
             activity_title = f'批准了审批 "{approval.title}"'
             _handle_permission_approval(approval, granted=True)
+            _handle_leave_approval(approval, granted=True)
             
     elif action == 'reject':
         # 拒绝审批，当前节点标记为拒绝
         if current_node:
             current_node.status = 'rejected'
             current_node.handler_id = current_user_id
-            current_node.handled_at = datetime.utcnow()
+            current_node.handled_at = datetime.now()
             current_node.comment = data.get('comment', '')
         
         approval.status = 'rejected'
+        approval.current_node_id = None
         activity_title = f'拒绝了审批 "{approval.title}"'
         _handle_permission_approval(approval, granted=False)
+        _handle_leave_approval(approval, granted=False)
     else:
         return jsonify({'message': '无效的操作', 'error': 'invalid_action'}), 400
     
     approval.processor_id = current_user_id
-    approval.processed_at = datetime.utcnow()
+    approval.processed_at = datetime.now()
     approval.process_comment = data.get('comment', '')
     
     db.session.commit()
@@ -332,6 +347,15 @@ def process_approval(approval_id):
         detail={'action': action, 'title': approval.title},
         status='success'
     )
+    
+    # 【自动化】审批处理结果通知申请人
+    processor = User.query.get(current_user_id)
+    NotificationService.notify_approval_processed(approval, action, processor)
+    
+    return jsonify({
+        'message': '处理成功',
+        'approval': approval.to_dict()
+    }), 200
 
 def _handle_permission_approval(approval, granted=True):
     """处理权限申请审批的结果"""
@@ -356,11 +380,51 @@ def _handle_permission_approval(approval, granted=True):
         if data_analyst_role in applicant.roles:
             applicant.roles.remove(data_analyst_role)
             db.session.commit()
+
+
+def _handle_leave_approval(approval, granted=True):
+    """处理请假审批的结果：同步更新假期余额"""
+    if not approval.title or '【请假申请】' not in approval.title:
+        return
     
-    return jsonify({
-        'message': '审批处理成功',
-        'approval': approval.to_dict(include_chain=True)
-    }), 200
+    # 从标题中解析请假天数
+    try:
+        days_str = approval.title.split('-')[-1].replace('天', '').strip()
+        days = float(days_str)
+    except (ValueError, IndexError):
+        return
+    
+    # 从描述中解析请假类型
+    leave_type_map = {'年假': 'annual', '病假': 'sick', '事假': 'personal'}
+    leave_type = None
+    if approval.description:
+        for cn, en in leave_type_map.items():
+            if f'请假类型：{cn}' in approval.description:
+                leave_type = en
+                break
+    
+    if not leave_type:
+        return
+    
+    # 查找假期余额记录
+    year = approval.created_at.year if approval.created_at else datetime.now().year
+    balance = LeaveBalance.query.filter_by(
+        user_id=approval.applicant_id,
+        leave_type=leave_type,
+        year=year
+    ).first()
+    
+    if not balance:
+        return
+    
+    if granted:
+        # 审批通过：扣除假期余额
+        current_used = float(balance.used_days or 0)
+        balance.used_days = current_used + days
+        db.session.commit()
+    else:
+        # 审批拒绝：不扣除
+        pass
 
 @approvals_bp.route('/stats', methods=['GET'])
 @jwt_required()

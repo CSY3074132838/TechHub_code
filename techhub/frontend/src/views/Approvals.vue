@@ -69,7 +69,7 @@
           <template #default="{ row }">
             <div class="approval-title">
               <el-tag v-if="row.is_urgent" type="danger" size="small">紧急</el-tag>
-              <span>{{ row.title }}</span>
+              <el-link type="primary" @click="viewDetail(row)">{{ row.title }}</el-link>
             </div>
           </template>
         </el-table-column>

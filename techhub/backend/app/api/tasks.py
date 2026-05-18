@@ -6,7 +6,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app import db
 from app.models import Task, Project, User, Comment, Activity
-from app.services import AuditService, PermissionService
+from app.services import AuditService, PermissionService, NotificationService
 
 def parse_task_status(value):
     """规范化任务状态字符串"""
@@ -77,7 +77,7 @@ def get_tasks():
             (Task.creator_id == current_user_id) |
             Task.project_id.in_(
                 db.session.query(Project.id).filter(
-                    (Project.creator_id == current_user_id) |
+                    (Project.leader_id == current_user_id) |
                     (Project.members.any(id=current_user_id))
                 )
             )
@@ -115,7 +115,7 @@ def create_task():
         return jsonify({'message': '项目不存在', 'error': 'project_not_found'}), 404
     
     # 检查用户是否有权限在此项目创建任务
-    if project.creator_id != current_user_id and current_user_id not in [m.id for m in project.members]:
+    if project.leader_id != current_user_id and current_user_id not in [m.id for m in project.members]:
         if not PermissionService.check_permission(current_user_id, 'task_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
@@ -152,6 +152,10 @@ def create_task():
         detail={'title': task.title, 'project_id': task.project_id},
         status='success'
     )
+    
+    # 【自动化】任务指派通知
+    if task.assignee_id:
+        NotificationService.notify_task_assigned(task, task.assignee_id)
     
     return jsonify({
         'message': '任务创建成功',
@@ -206,7 +210,7 @@ def update_task(task_id):
     
     # 如果状态变为完成，记录完成时间
     if data.get('status') == 'done' and old_status != 'done':
-        task.completed_at = datetime.utcnow()
+        task.completed_at = datetime.now()
         activity_type = 'task_completed'
         activity_title = f'完成了任务 "{task.title}"'
     else:
@@ -235,6 +239,19 @@ def update_task(task_id):
         detail={'old_status': old_status if old_status else None},
         status='success'
     )
+    
+    # 【自动化】任务完成通知创建者
+    if data.get('status') == 'done' and old_status != 'done':
+        current_user = User.query.get(current_user_id)
+        NotificationService.notify_task_completed(task, current_user)
+    
+    # 【自动化】任务指派变更通知
+    if 'assignee_id' in data and data['assignee_id'] and data['assignee_id'] != old_data.get('assignee', {}).get('id'):
+        NotificationService.notify_task_assigned(task, data['assignee_id'])
+    
+    # 【自动化】项目进度检查（状态变更时）
+    if 'status' in data and old_status != data['status']:
+        _check_project_progress_on_task_change(task.project)
     
     return jsonify({
         'message': '任务更新成功',
@@ -297,6 +314,9 @@ def add_comment(task_id):
     db.session.add(activity)
     db.session.commit()
     
+    # 【自动化】评论通知任务相关人员
+    NotificationService.notify_comment_added(comment, task)
+    
     return jsonify({
         'message': '评论添加成功',
         'comment': comment.to_dict()
@@ -325,6 +345,9 @@ def update_board():
     
     updates = data['updates']
     
+    # 记录状态变更的任务用于后续通知
+    status_changed_tasks = []
+    
     for update in updates:
         task_id = update.get('task_id')
         new_status = update.get('status')
@@ -335,16 +358,24 @@ def update_board():
             # 检查权限
             if task.assignee_id != current_user_id and task.creator_id != current_user_id:
                 project = Project.query.get(task.project_id)
-                if project.creator_id != current_user_id:
+                if project.leader_id != current_user_id:
                     if not PermissionService.check_permission(current_user_id, 'task_manage'):
                         continue  # 跳过无权限的任务
             
-            if new_status:
+            if new_status and task.status != new_status:
+                status_changed_tasks.append((task, task.status, new_status))
                 task.status = parse_task_status(new_status)
             if new_order is not None:
                 task.order = new_order
     
     db.session.commit()
+    
+    # 【自动化】看板状态变更通知
+    for task, old_status, new_status in status_changed_tasks:
+        if new_status == 'done' and old_status != 'done':
+            current_user = User.query.get(current_user_id)
+            NotificationService.notify_task_completed(task, current_user)
+        _check_project_progress_on_task_change(task.project)
     
     return jsonify({'message': '看板更新成功'}), 200
 
@@ -387,7 +418,7 @@ def review_task(task_id):
         return jsonify({'message': '项目不存在', 'error': 'project_not_found'}), 404
     
     # 检查权限：项目负责人或管理员可以审核
-    if project.leader_id != current_user_id and project.creator_id != current_user_id:
+    if project.leader_id != current_user_id:
         if not PermissionService.check_permission(current_user_id, 'task_manage'):
             return jsonify({'message': '只有项目负责人可以审核任务', 'error': 'forbidden'}), 403
     
@@ -397,7 +428,7 @@ def review_task(task_id):
     
     if action == 'approve':
         task.status = 'done'
-        task.completed_at = datetime.utcnow()
+        task.completed_at = datetime.now()
         message = f'任务 "{task.title}" 审核通过'
         activity_type = 'task_completed'
     else:
@@ -419,6 +450,23 @@ def review_task(task_id):
     db.session.add(activity)
     db.session.commit()
     
+    # 【自动化】任务审核结果通知
+    if task.assignee_id and task.assignee_id != current_user_id:
+        action_text = '通过' if action == 'approve' else '驳回'
+        current_user = User.query.get(current_user_id)
+        reviewer_name = current_user.real_name or current_user.username
+        NotificationService.create_notification(
+            user_id=task.assignee_id,
+            title=f'【任务审核{action_text}】{task.title}',
+            content=f'您提交的任务「{task.title}」已被 {reviewer_name} 审核{action_text}。',
+            notification_type='task',
+            related_type='task',
+            related_id=task.id
+        )
+    
+    # 【自动化】项目进度检查
+    _check_project_progress_on_task_change(project)
+    
     return jsonify({
         'message': message,
         'task': task.to_dict()
@@ -438,7 +486,7 @@ def submit_task_for_review(task_id):
     
     # 检查权限：项目成员均可提交审核
     member_ids = [m.id for m in project.members]
-    if current_user_id not in member_ids and project.creator_id != current_user_id and project.leader_id != current_user_id:
+    if current_user_id not in member_ids and project.leader_id != current_user_id:
         if not PermissionService.check_permission(current_user_id, 'task_manage'):
             return jsonify({'message': '只有项目成员可以提交审核', 'error': 'forbidden'}), 403
     
@@ -460,7 +508,55 @@ def submit_task_for_review(task_id):
     db.session.add(activity)
     db.session.commit()
     
+    # 【自动化】提交审核通知项目负责人
+    if project.leader_id and project.leader_id != current_user_id:
+        current_user = User.query.get(current_user_id)
+        submitter_name = current_user.real_name or current_user.username
+        NotificationService.create_notification(
+            user_id=project.leader_id,
+            title=f'【待审核】{task.title}',
+            content=f'{submitter_name} 提交了任务「{task.title}」等待审核，请尽快处理。',
+            notification_type='task',
+            related_type='task',
+            related_id=task.id
+        )
+    
     return jsonify({
         'message': '任务已提交审核',
         'task': task.to_dict()
     }), 200
+
+
+def _check_project_progress_on_task_change(project):
+    """
+    【自动化】任务状态变更时检查项目进度
+    如果进度落后预期超过20%，发送预警通知
+    """
+    from datetime import date
+    from app.services.notification_service import NotificationService
+
+    if not project or not project.start_date or not project.end_date:
+        return
+
+    today = date.today()
+    total_days = (project.end_date - project.start_date).days
+    if total_days <= 0:
+        return
+
+    elapsed_days = (today - project.start_date).days
+    if elapsed_days < 0:
+        return
+
+    stats = project.get_task_stats()
+    actual_progress = stats.get('progress', 0)
+    expected_progress = round((elapsed_days / total_days) * 100, 1)
+
+    # 预警条件：落后超过 20%
+    if expected_progress - actual_progress > 20:
+        # 去重：同一天同一项目只发一次
+        reminder_key = f'project_warning_{project.id}_{today.strftime("%Y-%m-%d")}'
+        if not NotificationService.is_reminder_sent(reminder_key):
+            NotificationService.notify_project_progress_warning(
+                project, expected_progress, actual_progress
+            )
+            NotificationService.mark_reminder_sent(reminder_key)

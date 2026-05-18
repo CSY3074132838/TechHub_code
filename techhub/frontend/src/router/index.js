@@ -130,6 +130,13 @@ const routes = [
         name: 'Payments',
         component: () => import('@/views/Payments.vue'),
         meta: { title: '收付款', icon: 'Wallet' }
+      },
+      // 【自动化迭代】消息中心
+      {
+        path: '/notifications',
+        name: 'Notifications',
+        component: () => import('@/views/Notifications.vue'),
+        meta: { title: '消息中心', icon: 'Bell' }
       }
     ]
   },

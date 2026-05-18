@@ -128,7 +128,7 @@ class AuditService:
     def get_login_stats(user_id=None, days=7):
         """获取登录统计（用于安全分析）"""
         from datetime import datetime, timedelta
-        start = datetime.utcnow() - timedelta(days=days)
+        start = datetime.now() - timedelta(days=days)
         
         query = AuditLog.query.filter(AuditLog.action.in_([AuditService.LOGIN, AuditService.LOGIN_FAILED]))
         query = query.filter(AuditLog.created_at >= start)

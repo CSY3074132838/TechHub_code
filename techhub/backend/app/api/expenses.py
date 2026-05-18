@@ -248,7 +248,7 @@ def reimburse_expense(expense_id):
     
     expense = Expense.query.get_or_404(expense_id)
     expense.status = 'reimbursed'
-    expense.reimbursed_at = datetime.utcnow()
+    expense.reimbursed_at = datetime.now()
     db.session.commit()
     
     AuditService.log_from_current_user(
@@ -296,7 +296,7 @@ def get_expense_stats():
     """
     current_user_id = get_jwt_identity()
     user_id = request.args.get('user_id', type=int)
-    month = request.args.get('month', datetime.utcnow().strftime('%Y-%m'))
+    month = request.args.get('month', datetime.now().strftime('%Y-%m'))
     
     current_user = User.query.get(current_user_id)
     is_manager = _is_finance_manager(current_user)
@@ -395,7 +395,7 @@ def upload_attachment():
         unique_name = f"{uuid.uuid4().hex}.{ext}"
         
         # 按日期创建子目录
-        today = datetime.utcnow().strftime('%Y%m%d')
+        today = datetime.now().strftime('%Y%m%d')
         upload_dir = os.path.join(current_app.root_path, '..', 'uploads', 'expenses', today)
         if not os.path.exists(upload_dir):
             os.makedirs(upload_dir)

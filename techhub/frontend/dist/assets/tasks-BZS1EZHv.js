@@ -1,0 +1,1 @@
+import{N as t}from"./index-C8rPekxP.js";const r=s=>t.get("/tasks/",{params:s}),o=s=>t.get(`/tasks/${s}`),n=s=>t.post("/tasks/",s),k=(s,e)=>t.put(`/tasks/${s}`,e),u=(s,e)=>t.post(`/tasks/${s}/comments`,{content:e}),c=s=>t.post(`/tasks/${s}/submit-review`),m=(s,e)=>t.post(`/tasks/${s}/review`,{action:e});export{u as a,r as b,n as c,o as g,m as r,c as s,k as u};

@@ -52,6 +52,10 @@
               <el-icon><OfficeBuilding /></el-icon>
               <span>客户：{{ project.client.name }}</span>
             </div>
+            <div class="meta-item" v-if="project.start_date || project.end_date">
+              <el-icon><Calendar /></el-icon>
+              <span>{{ formatDateRange(project.start_date, project.end_date) }}</span>
+            </div>
           </div>
           
           <div class="project-stats">
@@ -199,7 +203,7 @@ import { getProjects, createProject, deleteProject } from '@/api/projects'
 import { getUsers } from '@/api/users'
 import { getClientOptions } from '@/api/clients'
 import { useUserStore } from '@/stores/user'
-import { Search as SearchIcon } from '@element-plus/icons-vue'
+import { Search as SearchIcon, Calendar } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -290,8 +294,20 @@ const goToProject = (id) => {
   router.push(`/projects/${id}`)
 }
 
+const formatDateRange = (start, end) => {
+  if (!start && !end) return ''
+  const s = start ? start.slice(5) : '?'  // MM-DD
+  const e = end ? end.slice(5) : '?'
+  return `${s} ~ ${e}`
+}
+
+const formatFullDate = (dateStr) => {
+  if (!dateStr) return ''
+  return dateStr  // YYYY-MM-DD
+}
+
 const canDelete = (project) => {
-  return project.creator?.id === userStore.userInfo?.id || userStore.hasPermission('project_manage')
+  return project.leader_id === userStore.userInfo?.id || userStore.hasPermission('project_manage')
 }
 
 const handleDelete = async (project) => {

@@ -197,7 +197,7 @@ def delete_payment(payment_id):
 def get_payment_stats():
     """获取收付款统计"""
     current_user_id = get_jwt_identity()
-    month = request.args.get('month', datetime.utcnow().strftime('%Y-%m'))
+    month = request.args.get('month', datetime.now().strftime('%Y-%m'))
     
     try:
         year, mon = map(int, month.split('-'))
@@ -241,7 +241,7 @@ def get_payment_stats():
     from datetime import timedelta
     trend = []
     for i in range(5, -1, -1):
-        d = datetime.utcnow().replace(day=1) - timedelta(days=i*30)
+        d = datetime.now().replace(day=1) - timedelta(days=i*30)
         trend_year, trend_mon = d.year, d.month
         inc = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
             PaymentRecord.payment_type == 'income',

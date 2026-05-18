@@ -544,7 +544,6 @@ const currentWorkflowStep = computed(() => {
 const isProjectLeader = computed(() => {
   const currentUserId = userStore.userInfo?.id
   return project.value.leader_id === currentUserId || 
-         project.value.creator?.id === currentUserId || 
          userStore.hasPermission('project_manage')
 })
 
@@ -660,7 +659,7 @@ const openEditDialog = () => {
     start_date: project.value.start_date || '',
     end_date: project.value.end_date || '',
     client_id: project.value.client_id || '',
-    leader_id: project.value.leader_id || project.value.creator?.id || '',
+    leader_id: project.value.leader_id || '',
     member_ids: project.value.members?.map(m => m.id) || []
   }
   showEditDialog.value = true

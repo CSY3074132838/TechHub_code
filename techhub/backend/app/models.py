@@ -125,7 +125,7 @@ class Role(db.Model):
     permissions = db.Column(db.JSON, default=list)
     data_scope = db.Column(db.String(20), default='self')
     data_scope_custom = db.Column(db.JSON, default=list)  # CUSTOM模式下的部门列表
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     # 关联关系
     users = db.relationship('User', secondary=user_roles, back_populates='roles')
@@ -190,8 +190,8 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     permission_version = db.Column(db.Integer, default=1)  # 权限版本号，用于Token即时失效
     last_login = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # ==================== 【第二次迭代】员工档案扩展字段 ====================
     employee_no = db.Column(db.String(50), unique=True, index=True)  # 工号
@@ -303,8 +303,8 @@ class Department(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('departments.id'))  # 父部门ID
     manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))       # 部门负责人ID
     sort_order = db.Column(db.Integer, default=0)                       # 排序号
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     manager = db.relationship('User', foreign_keys=[manager_id])
@@ -352,8 +352,8 @@ class Project(db.Model):
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     client_id = db.Column(db.Integer, db.ForeignKey('clients.id'), nullable=True)
@@ -414,8 +414,8 @@ class Task(db.Model):
     due_date = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     order = db.Column(db.Integer, default=0)  # 看板排序
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     comments = db.relationship('Comment', backref='task', lazy='dynamic', cascade='all, delete-orphan')
@@ -449,7 +449,7 @@ class Comment(db.Model):
     content = db.Column(db.Text, nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     def to_dict(self):
         return {
@@ -476,8 +476,8 @@ class Approval(db.Model):
     process_comment = db.Column(db.Text)
     attachments = db.Column(db.JSON, default=list)
     current_node_id = db.Column(db.Integer, db.ForeignKey('approval_nodes.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     nodes = db.relationship('ApprovalNode', backref='approval', lazy='dynamic', 
@@ -522,7 +522,7 @@ class Activity(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'))
     meta_data = db.Column(db.JSON, default=dict)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, index=True)
     
     def to_dict(self):
         return {
@@ -549,7 +549,7 @@ class ApprovalNode(db.Model):
     order = db.Column(db.Integer, default=0)  # 节点顺序
     comment = db.Column(db.Text)
     handled_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     # 关联关系
     handler = db.relationship('User', foreign_keys=[handler_id])
@@ -580,7 +580,7 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
     status = db.Column(db.String(20), default='success')  # success / failure
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.now, index=True)
     
     def to_dict(self):
         return {
@@ -612,8 +612,8 @@ class Client(db.Model):
     level = db.Column(db.String(20), default='b')  # s/a/b/c
     remark = db.Column(db.Text)
     manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))  # 客户经理
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     manager = db.relationship('User', foreign_keys=[manager_id])
@@ -662,8 +662,8 @@ class Contract(db.Model):
     payment_terms = db.Column(db.Text)
     content = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     creator = db.relationship('User', foreign_keys=[created_by])
@@ -707,8 +707,8 @@ class Ticket(db.Model):
     reporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     resolved_at = db.Column(db.DateTime)
     resolution = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     # 关联关系
     assignee = db.relationship('User', foreign_keys=[assignee_id])
@@ -743,7 +743,7 @@ class SystemConfig(db.Model):
     key = db.Column(db.String(100), unique=True, nullable=False)
     value = db.Column(db.Text)
     description = db.Column(db.String(200))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
 
 # ==================== 【第二次迭代】考勤与工时模型 ====================
@@ -760,7 +760,7 @@ class Attendance(db.Model):
     overtime_hours = db.Column(db.Numeric(4, 2), default=0)  # 加班时长
     status = db.Column(db.String(20), default='normal')      # normal/late/early/leave/absent
     remark = db.Column(db.Text)                              # 备注
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     user = db.relationship('User')
     
@@ -790,8 +790,8 @@ class LeaveBalance(db.Model):
     total_days = db.Column(db.Numeric(5, 1), default=0)      # 总天数
     used_days = db.Column(db.Numeric(5, 1), default=0)       # 已用天数
     year = db.Column(db.Integer, nullable=False)             # 所属年份
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     user = db.relationship('User')
     
@@ -819,7 +819,7 @@ class WorkTimeRecord(db.Model):
     work_date = db.Column(db.Date, nullable=False)
     hours = db.Column(db.Numeric(4, 2), default=0)           # 投入工时
     description = db.Column(db.Text)                         # 工作内容描述
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     user = db.relationship('User')
     project = db.relationship('Project')
@@ -857,8 +857,8 @@ class Expense(db.Model):
     attachments = db.Column(db.JSON, default=list)
     approval_id = db.Column(db.Integer, db.ForeignKey('approvals.id'))  # 关联审批
     reimbursed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     user = db.relationship('User', foreign_keys=[user_id])
     approval = db.relationship('Approval', foreign_keys=[approval_id])
@@ -897,8 +897,8 @@ class PaymentRecord(db.Model):
     status = db.Column(db.String(20), default='pending')  # pending/completed/cancelled
     description = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
     contract = db.relationship('Contract', foreign_keys=[contract_id])
     project = db.relationship('Project', foreign_keys=[project_id])
@@ -940,7 +940,7 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     related_type = db.Column(db.String(50))  # approval/task/expense/payment
     related_id = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
     
     user = db.relationship('User')
     

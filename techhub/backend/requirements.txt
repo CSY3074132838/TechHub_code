@@ -12,3 +12,6 @@ flask-marshmallow==0.15.0
 marshmallow-sqlalchemy==0.29.0
 bcrypt==4.1.2
 faker==22.0.0
+
+APScheduler==3.10.4
+flask-socketio==5.3.6

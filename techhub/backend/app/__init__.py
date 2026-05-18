@@ -7,6 +7,7 @@ from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_marshmallow import Marshmallow
+from flask_socketio import SocketIO
 from config import config
 
 # 初始化扩展（不绑定应用）
@@ -14,6 +15,7 @@ db = SQLAlchemy()
 jwt = JWTManager()
 ma = Marshmallow()
 migrate = Migrate()
+socketio = SocketIO(cors_allowed_origins=["http://localhost:5173", "http://127.0.0.1:5173"], async_mode='threading')
 
 def create_app(config_name='default'):
     """应用工厂函数"""
@@ -34,6 +36,9 @@ def create_app(config_name='default'):
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
+    
+    # 初始化 SocketIO
+    socketio.init_app(app)
     
     # 注册蓝图
     from app.api.auth import auth_bp
@@ -139,5 +144,13 @@ def create_app(config_name='default'):
         # 初始化角色数据
         from app.models import Role
         Role.init_roles()
+    
+    # 初始化定时任务调度器
+    from app.services.scheduler_service import init_scheduler
+    init_scheduler(app, socketio)
+    
+    # 注册 SocketIO 命名空间
+    from app.api.socket_events import NotificationsNamespace
+    socketio.on_namespace(NotificationsNamespace('/notifications'))
     
     return app

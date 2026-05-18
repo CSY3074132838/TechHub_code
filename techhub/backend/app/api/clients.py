@@ -273,7 +273,7 @@ def get_client_stats():
     if scope.value == 'all':
         pass
     elif scope.value in ('dept', 'dept_and_below'):
-        dept_members = User.query.filter_by(department=user.department).all()
+        dept_members = User.query.filter_by(department=user.department).all() 
         member_ids = [m.id for m in dept_members]
         base_query = base_query.filter(Client.manager_id.in_(member_ids))
     else:

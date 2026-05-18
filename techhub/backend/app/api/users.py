@@ -402,8 +402,8 @@ def get_user_stats():
     
     # 【第二次迭代】本月入职人数
     from datetime import datetime
-    current_month = datetime.utcnow().month
-    current_year = datetime.utcnow().year
+    current_month = datetime.now().month
+    current_year = datetime.now().year
     new_this_month = User.query.filter(
         extract('year', User.entry_date) == current_year,
         extract('month', User.entry_date) == current_month

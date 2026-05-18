@@ -20,7 +20,7 @@ def get_activities():
     
     # 获取用户能看到的项目
     user_projects = Project.query.filter(
-        (Project.creator_id == current_user_id) |
+        (Project.leader_id == current_user_id) |
         (Project.members.any(id=current_user_id))
     ).all()
     project_ids = [p.id for p in user_projects]
@@ -57,7 +57,7 @@ def get_recent_activities():
     
     # 获取用户能看到的项目
     user_projects = Project.query.filter(
-        (Project.creator_id == current_user_id) |
+        (Project.leader_id == current_user_id) |
         (Project.members.any(id=current_user_id))
     ).all()
     project_ids = [p.id for p in user_projects]

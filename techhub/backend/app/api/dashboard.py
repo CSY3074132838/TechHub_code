@@ -24,7 +24,7 @@ def get_overview():
     
     # 我的项目数
     my_projects = Project.query.filter(
-        (Project.creator_id == current_user_id) |
+        (Project.leader_id == current_user_id) |
         (Project.members.any(id=current_user_id))
     ).count()
     
@@ -35,7 +35,7 @@ def get_overview():
     ).count()
     
     # 今日完成任务
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     today_completed = Task.query.filter(
         Task.assignee_id == current_user_id,
         Task.status == 'done',
@@ -63,7 +63,7 @@ def get_finance_overview():
     from app.models import Expense, PaymentRecord
     from datetime import date
     
-    today = datetime.utcnow().date()
+    today = datetime.now().date()
     month_start = today.replace(day=1)
     year_start = today.replace(month=1, day=1)
     
@@ -105,7 +105,7 @@ def get_finance_overview():
     from datetime import timedelta
     trend = []
     for i in range(5, -1, -1):
-        d = datetime.utcnow().replace(day=1) - timedelta(days=i*30)
+        d = datetime.now().replace(day=1) - timedelta(days=i*30)
         ty, tm = d.year, d.month
         inc = db.session.query(db.func.sum(PaymentRecord.amount)).filter(
             PaymentRecord.payment_type == 'income',
@@ -206,7 +206,7 @@ def get_activities():
     
     # 获取用户参与的项目
     user_projects = Project.query.filter(
-        (Project.creator_id == current_user_id) |
+        (Project.leader_id == current_user_id) |
         (Project.members.any(id=current_user_id))
     ).all()
     
@@ -259,7 +259,7 @@ def get_statistics():
     completed_trend = []
     
     for i in range(6, -1, -1):
-        date = datetime.utcnow().date() - timedelta(days=i)
+        date = datetime.now().date() - timedelta(days=i)
         dates.append(date.strftime('%m-%d'))
         
         day_start = datetime.combine(date, datetime.min.time())
@@ -351,7 +351,7 @@ def get_personal_statistics(user_id):
     completed_trend = []
     
     for i in range(6, -1, -1):
-        date = datetime.utcnow().date() - timedelta(days=i)
+        date = datetime.now().date() - timedelta(days=i)
         dates.append(date.strftime('%m-%d'))
         
         day_start = datetime.combine(date, datetime.min.time())
@@ -390,7 +390,7 @@ def get_performance():
         return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
     # 本月统计
-    today = datetime.utcnow()
+    today = datetime.now()
     month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     # 所有用户的绩效
@@ -414,7 +414,7 @@ def get_performance():
         overdue = Task.query.filter(
             Task.assignee_id == u.id,
             Task.status != 'done',
-            Task.due_date < datetime.utcnow()
+            Task.due_date < datetime.now()
         ).count()
         
         user_stats.append({
@@ -466,7 +466,7 @@ def get_crm_overview():
     ticket_trend = []
     
     for i in range(29, -1, -1):
-        date = datetime.utcnow().date() - timedelta(days=i)
+        date = datetime.now().date() - timedelta(days=i)
         dates.append(date.strftime('%m-%d'))
         
         day_start = datetime.combine(date, datetime.min.time())

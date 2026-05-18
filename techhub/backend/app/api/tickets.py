@@ -142,7 +142,7 @@ def update_ticket(ticket_id):
         ticket.status = data['status']
         # 解决时记录解决时间
         if ticket.status == 'resolved' and old_status != 'resolved':
-            ticket.resolved_at = datetime.utcnow()
+            ticket.resolved_at = datetime.now()
             ticket.resolution = data.get('resolution', '')
     
     db.session.commit()
