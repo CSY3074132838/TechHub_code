@@ -1,0 +1,84 @@
+digraph "TechHub Use Case Diagram" {
+	graph [fontcolor="#2D3436" fontname="Sans-Serif" fontsize=15 label="TechHub Use Case Diagram" nodesep=0.60 pad=2.0 rankdir=LR ranksep=0.75 splines=ortho]
+	node [fixedsize=true fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13 height=1.4 imagescale=true labelloc=b shape=box style=rounded width=1.4]
+	edge [color="#7B8894"]
+	subgraph "cluster_角色 Actors" {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label="角色 Actors" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		e6a2ba2ab8f1445681b34cc9b50bca95 [label="管理层
+(总经理/副总经理)" height=2.3 image=actor_icon shape=none]
+		d141c1df25134964af91dda3d5171934 [label="项目负责人
+(部门经理/项目经理)" height=2.3 image=actor_icon shape=none]
+		"77655ad9828c4737b8d1b1255fb5fd2d" [label="普通员工" height=1.9 image=actor_icon shape=none]
+	}
+	subgraph "cluster_TechHub 企业管理系统" {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label="TechHub 企业管理系统" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		subgraph "cluster_管理层功能" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="管理层功能" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"3fe3aeeb335243a9a260140b7a1a84b5" [label="数据看板" height=1.9 image=usecase_icon shape=none]
+			"6d9bca854a954a33b17bdb7f74188747" [label="审批中心" height=1.9 image=usecase_icon shape=none]
+			"5efa97d442da465fb2f64bb09d5050b2" [label="用户管理" height=1.9 image=usecase_icon shape=none]
+			a49c1fdccb164ef0a3461958f6309420 [label="组织架构" height=1.9 image=usecase_icon shape=none]
+			b7898ce67c8e4dfabd264fcb034eb3b8 [label="财务看板" height=1.9 image=usecase_icon shape=none]
+			"996bbb0826b14af59cd2418825254b86" [label="审计日志" height=1.9 image=usecase_icon shape=none]
+			"5b1b6f924f394549a5de332d3d947dac" [label="客户管理" height=1.9 image=usecase_icon shape=none]
+			"18858af8d5e44203b9c184c097d70a59" [label="合同管理" height=1.9 image=usecase_icon shape=none]
+			f9d1512205004a4c93c6475126695a53 [label="项目管理" height=1.9 image=usecase_icon shape=none]
+		}
+		subgraph "cluster_项目负责人功能" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="项目负责人功能" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"3e732ac4c7e84ff6a008b48dab560255" [label="项目管理" height=1.9 image=usecase_icon shape=none]
+			e6f82b6532d1445a856710b701f1cb9d [label="任务分配" height=1.9 image=usecase_icon shape=none]
+			a90a69127638427792e484bed6566b8d [label="审批中心" height=1.9 image=usecase_icon shape=none]
+			"22d9a0f7fc7a4511800f176585fa4e1f" [label="客户管理" height=1.9 image=usecase_icon shape=none]
+			"1c0383a8ca6b4e1b904555cc575257eb" [label="合同管理" height=1.9 image=usecase_icon shape=none]
+			"8189783577474e448b8c36d2c473138c" [label="费用报销" height=1.9 image=usecase_icon shape=none]
+			"020e4ce900de484c96e620bb9f1da5e4" [label="收付款" height=1.9 image=usecase_icon shape=none]
+			"295cbae97664432aa83f58d3fa9b6289" [label="考勤管理" height=1.9 image=usecase_icon shape=none]
+			"711587c6e8f04b658d9203b716fc7535" [label="客户工单" height=1.9 image=usecase_icon shape=none]
+		}
+		subgraph "cluster_普通员工功能" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="普通员工功能" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"6b81bd0f5b1a48298bbead2308141d75" [label="我的任务" height=1.9 image=usecase_icon shape=none]
+			"196b8c8638954518ba00e9e6ff7713e1" [label="考勤打卡" height=1.9 image=usecase_icon shape=none]
+			"836cbf6475a341418836f5c333269648" [label="费用报销" height=1.9 image=usecase_icon shape=none]
+			"4bb154e3d9c848adb174e606f6a58372" [label="客户工单" height=1.9 image=usecase_icon shape=none]
+			b6e3779243a0463cba613dc102ff82ca [label="消息中心" height=1.9 image=usecase_icon shape=none]
+			"5fb1be6bb89f4040b0d4ccd3fe81952c" [label="个人中心" height=1.9 image=usecase_icon shape=none]
+		}
+		subgraph "cluster_公共功能" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="公共功能" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			f31637f9d629444aae354f599cfa2c44 [label="工作台" height=1.9 image=usecase_icon shape=none]
+			b5125a96d9b041ba87545fde770a8943 [label="登录/注册" height=1.9 image=usecase_icon shape=none]
+		}
+	}
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> "3fe3aeeb335243a9a260140b7a1a84b5" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> "6d9bca854a954a33b17bdb7f74188747" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> "5efa97d442da465fb2f64bb09d5050b2" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> a49c1fdccb164ef0a3461958f6309420 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> b7898ce67c8e4dfabd264fcb034eb3b8 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> "996bbb0826b14af59cd2418825254b86" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> "5b1b6f924f394549a5de332d3d947dac" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> "18858af8d5e44203b9c184c097d70a59" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> f9d1512205004a4c93c6475126695a53 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> f31637f9d629444aae354f599cfa2c44 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	e6a2ba2ab8f1445681b34cc9b50bca95 -> b5125a96d9b041ba87545fde770a8943 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "3e732ac4c7e84ff6a008b48dab560255" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> e6f82b6532d1445a856710b701f1cb9d [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> a90a69127638427792e484bed6566b8d [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "22d9a0f7fc7a4511800f176585fa4e1f" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "1c0383a8ca6b4e1b904555cc575257eb" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "8189783577474e448b8c36d2c473138c" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "020e4ce900de484c96e620bb9f1da5e4" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "295cbae97664432aa83f58d3fa9b6289" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> "711587c6e8f04b658d9203b716fc7535" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> f31637f9d629444aae354f599cfa2c44 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d141c1df25134964af91dda3d5171934 -> b5125a96d9b041ba87545fde770a8943 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> "6b81bd0f5b1a48298bbead2308141d75" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> "196b8c8638954518ba00e9e6ff7713e1" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> "836cbf6475a341418836f5c333269648" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> "4bb154e3d9c848adb174e606f6a58372" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> b6e3779243a0463cba613dc102ff82ca [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> "5fb1be6bb89f4040b0d4ccd3fe81952c" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> f31637f9d629444aae354f599cfa2c44 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"77655ad9828c4737b8d1b1255fb5fd2d" -> b5125a96d9b041ba87545fde770a8943 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+}
