@@ -42,9 +42,10 @@ request.interceptors.request.use(
 )
 
 // 响应拦截器
+// 【第三次迭代陈思言负责】修复 blob 响应错误处理逻辑
 request.interceptors.response.use(
   (response) => {
-    // 如果是blob响应，返回完整response，让调用方处理blob
+    // 【第三次迭代陈思言负责】blob 响应返回完整 response，让调用方处理 blob
     if (response.config.responseType === 'blob') {
       return response
     }
@@ -100,7 +101,7 @@ request.interceptors.response.use(
         }
       }
       
-      // 对于blob响应，尝试解析错误信息
+      // 【第三次迭代陈思言负责】修复：blob 响应错误时解析错误信息
       let errorMessage = '请求失败'
       if (response.config?.responseType === 'blob') {
         try {

@@ -1,5 +1,9 @@
 """
 审计日志 API - 操作日志查询与管理
+第三次迭代陈思言负责：
+- 新增时间范围筛选（start_time / end_time）
+- 新增日志详情接口 /detail/<log_id>
+- 新增 Excel 导出接口 /export（使用 openpyxl 生成）
 """
 from flask import Blueprint, request, jsonify, send_file
 from app.services import AuditService
@@ -21,6 +25,7 @@ def get_audit_logs():
         'resource_type': request.args.get('resource_type'),
         'status': request.args.get('status'),
         'username': request.args.get('username'),
+        # 【第三次迭代陈思言负责】新增时间范围筛选参数
         'start_time': request.args.get('start_time'),
         'end_time': request.args.get('end_time')
     }
@@ -123,6 +128,7 @@ def get_my_logs():
     return jsonify(result), 200
 
 
+# 【第三次迭代陈思言负责】新增审计日志详情接口
 @audit_bp.route('/detail/<int:log_id>', methods=['GET'])
 @require_permission('audit_view')
 def get_audit_detail(log_id):
@@ -155,6 +161,7 @@ def get_audit_detail(log_id):
     return jsonify({'log': detail}), 200
 
 
+# 【第三次迭代陈思言负责】新增审计日志 Excel 导出接口
 @audit_bp.route('/export', methods=['GET'])
 @require_permission('audit_view')
 def export_audit_logs():

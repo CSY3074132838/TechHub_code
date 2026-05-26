@@ -105,6 +105,7 @@ class AuditService:
                 query = query.filter_by(resource_type=filters['resource_type'])
             if filters.get('status'):
                 query = query.filter_by(status=filters['status'])
+            # 【第三次迭代陈思言负责】时间范围筛选字段从 start_date/end_date 改为 start_time/end_time
             if filters.get('start_time'):
                 query = query.filter(AuditLog.created_at >= filters['start_time'])
             if filters.get('end_time'):

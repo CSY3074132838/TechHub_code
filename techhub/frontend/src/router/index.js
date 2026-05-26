@@ -20,6 +20,7 @@ const routes = [
     component: () => import('@/views/Profile.vue'),
     meta: { title: '个人中心', icon: 'User' }
   },
+  // 【第三次迭代陈思言负责】数据备份与恢复页面路由
   {
     path: '/backup',
     name: 'Backup',
