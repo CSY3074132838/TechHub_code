@@ -1,1 +1,0 @@
-import{N as t}from"./index-C8rPekxP.js";const o=n=>t.get("/notifications/",{params:n}),r=()=>t.get("/notifications/unread-count"),e=n=>t.put(`/notifications/${n}/read`),s=()=>t.put("/notifications/read-all");export{r as a,e as b,o as g,s as m};

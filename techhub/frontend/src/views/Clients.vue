@@ -1,9 +1,10 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="clients-page">
     <div class="page-header">
-      <h2>客户管理</h2>
+      <h2>{{ $t('clients.pageTitle') }}</h2>
       <el-button type="primary" @click="openDialog()">
-        <el-icon><Plus /></el-icon>新建客户
+        <el-icon><Plus /></el-icon>{{ $t('clients.newClient') }}
       </el-button>
     </div>
 
@@ -25,28 +26,28 @@
     <!-- 筛选栏 -->
     <el-card class="filter-card">
       <el-form :inline="true" :model="filterForm">
-        <el-form-item label="状态">
-          <el-select v-model="filterForm.status" placeholder="全部状态" clearable style="width: 140px">
-            <el-option label="潜在客户" value="potential" />
-            <el-option label="合作中" value="active" />
-            <el-option label="暂停合作" value="inactive" />
-            <el-option label="已流失" value="lost" />
+        <el-form-item :label="$t('common.status')">
+          <el-select v-model="filterForm.status" :placeholder="$t('clients.allStatus')" clearable style="width: 140px">
+            <el-option :label="$t('clients.potential')" value="potential" />
+            <el-option :label="$t('clients.cooperating')" value="active" />
+            <el-option :label="$t('clients.paused')" value="inactive" />
+            <el-option :label="$t('clients.churned')" value="lost" />
           </el-select>
         </el-form-item>
-        <el-form-item label="等级">
-          <el-select v-model="filterForm.level" placeholder="全部等级" clearable style="width: 140px">
-            <el-option label="S级" value="s" />
-            <el-option label="A级" value="a" />
-            <el-option label="B级" value="b" />
-            <el-option label="C级" value="c" />
+        <el-form-item :label="$t('clients.clientLevel')">
+          <el-select v-model="filterForm.level" :placeholder="$t('clients.allLevel')" clearable style="width: 140px">
+            <el-option :label="$t('clients.levelS')" value="s" />
+            <el-option :label="$t('clients.levelA')" value="a" />
+            <el-option :label="$t('clients.levelB')" value="b" />
+            <el-option :label="$t('clients.levelC')" value="c" />
           </el-select>
         </el-form-item>
-        <el-form-item label="搜索">
-          <el-input v-model="filterForm.search" placeholder="客户名称/联系人" clearable style="width: 200px" />
+        <el-form-item :label="$t('common.search')">
+          <el-input v-model="filterForm.search" :placeholder="$t('clients.searchPlaceholder')" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetFilter">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('common.query') }}</el-button>
+          <el-button @click="resetFilter">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -54,48 +55,48 @@
     <!-- 客户表格 -->
     <el-card>
       <el-table :data="clients" stripe v-loading="loading">
-        <el-table-column label="客户名称" prop="name" min-width="160">
+        <el-table-column :label="$t('clients.clientName')" prop="name" min-width="160">
           <template #default="{ row }">
             <el-link type="primary" @click="goToDetail(row.id)">{{ row.name }}</el-link>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column :label="$t('common.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="等级" width="80">
+        <el-table-column :label="$t('clients.clientLevel')" width="80">
           <template #default="{ row }">
             <el-tag :type="getLevelType(row.level)" size="small">{{ row.level?.toUpperCase() }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="行业" prop="industry" width="120" />
-        <el-table-column label="联系人" width="140">
+        <el-table-column :label="$t('clients.industry')" prop="industry" width="120" />
+        <el-table-column :label="$t('clients.contact')" width="140">
           <template #default="{ row }">
             <div>{{ row.contact_name }}</div>
             <div class="text-gray">{{ row.contact_phone }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="客户经理" width="120">
+        <el-table-column :label="$t('clients.accountManager')" width="120">
           <template #default="{ row }">
             {{ row.manager?.real_name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="关联数据" width="180">
+        <el-table-column :label="$t('clients.relatedData')" width="180">
           <template #default="{ row }">
             <el-space>
-              <el-tag size="small" type="info">项目 {{ row.project_count }}</el-tag>
-              <el-tag size="small" type="info">合同 {{ row.contract_count }}</el-tag>
+              <el-tag size="small" type="info">{{ $t('clients.projects') }} {{ row.project_count }}</el-tag>
+              <el-tag size="small" type="info">{{ $t('clients.contracts') }} {{ row.contract_count }}</el-tag>
             </el-space>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column :label="$t('common.operation')" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-button v-if="row.status === 'lost'" link type="danger" @click="handleDelete(row)">彻底删除此客户</el-button>
-            <el-button v-else link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="primary" @click="openDialog(row)">{{ $t('clients.edit') }}</el-button>
+            <el-button v-if="row.status === 'lost'" link type="danger" @click="handleDelete(row)">{{ $t('clients.deleteCompletely') }}</el-button>
+            <el-button v-else link type="danger" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -112,36 +113,36 @@
     </el-card>
 
     <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑客户' : '新建客户'" width="600px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? $t('clients.editClient') : $t('clients.newClientDialog')" width="600px">
       <el-form :model="form" label-width="100px" :rules="rules" ref="formRef">
-        <el-form-item label="客户名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入客户名称" />
+        <el-form-item :label="$t('clients.clientName')" prop="name">
+          <el-input v-model="form.name" :placeholder="$t('clients.pleaseEnterName')" />
         </el-form-item>
-        <el-form-item label="所属行业">
-          <el-input v-model="form.industry" placeholder="如：互联网、金融、制造" />
+        <el-form-item :label="$t('clients.industryLabel')">
+          <el-input v-model="form.industry" :placeholder="$t('clients.industryPlaceholder')" />
         </el-form-item>
-        <el-form-item label="客户等级">
+        <el-form-item :label="$t('clients.clientLevel')">
           <el-select v-model="form.level" style="width: 100%">
-            <el-option label="S级 - 战略客户" value="s" />
-            <el-option label="A级 - 重要客户" value="a" />
-            <el-option label="B级 - 普通客户" value="b" />
-            <el-option label="C级 - 小客户" value="c" />
+            <el-option :label="$t('clients.levelSOption')" value="s" />
+            <el-option :label="$t('clients.levelAOption')" value="a" />
+            <el-option :label="$t('clients.levelBOption')" value="b" />
+            <el-option :label="$t('clients.levelCOption')" value="c" />
           </el-select>
         </el-form-item>
-        <el-form-item label="联系人">
-          <el-input v-model="form.contact_name" placeholder="联系人姓名" />
+        <el-form-item :label="$t('clients.contactName')">
+          <el-input v-model="form.contact_name" :placeholder="$t('clients.contactName')" />
         </el-form-item>
-        <el-form-item label="联系电话">
-          <el-input v-model="form.contact_phone" placeholder="联系电话" />
+        <el-form-item :label="$t('clients.phone')">
+          <el-input v-model="form.contact_phone" :placeholder="$t('clients.phone')" />
         </el-form-item>
-        <el-form-item label="联系邮箱">
-          <el-input v-model="form.contact_email" placeholder="联系邮箱" />
+        <el-form-item :label="$t('clients.email')">
+          <el-input v-model="form.contact_email" :placeholder="$t('clients.email')" />
         </el-form-item>
-        <el-form-item label="客户地址">
-          <el-input v-model="form.address" type="textarea" rows="2" placeholder="客户地址" />
+        <el-form-item :label="$t('clients.address')">
+          <el-input v-model="form.address" type="textarea" rows="2" :placeholder="$t('clients.address')" />
         </el-form-item>
-        <el-form-item label="客户经理">
-          <el-select v-model="form.manager_id" placeholder="选择客户经理" style="width: 100%">
+        <el-form-item :label="$t('clients.accountManager')">
+          <el-select v-model="form.manager_id" :placeholder="$t('clients.selectManager')" style="width: 100%">
             <el-option
               v-for="user in users"
               :key="user.id"
@@ -150,27 +151,28 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="客户状态">
+        <el-form-item :label="$t('clients.clientStatus')">
           <el-select v-model="form.status" style="width: 100%">
-            <el-option label="潜在客户" value="potential" />
-            <el-option label="合作中" value="active" />
-            <el-option label="暂停合作" value="inactive" />
-            <el-option label="已流失" value="lost" />
+            <el-option :label="$t('clients.potential')" value="potential" />
+            <el-option :label="$t('clients.cooperating')" value="active" />
+            <el-option :label="$t('clients.paused')" value="inactive" />
+            <el-option :label="$t('clients.churned')" value="lost" />
           </el-select>
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" rows="3" placeholder="备注信息" />
+        <el-form-item :label="$t('clients.remark')">
+          <el-input v-model="form.remark" type="textarea" rows="3" :placeholder="$t('clients.remarkPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitting">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -178,6 +180,7 @@ import { useUserStore } from '@/stores/user'
 import { getClients, createClient, updateClient, deleteClient, permanentlyDeleteClient, getClientStats } from '@/api/clients'
 import { getUsers } from '@/api/users'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
@@ -218,16 +221,16 @@ const form = reactive({
 })
 
 const rules = {
-  name: [{ required: true, message: '请输入客户名称', trigger: 'blur' }]
+  name: [{ required: true, message: t('clients.pleaseEnterName'), trigger: 'blur' }]
 }
 
 const statsCards = computed(() => {
   const s = stats.value
   return [
-    { key: 'total', value: s.total || 0, label: '客户总数', color: '#1890ff', filterStatus: '' },
-    { key: 'active', value: s.active || 0, label: '合作中', color: '#52c41a', filterStatus: 'active' },
-    { key: 'potential', value: s.potential || 0, label: '潜在客户', color: '#faad14', filterStatus: 'potential' },
-    { key: 'lost', value: s.lost || 0, label: '已流失', color: '#f56c6c', filterStatus: 'lost' }
+    { key: 'total', value: s.total || 0, label: t('clients.totalClients'), color: '#1890ff', filterStatus: '' },
+    { key: 'active', value: s.active || 0, label: t('clients.cooperating'), color: '#52c41a', filterStatus: 'active' },
+    { key: 'potential', value: s.potential || 0, label: t('clients.potential'), color: '#faad14', filterStatus: 'potential' },
+    { key: 'lost', value: s.lost || 0, label: t('clients.churned'), color: '#f56c6c', filterStatus: 'lost' }
   ]
 })
 
@@ -249,7 +252,7 @@ const fetchClients = async () => {
     pagination.total = res.total
     pagination.pages = res.pages
   } catch (error) {
-    console.error('获取客户列表失败', error)
+    console.error(t('clients.operationFailed'), error)
   } finally {
     loading.value = false
   }
@@ -260,7 +263,7 @@ const fetchStats = async () => {
     const res = await getClientStats()
     stats.value = res
   } catch (error) {
-    console.error('获取客户统计失败', error)
+    console.error(t('clients.operationFailed'), error)
   }
 }
 
@@ -269,7 +272,7 @@ const fetchUsers = async () => {
     const res = await getUsers({ per_page: 100 })
     users.value = res.users
   } catch (error) {
-    console.error('获取用户失败', error)
+    console.error(t('clients.operationFailed'), error)
   }
 }
 
@@ -319,17 +322,17 @@ const handleSubmit = async () => {
   try {
     if (isEdit.value) {
       await updateClient(currentId.value, { ...form })
-      ElMessage.success('客户更新成功')
+      ElMessage.success(t('clients.updateSuccess'))
     } else {
       await createClient({ ...form })
-      ElMessage.success('客户创建成功')
+      ElMessage.success(t('clients.createSuccess'))
     }
     dialogVisible.value = false
     pagination.page = 1
     fetchClients()
     fetchStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('clients.operationFailed'))
   } finally {
     submitting.value = false
   }
@@ -339,20 +342,20 @@ const handleDelete = async (row) => {
   try {
     const isLost = row.status === 'lost'
     const message = isLost
-      ? `是否删除该客户，该客户无法找回`
-      : `确定要将客户 "${row.name}" 标记为流失吗？`
-    const title = isLost ? '警告' : '提示'
+      ? t('clients.deleteConfirm')
+      : `${t('clients.markChurnConfirmPrefix')} "${row.name}" ${t('clients.markChurnConfirmSuffix')}`
+    const title = isLost ? t('clients.deleteDialogTitle') : t('clients.markChurnDialogTitle')
     await ElMessageBox.confirm(message, title, {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     if (isLost) {
       await permanentlyDeleteClient(row.id)
-      ElMessage.success('客户已彻底删除')
+      ElMessage.success(t('clients.deleteSuccess'))
     } else {
       await deleteClient(row.id)
-      ElMessage.success('客户已标记为流失')
+      ElMessage.success(t('clients.markChurnSuccess'))
     }
     if (clients.value.length === 1 && pagination.page > 1) {
       pagination.page -= 1
@@ -361,7 +364,7 @@ const handleDelete = async (row) => {
     fetchStats()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || '操作失败')
+      ElMessage.error(error.response?.data?.message || t('clients.operationFailed'))
     }
   }
 }
@@ -376,7 +379,12 @@ const getStatusType = (status) => {
 }
 
 const getStatusLabel = (status) => {
-  const map = { potential: '潜在客户', active: '合作中', inactive: '暂停合作', lost: '已流失' }
+  const map = {
+    potential: t('clients.potential'),
+    active: t('clients.cooperating'),
+    inactive: t('clients.paused'),
+    lost: t('clients.churned')
+  }
   return map[status] || status
 }
 

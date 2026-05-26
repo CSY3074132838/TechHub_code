@@ -1,10 +1,10 @@
 <template>
-  <!-- 【第二次迭代】收付款记录管理页面 -->
+  <!-- 第三次迭代陈思言负责 -->
   <div class="payments-page">
     <div class="page-header">
-      <h2>收付款管理</h2>
+      <h2>{{ $t('payments.pageTitle') }}</h2>
       <el-button type="primary" @click="showCreateDialog = true">
-        <el-icon><Plus /></el-icon>新建记录
+        <el-icon><Plus /></el-icon>{{ $t('payments.newRecord') }}
       </el-button>
     </div>
 
@@ -13,25 +13,25 @@
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value success">¥{{ paymentStats.total_income || 0 }}</div>
-          <div class="stat-label">本月收入</div>
+          <div class="stat-label">{{ $t('payments.monthlyIncome') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value danger">¥{{ paymentStats.total_expense || 0 }}</div>
-          <div class="stat-label">本月支出</div>
+          <div class="stat-label">{{ $t('payments.monthlyExpense') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value">¥{{ paymentStats.net_profit || 0 }}</div>
-          <div class="stat-label">本月净额</div>
+          <div class="stat-label">{{ $t('payments.monthlyNet') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value warning">{{ payments.length }}</div>
-          <div class="stat-label">本月记录</div>
+          <div class="stat-label">{{ $t('payments.monthlyRecords') }}</div>
         </div>
       </el-col>
     </el-row>
@@ -39,21 +39,21 @@
     <!-- 趋势图表（简化表格展示） -->
     <el-card style="margin-top: 20px;" v-if="paymentStats.trend?.length">
       <template #header>
-        <span>近6个月收支趋势</span>
+        <span>{{ $t('payments.incomeExpenseTrend6m') }}</span>
       </template>
       <el-table :data="paymentStats.trend" size="small" border>
-        <el-table-column label="月份" prop="month" width="120" />
-        <el-table-column label="收入" width="150">
+        <el-table-column :label="$t('payments.month')" prop="month" width="120" />
+        <el-table-column :label="$t('payments.income')" width="150">
           <template #default="{ row }">
             <span style="color: #67c23a; font-weight: 500;">¥{{ row.income }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="支出" width="150">
+        <el-table-column :label="$t('payments.expense')" width="150">
           <template #default="{ row }">
             <span style="color: #f56c6c; font-weight: 500;">¥{{ row.expense }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="净额" width="150">
+        <el-table-column :label="$t('payments.net')" width="150">
           <template #default="{ row }">
             <span :style="{ color: row.income - row.expense >= 0 ? '#67c23a' : '#f56c6c', fontWeight: 500 }">
               ¥{{ (row.income - row.expense).toFixed(2) }}
@@ -67,59 +67,59 @@
     <el-card style="margin-top: 20px;">
       <template #header>
         <div class="card-header">
-          <span>收付款记录</span>
+          <span>{{ $t('payments.paymentRecords') }}</span>
           <div class="filter-bar">
-            <el-select v-model="filterType" placeholder="收支类型" clearable size="small" style="width: 120px; margin-right: 8px;">
-              <el-option label="收入" value="income" />
-              <el-option label="支出" value="expense" />
+            <el-select v-model="filterType" :placeholder="$t('payments.incomeExpenseType')" clearable size="small" style="width: 120px; margin-right: 8px;">
+              <el-option :label="$t('payments.incomeType')" value="income" />
+              <el-option :label="$t('payments.expenseType')" value="expense" />
             </el-select>
-            <el-button size="small" @click="resetFilter">重置</el-button>
+            <el-button size="small" @click="resetFilter">{{ $t('common.reset') }}</el-button>
           </div>
         </div>
       </template>
 
       <el-table :data="filteredPayments" v-loading="loading" size="small">
-        <el-table-column label="标题" prop="title" min-width="180" show-overflow-tooltip />
-        <el-table-column label="金额" width="120">
+        <el-table-column :label="$t('payments.title')" prop="title" min-width="180" show-overflow-tooltip />
+        <el-table-column :label="$t('payments.amount')" width="120">
           <template #default="{ row }">
             <span :style="{ color: row.payment_type === 'income' ? '#67c23a' : '#f56c6c', fontWeight: 600 }">
               {{ row.payment_type === 'income' ? '+' : '-' }}¥{{ row.amount }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="类型" width="80">
+        <el-table-column :label="$t('payments.type')" width="80">
           <template #default="{ row }">
             <el-tag :type="row.payment_type === 'income' ? 'success' : 'danger'" size="small">
-              {{ row.payment_type === 'income' ? '收入' : '支出' }}
+              {{ row.payment_type === 'income' ? $t('payments.incomeType') : $t('payments.expenseType') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="关联合同" min-width="150">
+        <el-table-column :label="$t('payments.relatedContract')" min-width="150">
           <template #default="{ row }">
             {{ row.contract?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="关联项目" min-width="150">
+        <el-table-column :label="$t('payments.relatedProject')" min-width="150">
           <template #default="{ row }">
             {{ row.project?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="日期" width="120">
+        <el-table-column :label="$t('payments.date')" width="120">
           <template #default="{ row }">
             {{ formatDate(row.payment_date) }}
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column :label="$t('common.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'completed' ? 'success' : 'info'" size="small">
-              {{ row.status === 'completed' ? '已完成' : '待处理' }}
+              {{ row.status === 'completed' ? $t('payments.completed') : $t('payments.pending') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column :label="$t('common.operation')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('common.edit') }}</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -138,16 +138,16 @@
     <!-- 合同收入排行 -->
     <el-card style="margin-top: 20px;" v-if="paymentStats.contract_ranking?.length">
       <template #header>
-        <span>合同收入排行 Top10</span>
+        <span>{{ $t('payments.contractIncomeTop10') }}</span>
       </template>
       <el-table :data="paymentStats.contract_ranking" size="small">
-        <el-table-column label="合同名称" prop="contract.name" min-width="200" />
-        <el-table-column label="客户" min-width="150">
+        <el-table-column :label="$t('payments.contractName')" prop="contract.name" min-width="200" />
+        <el-table-column :label="$t('payments.client')" min-width="150">
           <template #default="{ row }">
             {{ row.contract?.client?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="已收金额" width="150">
+        <el-table-column :label="$t('payments.receivedAmount')" width="150">
           <template #default="{ row }">
             <span style="color: #67c23a; font-weight: 600;">¥{{ row.amount }}</span>
           </template>
@@ -156,54 +156,59 @@
     </el-card>
 
     <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="showCreateDialog" :title="isEdit ? '编辑记录' : '新建收付款记录'" width="500px">
+    <el-dialog v-model="showCreateDialog" :title="isEdit ? $t('payments.editRecord') : $t('payments.newPaymentRecord')" width="500px">
       <el-form :model="form" label-width="100px">
-        <el-form-item label="标题" required>
-          <el-input v-model="form.title" placeholder="例如：XX项目首付款" />
+        <el-form-item :label="$t('payments.title')" required>
+          <el-input v-model="form.title" :placeholder="$t('payments.titlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="金额" required>
+        <el-form-item :label="$t('payments.amount')" required>
           <el-input-number v-model="form.amount" :min="0.01" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="收支类型" required>
+        <el-form-item :label="$t('payments.incomeExpenseType')" required>
           <el-radio-group v-model="form.payment_type">
-            <el-radio-button label="income">收入</el-radio-button>
-            <el-radio-button label="expense">支出</el-radio-button>
+            <el-radio-button label="income">{{ $t('payments.incomeType') }}</el-radio-button>
+            <el-radio-button label="expense">{{ $t('payments.expenseType') }}</el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="日期" required>
-          <el-date-picker v-model="form.payment_date" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+        <el-form-item :label="$t('payments.date')" required>
+          <el-date-picker v-model="form.payment_date" type="date" :placeholder="$t('payments.selectDate')" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
-        <el-form-item label="关联合同">
-          <el-select v-model="form.contract_id" placeholder="选择合同" clearable style="width: 100%">
+        <el-form-item :label="$t('payments.relatedContract')">
+          <el-select v-model="form.contract_id" :placeholder="$t('payments.selectContract')" clearable style="width: 100%">
             <el-option v-for="c in contractOptions" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="关联项目">
-          <el-select v-model="form.project_id" placeholder="选择项目" clearable style="width: 100%">
+        <el-form-item :label="$t('payments.relatedProject')">
+          <el-select v-model="form.project_id" :placeholder="$t('payments.selectProject')" clearable style="width: 100%">
             <el-option v-for="p in projectOptions" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="说明">
-          <el-input v-model="form.description" type="textarea" :rows="2" placeholder="补充说明" />
+        <el-form-item :label="$t('payments.desc')">
+          <el-input v-model="form.description" type="textarea" :rows="2" :placeholder="$t('payments.descPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="savePayment" :loading="saving">保存</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="savePayment" :loading="saving">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import {
   getPayments, createPayment, updatePayment, deletePayment, getPaymentStats
 } from '@/api/payments'
 import { getContracts } from '@/api/contracts'
 import { getProjects } from '@/api/projects'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const payments = ref([])
@@ -245,7 +250,7 @@ const fetchPayments = async () => {
     payments.value = res.payments || []
     total.value = res.total || 0
   } catch (error) {
-    console.error('获取记录失败', error)
+    console.error(t('payments.fetchFailed'), error)
   } finally {
     loading.value = false
   }
@@ -256,7 +261,7 @@ const fetchStats = async () => {
     const res = await getPaymentStats({ month: dayjs().format('YYYY-MM') })
     paymentStats.value = res
   } catch (error) {
-    console.error('获取统计失败', error)
+    console.error(t('payments.fetchStatsFailed'), error)
   }
 }
 
@@ -269,30 +274,30 @@ const fetchOptions = async () => {
     contractOptions.value = contractsRes.contracts || []
     projectOptions.value = projectsRes.projects || []
   } catch (error) {
-    console.error('获取选项失败', error)
+    console.error(t('payments.fetchOptionsFailed'), error)
   }
 }
 
 const savePayment = async () => {
   if (!form.value.title || form.value.amount <= 0 || !form.value.payment_date) {
-    ElMessage.warning('请填写完整信息')
+    ElMessage.warning(t('payments.pleaseFillInfo'))
     return
   }
   saving.value = true
   try {
     if (isEdit.value) {
       await updatePayment(editingId.value, form.value)
-      ElMessage.success('记录已更新')
+      ElMessage.success(t('payments.recordUpdated'))
     } else {
       await createPayment(form.value)
-      ElMessage.success('记录已创建')
+      ElMessage.success(t('payments.recordCreated'))
     }
     showCreateDialog.value = false
     resetForm()
     fetchPayments()
     fetchStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    ElMessage.error(error.response?.data?.message || t('payments.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -315,14 +320,14 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该记录吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('payments.deleteConfirm'), t('common.tip'), { type: 'warning' })
     await deletePayment(row.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('payments.deleted'))
     fetchPayments()
     fetchStats()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除失败', error)
+      console.error(t('payments.deleteFailed'), error)
     }
   }
 }

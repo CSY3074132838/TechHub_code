@@ -1,17 +1,18 @@
 <template>
+  <!-- 第三次迭代陈思言负责 -->
   <div class="notifications-page">
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <h2>消息中心</h2>
+        <h2>{{ $t('notifications.pageTitle') }}</h2>
         <el-tag v-if="unreadCount > 0" type="danger" size="small" effect="dark" round>
-          {{ unreadCount }} 条未读
+          {{ unreadCount }} {{ $t('notifications.unreadSuffix') }}
         </el-tag>
       </div>
       <div class="header-right">
         <el-button type="primary" :disabled="unreadCount === 0" @click="handleMarkAllRead">
           <el-icon><Check /></el-icon>
-          全部已读
+          {{ $t('notifications.markAllRead') }}
         </el-button>
       </div>
     </div>
@@ -25,7 +26,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.all }}</div>
-            <div class="stat-label">全部消息</div>
+            <div class="stat-label">{{ $t('notifications.allMessages') }}</div>
           </div>
         </div>
       </el-col>
@@ -36,7 +37,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.unread }}</div>
-            <div class="stat-label">未读消息</div>
+            <div class="stat-label">{{ $t('notifications.unreadMessages') }}</div>
           </div>
         </div>
       </el-col>
@@ -47,7 +48,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.task }}</div>
-            <div class="stat-label">任务消息</div>
+            <div class="stat-label">{{ $t('notifications.taskMessages') }}</div>
           </div>
         </div>
       </el-col>
@@ -58,7 +59,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">{{ stats.approval }}</div>
-            <div class="stat-label">审批消息</div>
+            <div class="stat-label">{{ $t('notifications.approvalMessages') }}</div>
           </div>
         </div>
       </el-col>
@@ -67,7 +68,7 @@
     <!-- 消息列表 -->
     <el-card class="notifications-card" v-loading="loading">
       <div v-if="filteredNotifications.length === 0" class="empty-state">
-        <el-empty description="暂无消息">
+        <el-empty :description="$t('notifications.noMessages')">
           <template #image>
             <el-icon :size="80" color="#dcdfe6"><Bell /></el-icon>
           </template>
@@ -110,7 +111,7 @@
               </span>
               <span v-if="item.related_type && item.related_id" class="item-link">
                 <el-icon><Link /></el-icon>
-                查看详情
+                {{ $t('notifications.viewDetail') }}
               </span>
             </div>
           </div>
@@ -124,7 +125,7 @@
               size="small"
               @click.stop="handleMarkRead(item)"
             >
-              标记已读
+              {{ $t('notifications.markRead') }}
             </el-button>
             <el-icon v-else class="read-check"><Check /></el-icon>
           </div>
@@ -148,12 +149,14 @@
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Bell, Message, List, DocumentChecked, Check,
-  Clock, Link, TrendCharts, Money, Warning
+  Clock, Link, TrendCharts, Money, Warning, Plus
 } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import {
@@ -164,6 +167,7 @@ import {
 } from '@/api/notifications'
 
 const router = useRouter()
+const { t } = useI18n()
 
 const loading = ref(false)
 const notifications = ref([])
@@ -201,8 +205,8 @@ const fetchNotifications = async () => {
     total.value = res.total || 0
     unreadCount.value = res.unread_count || 0
   } catch (error) {
-    console.error('获取通知失败', error)
-    ElMessage.error('获取通知失败')
+    console.error(t('notifications.fetchFailed'), error)
+    ElMessage.error(t('notifications.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -217,26 +221,26 @@ const handleMarkRead = async (item) => {
     await markAsRead(item.id)
     item.is_read = true
     unreadCount.value = Math.max(0, unreadCount.value - 1)
-    ElMessage.success('已标记为已读')
+    ElMessage.success(t('notifications.markedAsRead'))
   } catch (error) {
-    console.error('标记已读失败', error)
+    console.error(t('notifications.markReadFailed'), error)
   }
 }
 
 const handleMarkAllRead = async () => {
   try {
-    await ElMessageBox.confirm('确定将所有消息标记为已读吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('notifications.markAllReadConfirm'), t('common.tip'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     await markAllAsRead()
     notifications.value.forEach(n => n.is_read = true)
     unreadCount.value = 0
-    ElMessage.success('全部已标记为已读')
+    ElMessage.success(t('notifications.allMarkedAsRead'))
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('全部已读失败', error)
+      console.error(t('notifications.markAllReadFailed'), error)
     }
   }
 }
@@ -278,12 +282,12 @@ const getTypeTag = (type) => {
 
 const getTypeLabel = (type) => {
   const map = {
-    task: '任务',
-    approval: '审批',
-    finance: '财务',
-    system: '系统'
+    task: t('notifications.task'),
+    approval: t('notifications.approval'),
+    finance: t('notifications.financial'),
+    system: t('notifications.system')
   }
-  return map[type] || '系统'
+  return map[type] || t('notifications.system')
 }
 
 const formatTime = (time) => {
@@ -291,9 +295,9 @@ const formatTime = (time) => {
   const date = dayjs(time)
   const now = dayjs()
   if (date.isSame(now, 'day')) {
-    return date.format('今天 HH:mm')
+    return date.format(t('notifications.todayFormat'))
   } else if (date.isSame(now.subtract(1, 'day'), 'day')) {
-    return date.format('昨天 HH:mm')
+    return date.format(t('notifications.yesterdayFormat'))
   } else if (date.isSame(now, 'year')) {
     return date.format('MM-DD HH:mm')
   }

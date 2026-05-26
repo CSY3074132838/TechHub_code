@@ -1,22 +1,22 @@
 <template>
   <div class="analytics-page">
     <div class="page-header">
-      <h2>数据中心</h2>
+      <h2>{{ $t("menu.analytics") }}</h2>
     </div>
 
     <!-- 无权限提示 -->
     <div v-if="!hasAccess" class="access-denied">
       <el-result
         icon="warning"
-        title="暂无访问权限"
+        :title="$t('analytics.noAccess')"
         :sub-title="accessSubtitle"
       >
         <template #extra>
           <el-button v-if="!wasRejected" type="primary" @click="requestAccess" :loading="requesting">
-            申请查看权限
+            {{ $t("analytics.applyAccess") }}
           </el-button>
           <el-button v-else type="primary" @click="requestAccess" :loading="requesting">
-            重新申请
+            {{ $t("analytics.reapply") }}
           </el-button>
         </template>
       </el-result>
@@ -25,7 +25,7 @@
     <template v-else>
     <el-tabs v-model="activeTab">
       <!-- 团队数据标签页 -->
-      <el-tab-pane label="团队数据" name="team">
+      <el-tab-pane :label="$t('analytics.teamData')" name="team">
         <!-- 概览统计 -->
         <el-row :gutter="20" class="overview-row">
           <el-col :xs="12" :sm="6" v-for="stat in overviewStats" :key="stat.key">
@@ -52,7 +52,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>任务趋势</span>
+                <span>{{ $t('analytics.taskTrend') }}</span>
               </template>
               <div ref="trendChart" class="chart-container"></div>
             </el-card>
@@ -61,7 +61,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>任务状态分布</span>
+                <span>{{ $t('analytics.taskStatusDistribution') }}</span>
               </template>
               <div ref="statusChart" class="chart-container"></div>
             </el-card>
@@ -72,7 +72,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>部门任务分布</span>
+                <span>{{ $t('analytics.deptTaskDistribution') }}</span>
               </template>
               <div ref="deptChart" class="chart-container"></div>
             </el-card>
@@ -81,7 +81,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>团队绩效 TOP5</span>
+                <span>{{ $t('analytics.teamPerformanceTop5') }}</span>
               </template>
               <div class="performance-list">
                 <div
@@ -99,7 +99,7 @@
                   </div>
                   <div class="score">
                     <span class="count">{{ item.completed_count }}</span>
-                    <span class="label">完成任务</span>
+                    <span class="label">{{ $t('analytics.completedTasks') }}</span>
                   </div>
                 </div>
               </div>
@@ -110,14 +110,14 @@
         <!-- 项目进度 -->
         <el-card class="project-progress">
           <template #header>
-            <span>项目进度排行</span>
+            <span>{{ $t('analytics.projectProgressRanking') }}</span>
           </template>
           <el-table :data="projectProgress" stripe>
             <el-table-column type="index" width="60" />
-            <el-table-column label="项目名称" prop="name" />
-            <el-table-column label="总任务" prop="total" width="100" />
-            <el-table-column label="已完成" prop="done" width="100" />
-            <el-table-column label="进度" width="300">
+            <el-table-column :label="$t('analytics.projectName')" prop="name" />
+            <el-table-column :label="$t('analytics.totalTasks')" prop="total" width="100" />
+            <el-table-column :label="$t('analytics.completedTasks')" prop="done" width="100" />
+            <el-table-column :label="$t('common.progress')" width="300">
               <template #default="{ row }">
                 <el-progress :percentage="row.progress" :color="getProgressColor(row.progress)" />
               </template>
@@ -127,7 +127,7 @@
       </el-tab-pane>
 
       <!-- CRM数据标签页 -->
-      <el-tab-pane label="CRM数据" name="crm">
+      <el-tab-pane :label="$t('analytics.crmData')" name="crm">
         <el-row :gutter="20" class="overview-row">
           <el-col :xs="12" :sm="6" v-for="stat in crmOverviewStats" :key="stat.key">
             <div
@@ -152,7 +152,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>客户与工单趋势（近30天）</span>
+                <span>{{ $t('analytics.clientTicketTrend') }}</span>
               </template>
               <div ref="crmTrendChart" class="chart-container"></div>
             </el-card>
@@ -161,7 +161,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>客户金额排行 TOP10</span>
+                <span>{{ $t('analytics.clientAmountTop10') }}</span>
               </template>
               <div ref="clientRankingChart" class="chart-container"></div>
             </el-card>
@@ -172,7 +172,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>客户状态分布</span>
+                <span>{{ $t('analytics.clientStatusDistribution') }}</span>
               </template>
               <div class="crm-stats">
                 <el-row :gutter="16">
@@ -190,7 +190,7 @@
           <el-col :xs="24" :lg="12">
             <el-card class="chart-card">
               <template #header>
-                <span>客户经理业绩排行</span>
+                <span>{{ $t('analytics.managerPerformanceRanking') }}</span>
               </template>
               <div class="performance-list">
                 <div
@@ -208,10 +208,10 @@
                   </div>
                   <div class="score">
                     <span class="count">{{ item.total_amount ? `¥${item.total_amount.toLocaleString()}` : '¥0' }}</span>
-                    <span class="label">{{ item.contract_count }} 份合同</span>
+                    <span class="label">{{ item.contract_count }} {{ $t('analytics.contractsUnit') }}</span>
                   </div>
                 </div>
-                <el-empty v-if="managerRanking.length === 0" description="暂无数据" />
+                <el-empty v-if="managerRanking.length === 0" :description="$t('common.noData')" />
               </div>
             </el-card>
           </el-col>
@@ -223,13 +223,17 @@
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, onMounted, nextTick, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/stores/user'
 import { getStatistics, getCrmOverview, getCrmRanking } from '@/api/dashboard'
 import { getApprovals, createApproval } from '@/api/approvals'
 import { ElMessage } from 'element-plus'
+
+const { t } = useI18n()
 
 const trendChart = ref(null)
 const statusChart = ref(null)
@@ -272,27 +276,27 @@ const hasAccess = computed(() => {
 
 const accessSubtitle = computed(() => {
   return wasRejected.value
-    ? '您已被拒绝访问，请尝试重新申请'
-    : '您暂无数据中心查看权限，请向总经理或副总经理申请'
+    ? t('analytics.accessRejected')
+    : t('analytics.accessDeniedSubtitle')
 })
 
 const crmOverviewStats = computed(() => {
   const o = crmOverview.value.overview || {}
   return [
-    { key: 'clients', value: o.total_clients || 0, label: '客户总数', icon: 'OfficeBuilding', bgColor: '#e6f7ff', color: '#1890ff', route: '/clients' },
-    { key: 'contracts', value: o.total_contracts || 0, label: '合同数', icon: 'DocumentCopy', bgColor: '#f6ffed', color: '#52c41a', route: '/contracts' },
-    { key: 'amount', value: o.total_amount ? `¥${o.total_amount.toLocaleString()}` : '¥0', label: '合同总金额', icon: 'Money', bgColor: '#fff7e6', color: '#faad14' },
-    { key: 'tickets', value: o.total_tickets || 0, label: '工单总数', icon: 'ChatDotSquare', bgColor: '#f9f0ff', color: '#722ed1', route: '/tickets' }
+    { key: 'clients', value: o.total_clients || 0, label: t('analytics.totalClients'), icon: 'OfficeBuilding', bgColor: '#e6f7ff', color: '#1890ff', route: '/clients' },
+    { key: 'contracts', value: o.total_contracts || 0, label: t('analytics.contractCount'), icon: 'DocumentCopy', bgColor: '#f6ffed', color: '#52c41a', route: '/contracts' },
+    { key: 'amount', value: o.total_amount ? `¥${o.total_amount.toLocaleString()}` : '¥0', label: t('analytics.totalContractAmount'), icon: 'Money', bgColor: '#fff7e6', color: '#faad14' },
+    { key: 'tickets', value: o.total_tickets || 0, label: t('analytics.totalTickets'), icon: 'ChatDotSquare', bgColor: '#f9f0ff', color: '#722ed1', route: '/tickets' }
   ]
 })
 
 const clientStatusDist = computed(() => {
   const o = crmOverview.value.overview || {}
   return [
-    { label: '潜在客户', value: o.potential_clients || 0, color: '#faad14' },
-    { label: '合作中', value: o.active_clients || 0, color: '#52c41a' },
-    { label: '暂停合作', value: o.inactive_clients || 0, color: '#909399' },
-    { label: '已流失', value: o.lost_clients || 0, color: '#f56c6c' }
+    { label: t('clients.potential'), value: o.potential_clients || 0, color: '#faad14' },
+    { label: t('clients.cooperating'), value: o.active_clients || 0, color: '#52c41a' },
+    { label: t('clients.paused'), value: o.inactive_clients || 0, color: '#909399' },
+    { label: t('clients.churned'), value: o.lost_clients || 0, color: '#f56c6c' }
   ]
 })
 
@@ -307,10 +311,10 @@ const fetchStatistics = async () => {
     
     const overview = res.overview
     overviewStats.value = [
-      { key: 'users', value: overview.total_users ?? 0, label: '总用户', icon: 'User', bgColor: '#e6f7ff', color: '#1890ff', route: '/users' },
-      { key: 'projects', value: overview.total_projects ?? 0, label: '项目数', icon: 'Folder', bgColor: '#f6ffed', color: '#52c41a', route: '/projects' },
-      { key: 'tasks', value: overview.total_tasks ?? 0, label: '总任务', icon: 'Document', bgColor: '#fff7e6', color: '#faad14', route: '/tasks' },
-      { key: 'rate', value: (overview.task_completion_rate ?? 0) + '%', label: '完成率', icon: 'TrendCharts', bgColor: '#f9f0ff', color: '#722ed1' }
+      { key: 'users', value: overview.total_users ?? 0, label: t('analytics.totalUsers'), icon: 'User', bgColor: '#e6f7ff', color: '#1890ff', route: '/users' },
+      { key: 'projects', value: overview.total_projects ?? 0, label: t('analytics.projectCount'), icon: 'Folder', bgColor: '#f6ffed', color: '#52c41a', route: '/projects' },
+      { key: 'tasks', value: overview.total_tasks ?? 0, label: t('analytics.totalTasks'), icon: 'Document', bgColor: '#fff7e6', color: '#faad14', route: '/tasks' },
+      { key: 'rate', value: (overview.task_completion_rate ?? 0) + '%', label: t('analytics.completionRate'), icon: 'TrendCharts', bgColor: '#f9f0ff', color: '#722ed1' }
     ]
     
     topPerformers.value = res.top_performers || []
@@ -320,7 +324,7 @@ const fetchStatistics = async () => {
       initCharts(res)
     })
   } catch (error) {
-    console.error('获取统计数据失败', error)
+    console.error(t('analytics.fetchStatsFailed'), error)
   }
 }
 
@@ -337,7 +341,7 @@ const fetchCrmData = async () => {
       initCrmCharts(overviewRes, rankingRes)
     })
   } catch (error) {
-    console.error('获取CRM数据失败', error)
+    console.error(t('analytics.fetchCrmFailed'), error)
   }
 }
 
@@ -355,7 +359,7 @@ const initCharts = (data) => {
     const hasData = trendCreated.some(v => v > 0) || trendCompleted.some(v => v > 0)
     trendChartInstance.setOption({
       tooltip: { trigger: 'axis' },
-      legend: { data: ['新建任务', '完成任务'] },
+      legend: { data: [t('analytics.newTasks'), t('analytics.completedTasks')] },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: {
         type: 'category',
@@ -365,7 +369,7 @@ const initCharts = (data) => {
       yAxis: { type: 'value' },
       series: [
         {
-          name: '新建任务',
+          name: t('analytics.newTasks'),
           type: 'line',
           smooth: true,
           data: trendCreated,
@@ -378,7 +382,7 @@ const initCharts = (data) => {
           }
         },
         {
-          name: '完成任务',
+          name: t('analytics.completedTasks'),
           type: 'line',
           smooth: true,
           data: trendCompleted,
@@ -396,7 +400,7 @@ const initCharts = (data) => {
         left: 'center',
         top: 'middle',
         style: {
-          text: '近7天无任务动态',
+          text: t('analytics.noTaskActivity'),
           fill: '#999',
           fontSize: 14
         }
@@ -436,7 +440,7 @@ const initCharts = (data) => {
               fontWeight: 'bold'
             }
           },
-          data: pieData.length > 0 ? pieData : [{ name: '暂无数据', value: 1 }]
+          data: pieData.length > 0 ? pieData : [{ name: t('common.noData'), value: 1 }]
         }
       ],
       color: pieData.length > 0 ? ['#909399', '#e6a23c', '#1890ff', '#67c23a'] : ['#e0e0e0']
@@ -457,7 +461,7 @@ const initCharts = (data) => {
       xAxis: { type: 'value' },
       yAxis: {
         type: 'category',
-        data: hasDeptData ? deptData.map(item => item.department).reverse() : ['暂无数据']
+        data: hasDeptData ? deptData.map(item => item.department).reverse() : [t('common.noData')]
       },
       series: [
         {
@@ -477,7 +481,7 @@ const initCharts = (data) => {
         left: 'center',
         top: 'middle',
         style: {
-          text: '暂无部门任务数据',
+          text: t('analytics.noDeptTaskData'),
           fill: '#999',
           fontSize: 14
         }
@@ -488,10 +492,10 @@ const initCharts = (data) => {
 
 const getStatusLabel = (status) => {
   const labelMap = {
-    'todo': '待处理',
-    'in_progress': '进行中',
-    'review': '审核中',
-    'done': '已完成'
+    'todo': t('tasks.todo'),
+    'in_progress': t('tasks.inProgress'),
+    'review': t('tasks.inReview'),
+    'done': t('tasks.done')
   }
   return labelMap[status] || status
 }
@@ -521,13 +525,13 @@ const initCrmCharts = (overviewData, rankingData) => {
     const trend = overviewData.trend || {}
     crmTrendChartInstance.setOption({
       tooltip: { trigger: 'axis' },
-      legend: { data: ['新增客户', '新增工单'] },
+      legend: { data: [t('analytics.newClients'), t('analytics.newTickets')] },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { type: 'category', boundaryGap: false, data: trend.dates || [] },
       yAxis: { type: 'value' },
       series: [
         {
-          name: '新增客户',
+          name: t('analytics.newClients'),
           type: 'line',
           smooth: true,
           data: trend.clients || [],
@@ -540,7 +544,7 @@ const initCrmCharts = (overviewData, rankingData) => {
           }
         },
         {
-          name: '新增工单',
+          name: t('analytics.newTickets'),
           type: 'line',
           smooth: true,
           data: trend.tickets || [],
@@ -569,7 +573,7 @@ const initCrmCharts = (overviewData, rankingData) => {
       xAxis: { type: 'value' },
       yAxis: {
         type: 'category',
-        data: ranking.map(item => item.client?.name || '未知').slice(0, 10).reverse()
+        data: ranking.map(item => item.client?.name || t('common.unknown')).slice(0, 10).reverse()
       },
       series: [
         {
@@ -592,7 +596,7 @@ const checkRejectedStatus = async () => {
   try {
     const res = await getApprovals({ scope: 'my', per_page: 1, status: 'rejected' })
     const rejectedPermissions = (res.approvals || []).filter(a =>
-      a.title && a.title.includes('[权限申请]')
+      a.title && a.title.includes(t('analytics.permissionApplyPrefix'))
     )
     if (rejectedPermissions.length > 0) {
       wasRejected.value = true
@@ -606,15 +610,15 @@ const requestAccess = async () => {
   requesting.value = true
   try {
     await createApproval({
-      title: '[权限申请] 申请查看数据中心',
+      title: t('analytics.permissionApplyTitle'),
       approval_type: 'permission',
-      description: '申请查看数据中心权限',
+      description: t('analytics.permissionApplyDesc'),
       is_urgent: false
     })
-    ElMessage.success('申请已提交，请等待总经理或副总经理审批')
+    ElMessage.success(t('analytics.applySubmitted'))
     wasRejected.value = false
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '申请失败')
+    ElMessage.error(error.response?.data?.message || t('analytics.applyFailed'))
   } finally {
     requesting.value = false
   }

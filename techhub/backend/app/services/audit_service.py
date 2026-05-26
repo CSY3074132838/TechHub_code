@@ -105,10 +105,10 @@ class AuditService:
                 query = query.filter_by(resource_type=filters['resource_type'])
             if filters.get('status'):
                 query = query.filter_by(status=filters['status'])
-            if filters.get('start_date'):
-                query = query.filter(AuditLog.created_at >= filters['start_date'])
-            if filters.get('end_date'):
-                query = query.filter(AuditLog.created_at <= filters['end_date'])
+            if filters.get('start_time'):
+                query = query.filter(AuditLog.created_at >= filters['start_time'])
+            if filters.get('end_time'):
+                query = query.filter(AuditLog.created_at <= filters['end_time'])
             if filters.get('username'):
                 query = query.filter(AuditLog.username.contains(filters['username']))
         

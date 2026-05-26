@@ -1,10 +1,11 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="project-detail-page">
     <!-- 项目头部信息 -->
     <div class="project-header-bar">
       <div class="header-left">
         <el-button text @click="$router.back()">
-          <el-icon><ArrowLeft /></el-icon>返回
+          <el-icon><ArrowLeft /></el-icon>{{ $t('projects.back') }}
         </el-button>
         <div class="project-title">
           <div class="color-dot" :style="{ background: project.color }"></div>
@@ -17,10 +18,10 @@
       </div>
       <div class="header-right">
         <el-button @click="openEditDialog">
-          <el-icon><Edit /></el-icon>编辑
+          <el-icon><Edit /></el-icon>{{ $t('common.edit') }}
         </el-button>
         <el-button type="primary" @click="showCreateTask = true">
-          <el-icon><Plus /></el-icon>新建任务
+          <el-icon><Plus /></el-icon>{{ $t('tasks.newTask') }}
         </el-button>
       </div>
     </div>
@@ -32,8 +33,8 @@
         <!-- 任务流程可视化进度条 -->
         <el-card class="workflow-card" style="margin-bottom: 16px;">
           <div class="workflow-header">
-            <span class="workflow-title">任务开发流程</span>
-            <span class="workflow-subtitle">拖拽任务卡片可变更状态 · 审核中任务需项目负责人审批</span>
+            <span class="workflow-title">{{ $t('tasks.devWorkflow') }}</span>
+            <span class="workflow-subtitle">{{ $t('tasks.dragHint') }}</span>
           </div>
           <div class="workflow-steps">
             <div 
@@ -87,7 +88,7 @@
                       {{ getPriorityLabel(task.priority) }}
                     </el-tag>
                     <el-tag v-if="task.status === 'review'" type="warning" size="small" effect="dark">
-                      待审核
+                      {{ $t('tasks.inReview') }}
                     </el-tag>
                   </div>
                   <el-avatar
@@ -118,7 +119,7 @@
             <div class="activity-header">
               <span class="activity-title">
                 <el-icon><Bell /></el-icon>
-                项目最近动态
+                {{ $t('projects.recentActivities') }}
               </span>
               <el-button text size="small" @click="fetchActivities">
                 <el-icon><Refresh /></el-icon>
@@ -127,7 +128,7 @@
           </template>
           <div class="activity-list" v-loading="activityLoading">
             <div v-if="activities.length === 0" class="activity-empty">
-              <el-empty description="暂无动态" :image-size="60" />
+              <el-empty :description="$t('projects.noActivities')" :image-size="60" />
             </div>
             <div
               v-for="activity in activities"
@@ -141,7 +142,7 @@
               </div>
               <div class="activity-content">
                 <div class="activity-text">
-                  <span class="user-name">{{ activity.user?.real_name || '未知用户' }}</span>
+                  <span class="user-name">{{ activity.user?.real_name || $t('tasks.unknownUser') }}</span>
                   <span class="action">{{ formatActivityTitle(activity) }}</span>
                 </div>
                 <div class="activity-time">{{ formatDateTime(activity.created_at) }}</div>
@@ -159,8 +160,8 @@
         <el-card class="members-card" style="margin-top: 16px;">
           <template #header>
             <div class="members-header">
-              <span>项目成员</span>
-              <span class="members-count">{{ project.members?.length || 0 }}人</span>
+              <span>{{ $t('projects.projectMembers') }}</span>
+              <span class="members-count">{{ project.members?.length || 0 }}{{ $t('projects.memberCount') }}</span>
             </div>
           </template>
           <div class="members-list">
@@ -175,8 +176,8 @@
               <div class="member-info">
                 <div class="member-name">{{ member.real_name || member.username }}</div>
                 <div class="member-role">
-                  <el-tag v-if="member.id === project.leader_id" type="warning" size="small">负责人</el-tag>
-                  <span v-else class="member-position">{{ member.position || '成员' }}</span>
+                  <el-tag v-if="member.id === project.leader_id" type="warning" size="small">{{ $t('projects.leader') }}</el-tag>
+                  <span v-else class="member-position">{{ member.position || $t('common.member') }}</span>
                 </div>
               </div>
             </div>
@@ -186,13 +187,13 @@
     </el-row>
 
     <!-- 新建任务对话框 -->
-    <el-dialog v-model="showCreateTask" title="新建任务" width="600px">
+    <el-dialog v-model="showCreateTask" :title="$t('tasks.newTaskDialog')" width="600px">
       <el-form :model="taskForm" label-width="80px">
-        <el-form-item label="任务标题">
-          <el-input v-model="taskForm.title" placeholder="请输入任务标题" />
+        <el-form-item :label="$t('tasks.taskTitle')">
+          <el-input v-model="taskForm.title" :placeholder="$t('dashboard.taskTitlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="负责人">
-          <el-select v-model="taskForm.assignee_id" placeholder="选择负责人" style="width: 100%;">
+        <el-form-item :label="$t('tasks.assignee')">
+          <el-select v-model="taskForm.assignee_id" :placeholder="$t('tasks.selectAssignee')" style="width: 100%;">
             <el-option
               v-for="member in project.members"
               :key="member.id"
@@ -201,75 +202,75 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="优先级">
+        <el-form-item :label="$t('tasks.priority')">
           <el-select v-model="taskForm.priority" style="width: 100%;">
-            <el-option label="紧急" value="urgent" />
-            <el-option label="高" value="high" />
-            <el-option label="中" value="medium" />
-            <el-option label="低" value="low" />
+            <el-option :label="$t('dashboard.urgent')" value="urgent" />
+            <el-option :label="$t('dashboard.high')" value="high" />
+            <el-option :label="$t('dashboard.medium')" value="medium" />
+            <el-option :label="$t('dashboard.low')" value="low" />
           </el-select>
         </el-form-item>
-        <el-form-item label="截止日期">
+        <el-form-item :label="$t('tasks.deadline')">
           <el-date-picker
             v-model="taskForm.due_date"
             type="datetime"
-            placeholder="选择截止日期"
+            :placeholder="$t('dashboard.selectDeadline')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="任务描述">
+        <el-form-item :label="$t('tasks.description')">
           <el-input
             v-model="taskForm.description"
             type="textarea"
             rows="3"
-            placeholder="请输入任务描述"
+            :placeholder="$t('tasks.taskDescPlaceholder')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateTask = false">取消</el-button>
-        <el-button type="primary" @click="createTask" :loading="creating">创建</el-button>
+        <el-button @click="showCreateTask = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="createTask" :loading="creating">{{ $t('common.create') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 编辑项目对话框 -->
-    <el-dialog v-model="showEditDialog" title="编辑项目" width="600px">
+    <el-dialog v-model="showEditDialog" :title="$t('projects.editProject')" width="600px">
       <el-form :model="editForm" label-width="100px" :rules="editRules" ref="editFormRef">
-        <el-form-item label="项目名称" prop="name">
-          <el-input v-model="editForm.name" placeholder="请输入项目名称" />
+        <el-form-item :label="$t('projects.projectName')" prop="name">
+          <el-input v-model="editForm.name" :placeholder="$t('dashboard.projectNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="项目描述">
+        <el-form-item :label="$t('projects.projectDesc')">
           <el-input
             v-model="editForm.description"
             type="textarea"
             rows="3"
-            placeholder="请输入项目描述"
+            :placeholder="$t('dashboard.projectDescPlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="项目颜色">
+        <el-form-item :label="$t('projects.projectColor')">
           <el-color-picker v-model="editForm.color" />
         </el-form-item>
-        <el-form-item label="开始日期">
+        <el-form-item :label="$t('projects.startDate')">
           <el-date-picker
             v-model="editForm.start_date"
             type="date"
-            placeholder="选择开始日期"
+            :placeholder="$t('dashboard.selectStartDate')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="结束日期">
+        <el-form-item :label="$t('projects.endDate')">
           <el-date-picker
             v-model="editForm.end_date"
             type="date"
-            placeholder="选择结束日期"
+            :placeholder="$t('dashboard.selectEndDate')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="关联客户">
+        <el-form-item :label="$t('projects.relatedClient')">
           <el-select
             v-model="editForm.client_id"
             clearable
-            placeholder="选择关联客户（可选）"
+            :placeholder="$t('projects.selectClientOptional')"
             style="width: 100%;"
           >
             <el-option
@@ -280,8 +281,8 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="项目负责人">
-          <el-select v-model="editForm.leader_id" placeholder="选择项目负责人" style="width: 100%;">
+        <el-form-item :label="$t('projects.projectLeader')">
+          <el-select v-model="editForm.leader_id" :placeholder="$t('projects.selectLeader')" style="width: 100%;">
             <el-option
               v-for="user in users"
               :key="user.id"
@@ -290,11 +291,11 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="项目成员">
+        <el-form-item :label="$t('projects.projectMembers')">
           <el-select
             v-model="editForm.member_ids"
             multiple
-            placeholder="选择项目成员"
+            :placeholder="$t('projects.selectMembers')"
             style="width: 100%;"
           >
             <el-option
@@ -307,13 +308,13 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showEditDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleUpdate" :loading="updating">保存</el-button>
+        <el-button @click="showEditDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleUpdate" :loading="updating">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 任务详情对话框 -->
-    <el-dialog v-model="showTaskDetail" title="任务详情" width="700px">
+    <el-dialog v-model="showTaskDetail" :title="$t('tasks.taskDetail')" width="700px">
       <div v-if="currentTask" class="task-detail">
         <div class="detail-header">
           <h3>{{ currentTask.title }}</h3>
@@ -322,7 +323,7 @@
               {{ getStatusLabel(currentTask.status) }}
             </el-tag>
             <el-button v-if="!taskEditMode" link type="primary" @click="startTaskEdit">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>{{ $t('common.edit') }}
             </el-button>
           </div>
         </div>
@@ -330,18 +331,18 @@
         <!-- 任务流程进度条（任务详情内） -->
         <div class="task-workflow">
           <el-steps :active="getTaskStepIndex(currentTask.status)" finish-status="success" simple>
-            <el-step title="待处理" />
-            <el-step title="进行中" />
-            <el-step title="审核中" />
-            <el-step title="已完成" />
+            <el-step :title="$t('tasks.todo')" />
+            <el-step :title="$t('tasks.inProgress')" />
+            <el-step :title="$t('tasks.inReview')" />
+            <el-step :title="$t('tasks.done')" />
           </el-steps>
         </div>
         
         <!-- 审核操作区：仅项目负责人可见 -->
         <div v-if="currentTask.status === 'review' && isProjectLeader" class="review-actions">
           <el-alert
-            title="该任务正在等待审核"
-            description="作为项目负责人，您可以审核此任务"
+            :title="$t('tasks.taskInReview')"
+            :description="$t('tasks.reviewHint')"
             type="warning"
             :closable="false"
             show-icon
@@ -349,10 +350,10 @@
           />
           <div class="review-buttons">
             <el-button type="danger" @click="handleReview('reject')">
-              <el-icon><Close /></el-icon>驳回
+              <el-icon><Close /></el-icon>{{ $t('tasks.reviewReject') }}
             </el-button>
             <el-button type="success" @click="handleReview('approve')">
-              <el-icon><Check /></el-icon>通过审核
+              <el-icon><Check /></el-icon>{{ $t('tasks.reviewApprove') }}
             </el-button>
           </div>
         </div>
@@ -360,8 +361,8 @@
         <!-- 非负责人看到审核中提示 -->
         <div v-else-if="currentTask.status === 'review' && !isProjectLeader" class="review-waiting">
           <el-alert
-            title="该任务正在审核中"
-            description="等待项目负责人审核..."
+            :title="$t('tasks.taskReviewing')"
+            :description="$t('tasks.waitingReview')"
             type="info"
             :closable="false"
             show-icon
@@ -371,33 +372,33 @@
         <!-- 提交审核按钮：任务负责人可见，且任务在进行中 -->
         <div v-if="currentTask.status === 'in_progress' && canSubmitReview" class="submit-review">
           <el-button type="primary" @click="handleSubmitReview">
-            <el-icon><Upload /></el-icon>提交审核
+            <el-icon><Upload /></el-icon>{{ $t('tasks.submitReview') }}
           </el-button>
         </div>
         
         <!-- 展示模式 -->
         <div v-if="!taskEditMode" class="detail-info">
           <div class="info-item">
-            <span class="label">负责人：</span>
-            <span>{{ currentTask.assignee?.real_name || '未分配' }}</span>
+            <span class="label">{{ $t('tasks.assignee') }}：</span>
+            <span>{{ currentTask.assignee?.real_name || $t('tasks.unassigned') }}</span>
           </div>
           <div class="info-item">
-            <span class="label">优先级：</span>
+            <span class="label">{{ $t('tasks.priority') }}：</span>
             <el-tag :type="getPriorityType(currentTask.priority)" size="small">
               {{ getPriorityLabel(currentTask.priority) }}
             </el-tag>
           </div>
           <div class="info-item">
-            <span class="label">截止日期：</span>
-            <span>{{ currentTask.due_date ? formatDateTime(currentTask.due_date) : '无' }}</span>
+            <span class="label">{{ $t('tasks.deadline') }}：</span>
+            <span>{{ currentTask.due_date ? formatDateTime(currentTask.due_date) : $t('tasks.none') }}</span>
           </div>
         </div>
         
         <!-- 编辑模式 -->
         <div v-else class="detail-info edit-mode">
           <el-form :model="taskEditForm" label-width="80px">
-            <el-form-item label="负责人">
-              <el-select v-model="taskEditForm.assignee_id" clearable placeholder="选择负责人" style="width: 100%;">
+            <el-form-item :label="$t('tasks.assignee')">
+              <el-select v-model="taskEditForm.assignee_id" clearable :placeholder="$t('tasks.selectAssignee')" style="width: 100%;">
                 <el-option
                   v-for="member in project.members"
                   :key="member.id"
@@ -406,19 +407,19 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="优先级">
+            <el-form-item :label="$t('tasks.priority')">
               <el-select v-model="taskEditForm.priority" style="width: 100%;">
-                <el-option label="紧急" value="urgent" />
-                <el-option label="高" value="high" />
-                <el-option label="中" value="medium" />
-                <el-option label="低" value="low" />
+                <el-option :label="$t('dashboard.urgent')" value="urgent" />
+                <el-option :label="$t('dashboard.high')" value="high" />
+                <el-option :label="$t('dashboard.medium')" value="medium" />
+                <el-option :label="$t('dashboard.low')" value="low" />
               </el-select>
             </el-form-item>
-            <el-form-item label="截止日期">
+            <el-form-item :label="$t('tasks.deadline')">
               <el-date-picker
                 v-model="taskEditForm.due_date"
                 type="datetime"
-                placeholder="选择截止日期"
+                :placeholder="$t('dashboard.selectDeadline')"
                 style="width: 100%;"
               />
             </el-form-item>
@@ -426,20 +427,20 @@
         </div>
         
         <div class="detail-desc">
-          <h4>任务描述</h4>
-          <p v-if="!taskEditMode">{{ currentTask.description || '暂无描述' }}</p>
+          <h4>{{ $t('tasks.description') }}</h4>
+          <p v-if="!taskEditMode">{{ currentTask.description || $t('tasks.noDescription') }}</p>
           <el-input
             v-else
             v-model="taskEditForm.description"
             type="textarea"
             rows="4"
-            placeholder="请输入任务描述"
+            :placeholder="$t('tasks.taskDescPlaceholder')"
           />
         </div>
         
         <!-- 评论区域 -->
         <div class="detail-comments">
-          <h4>评论</h4>
+          <h4>{{ $t('tasks.comments') }}</h4>
           <div class="comment-list">
             <div
               v-for="comment in currentTask.comments"
@@ -464,27 +465,27 @@
               v-model="newComment"
               type="textarea"
               rows="2"
-              placeholder="添加评论..."
+              :placeholder="$t('tasks.addCommentPlaceholder')"
             />
             <el-button type="primary" @click="addComment" :loading="addingComment">
-              发送
+              {{ $t('tasks.send') }}
             </el-button>
           </div>
         </div>
       </div>
       <template #footer>
         <template v-if="taskEditMode">
-          <el-button @click="cancelTaskEdit">取消</el-button>
-          <el-button type="primary" @click="saveTaskEdit" :loading="taskSaving">保存</el-button>
+          <el-button @click="cancelTaskEdit">{{ $t('common.cancel') }}</el-button>
+          <el-button type="primary" @click="saveTaskEdit" :loading="taskSaving">{{ $t('common.save') }}</el-button>
         </template>
         <template v-else>
-          <el-button @click="showTaskDetail = false">关闭</el-button>
+          <el-button @click="showTaskDetail = false">{{ $t('tasks.close') }}</el-button>
           <el-button
             v-if="currentTask?.status !== 'done' && currentTask?.status !== 'review' && canEditTask"
             type="success"
             @click="completeTask"
           >
-            完成任务
+            {{ $t('tasks.completeTask') }}
           </el-button>
         </template>
       </template>
@@ -493,9 +494,11 @@
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { useUserStore } from '@/stores/user'
 import { getProject, getProjectTasks, updateProject, getProjectActivities } from '@/api/projects'
@@ -506,6 +509,7 @@ import {
 import { getUsers } from '@/api/users'
 import { getClientOptions } from '@/api/clients'
 
+const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
 const projectId = route.params.id
@@ -518,20 +522,20 @@ const board = ref({
   done: []
 })
 
-const columns = [
-  { key: 'todo', title: '待处理' },
-  { key: 'in_progress', title: '进行中' },
-  { key: 'review', title: '审核中' },
-  { key: 'done', title: '已完成' }
-]
+const columns = computed(() => [
+  { key: 'todo', title: t('tasks.todo') },
+  { key: 'in_progress', title: t('tasks.inProgress') },
+  { key: 'review', title: t('tasks.inReview') },
+  { key: 'done', title: t('tasks.done') }
+])
 
 // 任务流程步骤
-const workflowSteps = [
-  { key: 'todo', name: '待处理', desc: '任务已创建', icon: 'Document' },
-  { key: 'in_progress', name: '进行中', desc: '开发处理中', icon: 'Loading' },
-  { key: 'review', name: '审核中', desc: '等待负责人审核', icon: 'View' },
-  { key: 'done', name: '已完成', desc: '审核通过', icon: 'CircleCheck' }
-]
+const workflowSteps = computed(() => [
+  { key: 'todo', name: t('tasks.todo'), desc: t('tasks.taskCreatedStep'), icon: 'Document' },
+  { key: 'in_progress', name: t('tasks.inProgress'), desc: t('tasks.taskProcessingStep'), icon: 'Loading' },
+  { key: 'review', name: t('tasks.inReview'), desc: t('tasks.taskReviewingStep'), icon: 'View' },
+  { key: 'done', name: t('tasks.done'), desc: t('tasks.taskDoneStep'), icon: 'CircleCheck' }
+])
 
 const currentWorkflowStep = computed(() => {
   // 根据当前选中任务或整体项目进度计算
@@ -609,7 +613,7 @@ const editForm = ref({
 })
 
 const editRules = {
-  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }]
+  name: [{ required: true, message: t('dashboard.pleaseFillInfo'), trigger: 'blur' }]
 }
 
 const fetchProject = async () => {
@@ -617,7 +621,7 @@ const fetchProject = async () => {
     const res = await getProject(projectId)
     project.value = res.project
   } catch (error) {
-    console.error('获取项目失败', error)
+    console.error(t('projects.fetchFailed'), error)
   }
 }
 
@@ -626,7 +630,7 @@ const fetchUsers = async () => {
     const res = await getUsers({ per_page: 100 })
     users.value = res.users
   } catch (error) {
-    console.error('获取用户失败', error)
+    console.error(t('users.fetchFailed'), error)
   }
 }
 
@@ -635,7 +639,7 @@ const fetchClientOptions = async () => {
     const res = await getClientOptions()
     clientOptions.value = res.clients
   } catch (error) {
-    console.error('获取客户选项失败', error)
+    console.error(t('clients.fetchFailed'), error)
   }
 }
 
@@ -645,7 +649,7 @@ const fetchActivities = async () => {
     const res = await getProjectActivities(projectId, { per_page: 50 })
     activities.value = res.activities || []
   } catch (error) {
-    console.error('获取动态失败', error)
+    console.error(t('projects.fetchActivitiesFailed'), error)
   } finally {
     activityLoading.value = false
   }
@@ -672,12 +676,12 @@ const handleUpdate = async () => {
   updating.value = true
   try {
     await updateProject(projectId, { ...editForm.value })
-    ElMessage.success('项目更新成功')
+    ElMessage.success(t('projects.projectUpdated'))
     showEditDialog.value = false
     fetchProject()
   } catch (error) {
-    console.error('更新项目失败', error)
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    console.error(t('projects.updateFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('projects.updateFailed'))
   } finally {
     updating.value = false
   }
@@ -688,7 +692,7 @@ const fetchBoard = async () => {
     const res = await getProjectTasks(projectId)
     board.value = res.board
   } catch (error) {
-    console.error('获取看板失败', error)
+    console.error(t('tasks.fetchBoardFailed'), error)
   }
 }
 
@@ -698,7 +702,7 @@ const getTasksByStatus = (status) => {
 
 const createTask = async () => {
   if (!taskForm.value.title) {
-    ElMessage.warning('请输入任务标题')
+    ElMessage.warning(t('tasks.pleaseEnterTaskTitle'))
     return
   }
   
@@ -708,7 +712,7 @@ const createTask = async () => {
       ...taskForm.value,
       project_id: projectId
     })
-    ElMessage.success('任务创建成功')
+    ElMessage.success(t('tasks.taskCreated'))
     showCreateTask.value = false
     fetchBoard()
     fetchActivities()
@@ -720,7 +724,7 @@ const createTask = async () => {
       description: ''
     }
   } catch (error) {
-    console.error('创建任务失败', error)
+    console.error(t('tasks.createTaskFailed'), error)
   } finally {
     creating.value = false
   }
@@ -732,7 +736,7 @@ const openTaskDetail = async (task) => {
     currentTask.value = res.task
     showTaskDetail.value = true
   } catch (error) {
-    console.error('获取任务详情失败', error)
+    console.error(t('tasks.fetchDetailFailed'), error)
   }
 }
 
@@ -742,13 +746,13 @@ const addComment = async () => {
   addingComment.value = true
   try {
     await apiAddComment(currentTask.value.id, newComment.value)
-    ElMessage.success('评论添加成功')
+    ElMessage.success(t('tasks.commentAdded'))
     newComment.value = ''
     const res = await getTask(currentTask.value.id)
     currentTask.value = res.task
     fetchActivities()
   } catch (error) {
-    console.error('添加评论失败', error)
+    console.error(t('tasks.addCommentFailed'), error)
   } finally {
     addingComment.value = false
   }
@@ -772,15 +776,15 @@ const saveTaskEdit = async () => {
   taskSaving.value = true
   try {
     await updateTask(currentTask.value.id, { ...taskEditForm.value })
-    ElMessage.success('任务更新成功')
+    ElMessage.success(t('tasks.taskUpdated'))
     taskEditMode.value = false
     const res = await getTask(currentTask.value.id)
     currentTask.value = res.task
     fetchBoard()
     fetchActivities()
   } catch (error) {
-    console.error('更新任务失败', error)
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    console.error(t('tasks.updateTaskFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('projects.updateFailed'))
   } finally {
     taskSaving.value = false
   }
@@ -789,12 +793,12 @@ const saveTaskEdit = async () => {
 const completeTask = async () => {
   try {
     await updateTask(currentTask.value.id, { status: 'done' })
-    ElMessage.success('任务已完成')
+    ElMessage.success(t('tasks.taskCompleted'))
     showTaskDetail.value = false
     fetchBoard()
     fetchActivities()
   } catch (error) {
-    console.error('完成任务失败', error)
+    console.error(t('tasks.completeTaskFailed'), error)
   }
 }
 
@@ -802,14 +806,14 @@ const completeTask = async () => {
 const handleSubmitReview = async () => {
   try {
     await submitTaskForReview(currentTask.value.id)
-    ElMessage.success('任务已提交审核')
+    ElMessage.success(t('tasks.reviewSubmitted'))
     const res = await getTask(currentTask.value.id)
     currentTask.value = res.task
     fetchBoard()
     fetchActivities()
   } catch (error) {
-    console.error('提交审核失败', error)
-    ElMessage.error(error.response?.data?.message || '提交审核失败')
+    console.error(t('tasks.submitReviewFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('tasks.submitReviewFailed'))
   }
 }
 
@@ -817,14 +821,14 @@ const handleSubmitReview = async () => {
 const handleReview = async (action) => {
   try {
     await reviewTask(currentTask.value.id, action)
-    ElMessage.success(action === 'approve' ? '审核通过' : '已驳回')
+    ElMessage.success(action === 'approve' ? t('tasks.reviewApproved') : t('tasks.reviewRejected'))
     const res = await getTask(currentTask.value.id)
     currentTask.value = res.task
     fetchBoard()
     fetchActivities()
   } catch (error) {
-    console.error('审核失败', error)
-    ElMessage.error(error.response?.data?.message || '审核失败')
+    console.error(t('tasks.reviewFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('tasks.reviewFailed'))
   }
 }
 
@@ -850,21 +854,21 @@ const handleDrop = async (newStatus, event) => {
   
   // 禁止从待处理直接跳到已完成，或反向跳
   if (Math.abs(newIdx - oldIdx) > 1 && newStatus !== 'done') {
-    ElMessage.warning('请按流程顺序推进任务')
+    ElMessage.warning(t('tasks.followWorkflow'))
     draggedTask = null
     return
   }
   
   // 禁止从已完成往回拖
   if (oldStatus === 'done' && newIdx < oldIdx) {
-    ElMessage.warning('已完成的任务不能回退')
+    ElMessage.warning(t('tasks.cannotRevertDone'))
     draggedTask = null
     return
   }
   
   // 审核中只能由负责人处理，普通成员不能拖拽
   if (oldStatus === 'review' && !isProjectLeader.value) {
-    ElMessage.warning('审核中的任务只能由项目负责人操作')
+    ElMessage.warning(t('tasks.onlyLeaderCanReview'))
     draggedTask = null
     return
   }
@@ -880,11 +884,11 @@ const handleDrop = async (newStatus, event) => {
   
   try {
     await updateTask(taskId, { status: newStatus })
-    ElMessage.success('任务状态已更新')
+    ElMessage.success(t('tasks.taskStatusUpdated'))
     fetchActivities()
   } catch (error) {
-    console.error('更新任务状态失败', error)
-    ElMessage.error('更新失败，正在刷新')
+    console.error(t('tasks.updateStatusFailed'), error)
+    ElMessage.error(t('tasks.updateStatusFailed'))
     fetchBoard()
   }
 }
@@ -913,10 +917,10 @@ const getPriorityType = (priority) => {
 
 const getPriorityLabel = (priority) => {
   const labelMap = {
-    'urgent': '紧急',
-    'high': '高',
-    'medium': '中',
-    'low': '低'
+    'urgent': t('dashboard.urgent'),
+    'high': t('dashboard.high'),
+    'medium': t('dashboard.medium'),
+    'low': t('dashboard.low')
   }
   return labelMap[priority] || priority
 }
@@ -933,10 +937,10 @@ const getStatusType = (status) => {
 
 const getStatusLabel = (status) => {
   const labelMap = {
-    'todo': '待处理',
-    'in_progress': '进行中',
-    'review': '审核中',
-    'done': '已完成'
+    'todo': t('tasks.todo'),
+    'in_progress': t('tasks.inProgress'),
+    'review': t('tasks.inReview'),
+    'done': t('tasks.done')
   }
   return labelMap[status] || status
 }

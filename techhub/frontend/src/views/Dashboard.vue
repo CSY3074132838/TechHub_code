@@ -1,3 +1,4 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="dashboard-page">
     <!-- 统计卡片 -->
@@ -9,7 +10,7 @@
               <el-icon size="24"><Document /></el-icon>
             </div>
             <div>
-              <div class="stat-title">待办任务</div>
+              <div class="stat-title">{{ $t('dashboard.todoTasks') }}</div>
               <div class="stat-value">{{ overview.my_pending_tasks || 0 }}</div>
             </div>
           </div>
@@ -23,7 +24,7 @@
               <el-icon size="24"><Folder /></el-icon>
             </div>
             <div>
-              <div class="stat-title">我的项目</div>
+              <div class="stat-title">{{ $t('dashboard.myProjects') }}</div>
               <div class="stat-value">{{ overview.my_projects || 0 }}</div>
             </div>
           </div>
@@ -37,7 +38,7 @@
               <el-icon size="24"><Timer /></el-icon>
             </div>
             <div>
-              <div class="stat-title">待处理审批</div>
+              <div class="stat-title">{{ $t('dashboard.pendingApprovals') }}</div>
               <div class="stat-value">{{ overview.my_pending_approvals || 0 }}</div>
             </div>
           </div>
@@ -51,7 +52,7 @@
               <el-icon size="24"><CircleCheck /></el-icon>
             </div>
             <div>
-              <div class="stat-title">今日完成</div>
+              <div class="stat-title">{{ $t('dashboard.todayCompleted') }}</div>
               <div class="stat-value">{{ overview.today_completed || 0 }}</div>
             </div>
           </div>
@@ -68,7 +69,7 @@
               <el-icon size="24"><Clock /></el-icon>
             </div>
             <div>
-              <div class="stat-title">本月工时</div>
+              <div class="stat-title">{{ $t('dashboard.monthlyWorkHours') }}</div>
               <div class="stat-value">{{ attendanceStats.total_hours || 0 }}h</div>
             </div>
           </div>
@@ -81,7 +82,7 @@
               <el-icon size="24"><AlarmClock /></el-icon>
             </div>
             <div>
-              <div class="stat-title">加班时长</div>
+              <div class="stat-title">{{ $t('dashboard.overtimeHours') }}</div>
               <div class="stat-value">{{ attendanceStats.total_overtime || 0 }}h</div>
             </div>
           </div>
@@ -94,8 +95,8 @@
               <el-icon size="24"><Calendar /></el-icon>
             </div>
             <div>
-              <div class="stat-title">年假余额</div>
-              <div class="stat-value">{{ annualLeaveBalance }}天</div>
+              <div class="stat-title">{{ $t('dashboard.annualLeave') }}</div>
+              <div class="stat-value">{{ annualLeaveBalance }}{{ $t('common.unitDay') }}</div>
             </div>
           </div>
         </div>
@@ -107,8 +108,8 @@
               <el-icon size="24"><Money /></el-icon>
             </div>
             <div>
-              <div class="stat-title">待审批报销</div>
-              <div class="stat-value">{{ pendingExpenseCount }}笔</div>
+              <div class="stat-title">{{ $t('dashboard.pendingExpenses') }}</div>
+              <div class="stat-value">{{ pendingExpenseCount }}{{ $t('common.unitPiece') }}</div>
             </div>
           </div>
         </div>
@@ -121,8 +122,8 @@
         <el-card class="activity-card">
           <template #header>
             <div class="card-header">
-              <span>团队动态</span>
-              <el-button text @click="$router.push('/projects')">查看更多</el-button>
+              <span>{{ $t('common.teamActivity') }}</span>
+              <el-button text @click="$router.push('/projects')">{{ $t('common.more') }}</el-button>
             </div>
           </template>
           
@@ -145,28 +146,28 @@
             </el-timeline-item>
           </el-timeline>
           
-          <el-empty v-if="activities.length === 0" description="暂无动态" />
+          <el-empty v-if="activities.length === 0" :description="$t('common.noActivity')" />
         </el-card>
       </el-col>
       
       <el-col :xs="24" :lg="8">
         <el-card class="quick-actions">
           <template #header>
-            <span>快捷操作</span>
+            <span>{{ $t('common.quickActions') }}</span>
           </template>
           
           <div class="action-list">
             <el-button type="primary" plain class="action-btn" @click="showCreateTask = true">
               <el-icon><Plus /></el-icon>
-              新建任务
+              {{ $t('dashboard.newTask') }}
             </el-button>
             <el-button type="success" plain class="action-btn" @click="showCreateProject = true">
               <el-icon><FolderAdd /></el-icon>
-              新建项目
+              {{ $t('dashboard.newProject') }}
             </el-button>
             <el-button type="warning" plain class="action-btn" @click="$router.push('/approvals')">
               <el-icon><DocumentChecked /></el-icon>
-              发起审批
+              {{ $t('dashboard.newApproval') }}
             </el-button>
           </div>
         </el-card>
@@ -174,8 +175,8 @@
         <el-card class="my-tasks" style="margin-top: 20px;">
           <template #header>
             <div class="card-header">
-              <span>我的待办</span>
-              <el-button text @click="$router.push('/tasks')">查看全部</el-button>
+              <span>{{ $t('common.myTodo') }}</span>
+              <el-button text @click="$router.push('/tasks')">{{ $t('common.viewAll') }}</el-button>
             </div>
           </template>
           
@@ -195,19 +196,19 @@
               </div>
             </div>
           </div>
-          <el-empty v-else description="暂无待办任务" />
+          <el-empty v-else :description="$t('common.noTodo')" />
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 新建任务对话框 -->
-    <el-dialog v-model="showCreateTask" title="新建任务" width="600px">
+    <el-dialog v-model="showCreateTask" :title="$t('dashboard.taskDialogTitle')" width="600px">
       <el-form :model="taskForm" label-width="80px">
-        <el-form-item label="任务标题">
-          <el-input v-model="taskForm.title" placeholder="请输入任务标题" />
+        <el-form-item :label="$t('dashboard.taskTitle')">
+          <el-input v-model="taskForm.title" :placeholder="$t('dashboard.taskTitlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="所属项目">
-          <el-select v-model="taskForm.project_id" placeholder="选择项目" style="width: 100%;">
+        <el-form-item :label="$t('dashboard.project')">
+          <el-select v-model="taskForm.project_id" :placeholder="$t('dashboard.selectProject')" style="width: 100%;">
             <el-option
               v-for="project in projects"
               :key="project.id"
@@ -216,71 +217,71 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="优先级">
+        <el-form-item :label="$t('common.priority')">
           <el-select v-model="taskForm.priority" style="width: 100%;">
-            <el-option label="紧急" value="urgent" />
-            <el-option label="高" value="high" />
-            <el-option label="中" value="medium" />
-            <el-option label="低" value="low" />
+            <el-option :label="$t('dashboard.urgent')" value="urgent" />
+            <el-option :label="$t('dashboard.high')" value="high" />
+            <el-option :label="$t('dashboard.medium')" value="medium" />
+            <el-option :label="$t('dashboard.low')" value="low" />
           </el-select>
         </el-form-item>
-        <el-form-item label="截止日期">
+        <el-form-item :label="$t('dashboard.deadline')">
           <el-date-picker
             v-model="taskForm.due_date"
             type="datetime"
-            placeholder="选择截止日期"
+            :placeholder="$t('dashboard.selectDeadline')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="任务描述">
+        <el-form-item :label="$t('dashboard.taskDesc')">
           <el-input
             v-model="taskForm.description"
             type="textarea"
             rows="3"
-            placeholder="请输入任务描述"
+            :placeholder="$t('dashboard.taskDescPlaceholder')"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateTask = false">取消</el-button>
-        <el-button type="primary" @click="createTask" :loading="creating">创建</el-button>
+        <el-button @click="showCreateTask = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="createTask" :loading="creating">{{ $t('common.create') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 新建项目对话框 -->
-    <el-dialog v-model="showCreateProject" title="新建项目" width="600px">
+    <el-dialog v-model="showCreateProject" :title="$t('dashboard.projectDialogTitle')" width="600px">
       <el-form :model="projectForm" label-width="80px">
-        <el-form-item label="项目名称">
-          <el-input v-model="projectForm.name" placeholder="请输入项目名称" />
+        <el-form-item :label="$t('dashboard.projectName')">
+          <el-input v-model="projectForm.name" :placeholder="$t('dashboard.projectNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="项目描述">
+        <el-form-item :label="$t('dashboard.projectDesc')">
           <el-input
             v-model="projectForm.description"
             type="textarea"
             rows="3"
-            placeholder="请输入项目描述"
+            :placeholder="$t('dashboard.projectDescPlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="开始日期">
+        <el-form-item :label="$t('dashboard.startDate')">
           <el-date-picker
             v-model="projectForm.start_date"
             type="date"
-            placeholder="选择开始日期"
+            :placeholder="$t('dashboard.selectStartDate')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="结束日期">
+        <el-form-item :label="$t('dashboard.endDate')">
           <el-date-picker
             v-model="projectForm.end_date"
             type="date"
-            placeholder="选择结束日期"
+            :placeholder="$t('dashboard.selectEndDate')"
             style="width: 100%;"
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateProject = false">取消</el-button>
-        <el-button type="primary" @click="createProject" :loading="creatingProject">创建</el-button>
+        <el-button @click="showCreateProject = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="createProject" :loading="creatingProject">{{ $t('common.create') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -298,6 +299,9 @@ import { getProjects, createProject as apiCreateProject } from '@/api/projects'
 import { getAttendanceStats, getLeaveBalances } from '@/api/attendance'
 import { getExpenseStats } from '@/api/expenses'
 import { useUserStore } from '@/stores/user'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -367,28 +371,28 @@ const fetchData = async () => {
       leaveBalances.value = leaveRes.balances || []
       expenseStats.value = expRes
     } catch (e) {
-      console.error('获取行政财务数据失败', e)
+      console.error(t('dashboard.createFailed'), e)
     }
   } catch (error) {
-    console.error('获取数据失败', error)
+    console.error(t('dashboard.createFailed'), error)
   }
 }
 
 const createTask = async () => {
   if (!taskForm.value.title || !taskForm.value.project_id) {
-    ElMessage.warning('请填写完整信息')
+    ElMessage.warning(t('dashboard.pleaseFillInfo'))
     return
   }
   
   creating.value = true
   try {
     await apiCreateTask(taskForm.value)
-    ElMessage.success('任务创建成功')
+    ElMessage.success(t('dashboard.createTaskSuccess'))
     showCreateTask.value = false
     fetchData()
     taskForm.value = { title: '', project_id: '', priority: 'medium', due_date: '', description: '' }
   } catch (error) {
-    console.error('创建任务失败', error)
+    console.error(t('dashboard.createFailed'), error)
   } finally {
     creating.value = false
   }
@@ -396,19 +400,19 @@ const createTask = async () => {
 
 const createProject = async () => {
   if (!projectForm.value.name) {
-    ElMessage.warning('请输入项目名称')
+    ElMessage.warning(t('dashboard.pleaseFillInfo'))
     return
   }
   
   creatingProject.value = true
   try {
     await apiCreateProject(projectForm.value)
-    ElMessage.success('项目创建成功')
+    ElMessage.success(t('dashboard.createProjectSuccess'))
     showCreateProject.value = false
     fetchData()
     projectForm.value = { name: '', description: '', start_date: '', end_date: '' }
   } catch (error) {
-    console.error('创建项目失败', error)
+    console.error(t('dashboard.createFailed'), error)
   } finally {
     creatingProject.value = false
   }
@@ -419,7 +423,7 @@ const formatTime = (time) => {
 }
 
 const formatDate = (date) => {
-  if (!date) return '无截止日期'
+  if (!date) return t('dashboard.noDeadline')
   return dayjs(date).format('MM-DD')
 }
 
@@ -445,10 +449,10 @@ const getPriorityType = (priority) => {
 
 const getPriorityLabel = (priority) => {
   const labelMap = {
-    'urgent': '紧急',
-    'high': '高',
-    'medium': '中',
-    'low': '低'
+    'urgent': t('dashboard.urgent'),
+    'high': t('dashboard.high'),
+    'medium': t('dashboard.medium'),
+    'low': t('dashboard.low')
   }
   return labelMap[priority] || priority
 }

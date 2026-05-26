@@ -1,10 +1,11 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="register-page">
     <div class="register-container">
       <div class="register-header">
         <el-icon size="48" color="#1890ff"><Connection /></el-icon>
-        <h1>TechHub</h1>
-        <p>用户注册</p>
+        <h1>{{ $t('register.title') }}</h1>
+        <p>{{ $t('register.subtitle') }}</p>
       </div>
       
       <el-form
@@ -17,7 +18,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="registerForm.username"
-            placeholder="用户名"
+            :placeholder="$t('register.usernamePlaceholder')"
             size="large"
             :prefix-icon="User"
           />
@@ -26,7 +27,7 @@
         <el-form-item prop="email">
           <el-input
             v-model="registerForm.email"
-            placeholder="邮箱"
+            :placeholder="$t('register.emailPlaceholder')"
             size="large"
             :prefix-icon="Message"
           />
@@ -36,7 +37,7 @@
           <el-input
             v-model="registerForm.password"
             type="password"
-            placeholder="密码"
+            :placeholder="$t('register.passwordPlaceholder')"
             size="large"
             :prefix-icon="Lock"
             show-password
@@ -47,7 +48,7 @@
           <el-input
             v-model="registerForm.confirmPassword"
             type="password"
-            placeholder="确认密码"
+            :placeholder="$t('register.confirmPasswordPlaceholder')"
             size="large"
             :prefix-icon="Lock"
             show-password
@@ -62,26 +63,29 @@
             :loading="loading"
             @click="handleRegister"
           >
-            注册
+            {{ $t('register.registerButton') }}
           </el-button>
         </el-form-item>
       </el-form>
       
       <div class="register-footer">
-        <span>已有账号？</span>
-        <el-button link type="primary" @click="$router.push('/login')">立即登录</el-button>
+        <span>{{ $t('register.hasAccount') }}</span>
+        <el-button link type="primary" @click="$router.push('/login')">{{ $t('register.loginNow') }}</el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { User, Lock, Message } from '@element-plus/icons-vue'
 import { register } from '@/api/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const registerFormRef = ref(null)
@@ -96,7 +100,7 @@ const registerForm = reactive({
 
 const validateConfirmPassword = (rule, value, callback) => {
   if (value !== registerForm.password) {
-    callback(new Error('两次输入的密码不一致'))
+    callback(new Error(t('register.passwordMismatch')))
   } else {
     callback()
   }
@@ -104,19 +108,19 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const registerRules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度应在 3-20 位之间', trigger: 'blur' }
+    { required: true, message: t('register.usernameRequired'), trigger: 'blur' },
+    { min: 3, max: 20, message: t('register.usernameLength'), trigger: 'blur' }
   ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+    { required: true, message: t('register.emailRequired'), trigger: 'blur' },
+    { type: 'email', message: t('register.emailFormat'), trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { required: true, message: t('register.passwordRequired'), trigger: 'blur' },
+    { min: 6, message: t('register.passwordMinLength'), trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
+    { required: true, message: t('register.confirmPasswordRequired'), trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 }
@@ -132,10 +136,10 @@ const handleRegister = async () => {
       email: registerForm.email,
       password: registerForm.password
     })
-    ElMessage.success('注册成功，请登录')
+    ElMessage.success(t('register.registerSuccess'))
     router.push('/login')
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '注册失败')
+    ElMessage.error(error.response?.data?.message || t('register.registerFailed'))
   } finally {
     loading.value = false
   }

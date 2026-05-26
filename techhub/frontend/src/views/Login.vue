@@ -3,8 +3,8 @@
     <div class="login-container">
       <div class="login-header">
         <el-icon size="48" color="#1890ff"><Connection /></el-icon>
-        <h1>TechHub</h1>
-        <p>小型企业管理平台</p>
+        <h1>{{ $t('login.title') }}</h1>
+        <p>{{ $t('login.subtitle') }}</p>
       </div>
       
       <el-form
@@ -17,7 +17,7 @@
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
-            placeholder="用户名/邮箱"
+            :placeholder="$t('login.usernamePlaceholder')"
             size="large"
             :prefix-icon="User"
           />
@@ -27,7 +27,7 @@
           <el-input
             v-model="loginForm.password"
             type="password"
-            placeholder="密码"
+            :placeholder="$t('login.passwordPlaceholder')"
             size="large"
             :prefix-icon="Lock"
             show-password
@@ -42,19 +42,33 @@
             :loading="loading"
             @click="handleLogin"
           >
-            登录
+            {{ $t('login.loginButton') }}
           </el-button>
         </el-form-item>
       </el-form>
       
       <div class="register-link">
-        <span>还没有账号？</span>
-        <el-button link type="primary" @click="$router.push('/register')">立即注册</el-button>
+        <span>{{ $t('login.noAccount') }}</span>
+        <el-button link type="primary" @click="$router.push('/register')">{{ $t('login.registerNow') }}</el-button>
       </div>
       
-      <div class="login-tips">
-        <p>测试账号：admin / admin123</p>
-        <p>普通账号：test / test123</p>
+      <div class="language-switcher">
+        <el-dropdown @command="handleLanguageChange" trigger="click">
+          <div class="lang-current">
+            <span class="name">{{ currentLang === 'zh-CN' ? $t('language.zh') : $t('language.en') }}</span>
+            <el-icon><ArrowDown /></el-icon>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="zh-CN" :class="{ active: currentLang === 'zh-CN' }">
+                <span class="name">{{ $t('language.zh') }}</span>
+              </el-dropdown-item>
+              <el-dropdown-item command="en-US" :class="{ active: currentLang === 'en-US' }">
+                <span class="name">{{ $t('language.en') }}</span>
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
     
@@ -62,16 +76,31 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+/**
+ * 登录页面
+ * 第三次迭代陈思言负责
+ * 
+ * 功能说明：
+ * - 用户登录表单验证与提交
+ * - 语言切换功能：调用 languageStore 切换全局语言
+ * - 切换后全站（包括 Element Plus 组件）即时更新
+ */
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
-import { User, Lock } from '@element-plus/icons-vue'
+import { useLanguageStore } from '@/stores/language'
+import { User, Lock, ArrowDown } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const languageStore = useLanguageStore()
+const { locale, t } = useI18n()
 
 const loginFormRef = ref(null)
 const loading = ref(false)
+
+const currentLang = computed(() => locale.value)
 
 const loginForm = reactive({
   username: '',
@@ -80,11 +109,11 @@ const loginForm = reactive({
 
 const loginRules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
+    { required: true, message: t('login.usernameRequired'), trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { required: true, message: t('login.passwordRequired'), trigger: 'blur' },
+    { min: 6, message: t('login.passwordMinLength'), trigger: 'blur' }
   ]
 }
 
@@ -99,6 +128,16 @@ const handleLogin = async () => {
   if (success) {
     router.push('/')
   }
+}
+
+/**
+ * 切换语言
+ * 第三次迭代陈思言负责
+ * 调用 languageStore 同步更新全局 locale 和 localStorage
+ */
+const handleLanguageChange = (lang) => {
+  languageStore.setLanguage(lang)
+  locale.value = lang
 }
 </script>
 
@@ -144,19 +183,6 @@ const handleLogin = async () => {
   }
 }
 
-.login-tips {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #eee;
-  text-align: center;
-  
-  p {
-    color: #999;
-    font-size: 12px;
-    margin: 4px 0;
-  }
-}
-
 .register-link {
   margin-top: 16px;
   text-align: center;
@@ -164,10 +190,57 @@ const handleLogin = async () => {
   font-size: 14px;
 }
 
-.login-footer {
-  position: fixed;
-  bottom: 20px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+.language-switcher {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: center;
+  
+  .lang-current {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background 0.2s;
+    
+    &:hover {
+      background: #f5f5f5;
+    }
+    
+    .name {
+      font-size: 14px;
+      color: #333;
+      font-weight: 500;
+      line-height: 1;
+    }
+    
+    .el-icon {
+      font-size: 12px;
+      color: #999;
+    }
+  }
+}
+
+:deep(.el-dropdown-menu__item) {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  
+  .name {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+    line-height: 1;
+  }
+  
+  &.active {
+    background: #ecf5ff;
+    color: #409eff;
+    font-weight: 500;
+  }
 }
 </style>

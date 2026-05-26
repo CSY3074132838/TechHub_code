@@ -1,26 +1,27 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="contracts-page">
     <div class="page-header">
-      <h2>合同管理</h2>
+      <h2>{{ $t('contracts.pageTitle') }}</h2>
       <el-button type="primary" @click="openDialog()">
-        <el-icon><Plus /></el-icon>新建合同
+        <el-icon><Plus /></el-icon>{{ $t('contracts.newContract') }}
       </el-button>
     </div>
 
     <!-- 筛选 -->
     <el-card class="filter-card">
       <el-form :inline="true" :model="filterForm">
-        <el-form-item label="状态">
-          <el-select v-model="filterForm.status" placeholder="全部" clearable style="width: 140px">
-            <el-option label="草稿" value="draft" />
-            <el-option label="审批中" value="pending" />
-            <el-option label="生效中" value="active" />
-            <el-option label="已完成" value="completed" />
-            <el-option label="已终止" value="terminated" />
+        <el-form-item :label="$t('common.status')">
+          <el-select v-model="filterForm.status" :placeholder="$t('common.all')" clearable style="width: 140px">
+            <el-option :label="$t('contracts.draft')" value="draft" />
+            <el-option :label="$t('contracts.inApproval')" value="pending" />
+            <el-option :label="$t('contracts.active')" value="active" />
+            <el-option :label="$t('contracts.completed')" value="completed" />
+            <el-option :label="$t('contracts.terminated')" value="terminated" />
           </el-select>
         </el-form-item>
-        <el-form-item label="客户">
-          <el-select v-model="filterForm.client_id" placeholder="全部客户" clearable style="width: 180px">
+        <el-form-item :label="$t('contracts.client')">
+          <el-select v-model="filterForm.client_id" :placeholder="$t('contracts.allClients')" clearable style="width: 180px">
             <el-option
               v-for="c in clientOptions"
               :key="c.id"
@@ -29,12 +30,12 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="搜索">
-          <el-input v-model="filterForm.search" placeholder="合同名称/编号" clearable style="width: 200px" />
+        <el-form-item :label="$t('common.search')">
+          <el-input v-model="filterForm.search" :placeholder="$t('contracts.searchPlaceholder')" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="resetFilter">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('common.query') }}</el-button>
+          <el-button @click="resetFilter">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -42,44 +43,44 @@
     <!-- 合同表格 -->
     <el-card>
       <el-table :data="contracts" stripe v-loading="loading">
-        <el-table-column label="合同编号" prop="contract_no" width="140" />
-        <el-table-column label="合同名称" prop="name" min-width="180" />
-        <el-table-column label="客户" width="150">
+        <el-table-column :label="$t('contracts.contractNo')" prop="contract_no" width="140" />
+        <el-table-column :label="$t('contracts.contractName')" prop="name" min-width="180" />
+        <el-table-column :label="$t('contracts.client')" width="150">
           <template #default="{ row }">
             {{ row.client?.name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="金额" width="130">
+        <el-table-column :label="$t('common.amount')" width="130">
           <template #default="{ row }">
             <span class="amount">{{ row.amount ? `¥${row.amount.toLocaleString()}` : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column :label="$t('common.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">
               {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="签约日期" width="120">
+        <el-table-column :label="$t('contracts.signDate')" width="120">
           <template #default="{ row }">
             {{ formatDate(row.sign_date) }}
           </template>
         </el-table-column>
-        <el-table-column label="有效期" width="180">
+        <el-table-column :label="$t('contracts.validPeriod')" width="180">
           <template #default="{ row }">
             {{ formatDate(row.start_date) }} ~ {{ formatDate(row.end_date) }}
           </template>
         </el-table-column>
-        <el-table-column label="创建人" width="120">
+        <el-table-column :label="$t('contracts.creator')" width="120">
           <template #default="{ row }">
             {{ row.creator?.real_name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column :label="$t('common.operation')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="primary" @click="openDialog(row)">{{ $t('common.edit') }}</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -96,16 +97,16 @@
     </el-card>
 
     <!-- 对话框 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑合同' : '新建合同'" width="650px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? $t('contracts.editContract') : $t('contracts.newContractDialog')" width="650px">
       <el-form :model="form" label-width="100px" :rules="rules" ref="formRef">
-        <el-form-item label="合同编号" prop="contract_no">
-          <el-input v-model="form.contract_no" placeholder="留空自动生成" />
+        <el-form-item :label="$t('contracts.contractNo')" prop="contract_no">
+          <el-input v-model="form.contract_no" :placeholder="$t('contracts.autoGenerate')" />
         </el-form-item>
-        <el-form-item label="合同名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入合同名称" />
+        <el-form-item :label="$t('contracts.contractName')" prop="name">
+          <el-input v-model="form.name" :placeholder="$t('contracts.pleaseEnterName')" />
         </el-form-item>
-        <el-form-item label="关联客户" prop="client_id">
-          <el-select v-model="form.client_id" placeholder="选择客户" style="width: 100%">
+        <el-form-item :label="$t('contracts.relatedClient')" prop="client_id">
+          <el-select v-model="form.client_id" :placeholder="$t('contracts.selectClient')" style="width: 100%">
             <el-option
               v-for="c in clientOptions"
               :key="c.id"
@@ -114,8 +115,8 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="关联项目">
-          <el-select v-model="form.project_id" placeholder="选择项目（可选）" clearable style="width: 100%">
+        <el-form-item :label="$t('contracts.relatedProject')">
+          <el-select v-model="form.project_id" :placeholder="$t('contracts.selectProjectOptional')" clearable style="width: 100%">
             <el-option
               v-for="p in projectOptions"
               :key="p.id"
@@ -124,61 +125,65 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="合同金额">
+        <el-form-item :label="$t('contracts.contractAmount')">
           <el-input-number v-model="form.amount" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="签约日期">
-              <el-date-picker v-model="form.sign_date" type="date" placeholder="选择日期" style="width: 100%" />
+            <el-form-item :label="$t('contracts.signDate')">
+              <el-date-picker v-model="form.sign_date" type="date" :placeholder="$t('contracts.selectDate')" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="合同状态">
+            <el-form-item :label="$t('contracts.contractStatus')">
               <el-select v-model="form.status" style="width: 100%">
-                <el-option label="草稿" value="draft" />
-                <el-option label="审批中" value="pending" />
-                <el-option label="生效中" value="active" />
-                <el-option label="已完成" value="completed" />
-                <el-option label="已终止" value="terminated" />
+                <el-option :label="$t('contracts.draft')" value="draft" />
+                <el-option :label="$t('contracts.inApproval')" value="pending" />
+                <el-option :label="$t('contracts.active')" value="active" />
+                <el-option :label="$t('contracts.completed')" value="completed" />
+                <el-option :label="$t('contracts.terminated')" value="terminated" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="开始日期">
-              <el-date-picker v-model="form.start_date" type="date" placeholder="选择日期" style="width: 100%" />
+            <el-form-item :label="$t('common.startDate')">
+              <el-date-picker v-model="form.start_date" type="date" :placeholder="$t('contracts.selectDate')" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="结束日期">
-              <el-date-picker v-model="form.end_date" type="date" placeholder="选择日期" style="width: 100%" />
+            <el-form-item :label="$t('common.endDate')">
+              <el-date-picker v-model="form.end_date" type="date" :placeholder="$t('contracts.selectDate')" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="付款条款">
-          <el-input v-model="form.payment_terms" type="textarea" rows="2" placeholder="付款方式、账期等" />
+        <el-form-item :label="$t('contracts.paymentTerms')">
+          <el-input v-model="form.payment_terms" type="textarea" rows="2" :placeholder="$t('contracts.paymentTermsPlaceholder')" />
         </el-form-item>
-        <el-form-item label="合同内容">
-          <el-input v-model="form.content" type="textarea" rows="4" placeholder="合同主要内容摘要" />
+        <el-form-item :label="$t('contracts.contractContent')">
+          <el-input v-model="form.content" type="textarea" rows="4" :placeholder="$t('contracts.contractContentPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="submitting">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmit" :loading="submitting">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import dayjs from 'dayjs'
 import { getContracts, createContract, updateContract, deleteContract } from '@/api/contracts'
 import { getClientOptions } from '@/api/clients'
 import { getProjects } from '@/api/projects'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -219,8 +224,8 @@ const form = reactive({
 })
 
 const rules = {
-  name: [{ required: true, message: '请输入合同名称', trigger: 'blur' }],
-  client_id: [{ required: true, message: '请选择客户', trigger: 'change' }]
+  name: [{ required: true, message: t('contracts.pleaseEnterName'), trigger: 'blur' }],
+  client_id: [{ required: true, message: t('contracts.pleaseSelectClient'), trigger: 'change' }]
 }
 
 const fetchContracts = async () => {
@@ -236,7 +241,7 @@ const fetchContracts = async () => {
     pagination.total = res.total
     pagination.pages = res.pages
   } catch (error) {
-    console.error('获取合同列表失败', error)
+    console.error(t('contracts.fetchFailed'), error)
   } finally {
     loading.value = false
   }
@@ -247,7 +252,7 @@ const fetchClientOptions = async () => {
     const res = await getClientOptions()
     clientOptions.value = res.clients
   } catch (error) {
-    console.error('获取客户选项失败', error)
+    console.error(t('contracts.fetchClientFailed'), error)
   }
 }
 
@@ -256,7 +261,7 @@ const fetchProjectOptions = async () => {
     const res = await getProjects({ per_page: 100 })
     projectOptions.value = res.projects
   } catch (error) {
-    console.error('获取项目选项失败', error)
+    console.error(t('contracts.fetchProjectFailed'), error)
   }
 }
 
@@ -317,16 +322,16 @@ const handleSubmit = async () => {
     const data = formatFormDates({ ...form })
     if (isEdit.value) {
       await updateContract(currentId.value, data)
-      ElMessage.success('合同更新成功')
+      ElMessage.success(t('contracts.updateSuccess'))
     } else {
       await createContract(data)
-      ElMessage.success('合同创建成功')
+      ElMessage.success(t('contracts.createSuccess'))
     }
     dialogVisible.value = false
     pagination.page = 1
     fetchContracts()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('common.operationFailed'))
   } finally {
     submitting.value = false
   }
@@ -334,20 +339,20 @@ const handleSubmit = async () => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定要删除合同 "${row.name}" 吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(`${t('contracts.deleteConfirmPrefix')} "${row.name}" ${t('contracts.deleteConfirmSuffix')}`, t('common.tip'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     await deleteContract(row.id)
-    ElMessage.success('合同已删除')
+    ElMessage.success(t('contracts.deleteSuccess'))
     if (contracts.value.length === 1 && pagination.page > 1) {
       pagination.page -= 1
     }
     fetchContracts()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || '操作失败')
+      ElMessage.error(error.response?.data?.message || t('common.operationFailed'))
     }
   }
 }
@@ -362,7 +367,13 @@ const getStatusType = (status) => {
 }
 
 const getStatusLabel = (status) => {
-  const map = { draft: '草稿', pending: '审批中', active: '生效中', completed: '已完成', terminated: '已终止' }
+  const map = {
+    draft: t('contracts.draft'),
+    pending: t('contracts.inApproval'),
+    active: t('contracts.active'),
+    completed: t('contracts.completed'),
+    terminated: t('contracts.terminated')
+  }
   return map[status] || status
 }
 

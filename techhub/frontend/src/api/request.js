@@ -44,6 +44,10 @@ request.interceptors.request.use(
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
+    // 如果是blob响应，返回完整response，让调用方处理blob
+    if (response.config.responseType === 'blob') {
+      return response
+    }
     return response.data
   },
   async (error) => {
@@ -96,25 +100,39 @@ request.interceptors.response.use(
         }
       }
       
+      // 对于blob响应，尝试解析错误信息
+      let errorMessage = '请求失败'
+      if (response.config?.responseType === 'blob') {
+        try {
+          const blobText = await response.data.text()
+          const errorData = JSON.parse(blobText)
+          errorMessage = errorData.message || '请求失败'
+        } catch (e) {
+          errorMessage = response.statusText || '请求失败'
+        }
+      } else {
+        errorMessage = response.data?.message || '请求失败'
+      }
+      
       switch (response.status) {
         case 401:
-          if (response.data?.error !== 'token_expired') {
+          if (!response.config?.responseType || response.data?.error !== 'token_expired') {
             ElMessage.error('登录已过期，请重新登录')
             localStorage.removeItem('token')
             router.push('/login')
           }
           break
         case 403:
-          ElMessage.error(response.data?.message || '权限不足')
+          ElMessage.error(errorMessage || '权限不足')
           break
         case 404:
           ElMessage.error('请求的资源不存在')
           break
         case 500:
-          ElMessage.error('服务器错误')
+          ElMessage.error(errorMessage || '服务器错误')
           break
         default:
-          ElMessage.error(response.data?.message || '请求失败')
+          ElMessage.error(errorMessage)
       }
     } else {
       ElMessage.error('网络错误')

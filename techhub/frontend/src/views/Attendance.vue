@@ -1,20 +1,21 @@
 <template>
+  <!-- 第三次迭代陈思言负责 -->
   <!-- 【第二次迭代】考勤与工时管理页面 -->
   <div class="attendance-page">
     <div class="page-header">
-      <h2>考勤工时</h2>
+      <h2>{{ t('attendance.pageTitle') }}</h2>
       <div class="header-actions">
         <el-button type="success" @click="handleCheckIn" :loading="checkingIn">
-          <el-icon><CircleCheck /></el-icon>一键打卡
+          <el-icon><CircleCheck /></el-icon>{{ t('attendance.checkIn') }}
         </el-button>
         <el-button type="warning" @click="handleCheckOut" :loading="checkingOut">
-          <el-icon><CircleClose /></el-icon>一键下班
+          <el-icon><CircleClose /></el-icon>{{ t('attendance.checkOut') }}
         </el-button>
         <el-button type="primary" @click="showLeaveDialog = true">
-          <el-icon><Document /></el-icon>请假申请
+          <el-icon><Document /></el-icon>{{ t('attendance.leaveApply') }}
         </el-button>
         <el-button type="primary" @click="showWorkTimeDialog = true">
-          <el-icon><Plus /></el-icon>填报工时
+          <el-icon><Plus /></el-icon>{{ t('attendance.workTimeReport') }}
         </el-button>
       </div>
     </div>
@@ -25,9 +26,9 @@
       <el-col :xs="12" :sm="6" v-if="!isManager">
         <div class="stat-card">
           <div class="stat-value">{{ attendanceStats.total_hours || 0 }}h</div>
-          <div class="stat-label">本月工时</div>
+          <div class="stat-label">{{ t('attendance.monthlyWorkHours') }}</div>
           <div class="stat-sub" :class="{ 'text-success': attendanceStats.completion_rate >= 100, 'text-warning': attendanceStats.completion_rate < 100 && attendanceStats.completion_rate >= 80, 'text-danger': attendanceStats.completion_rate < 80 }">
-            达成率 {{ attendanceStats.completion_rate || 0 }}%
+            {{ t('attendance.achievementRate') }} {{ attendanceStats.completion_rate || 0 }}%
           </div>
         </div>
       </el-col>
@@ -35,41 +36,41 @@
       <el-col :xs="12" :sm="6" v-if="isManager">
         <div class="stat-card">
           <div class="stat-value">{{ managerOverview.total_all_hours || 0 }}h</div>
-          <div class="stat-label">所有员工本月工时</div>
+          <div class="stat-label">{{ t('attendance.allEmployeesWorkHours') }}</div>
           <div class="stat-sub">
-            共 {{ managerOverview.employee_stats?.length || 0 }} 人
+            {{ t('attendance.totalPeople') }} {{ managerOverview.employee_stats?.length || 0 }} {{ t('common.unitPeople') }}
           </div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value success">{{ attendanceStats.total_overtime || 0 }}h</div>
-          <div class="stat-label">本月加班</div>
+          <div class="stat-label">{{ t('attendance.monthlyOvertime') }}</div>
           <div class="stat-sub">
-            日均 {{ attendanceStats.avg_daily_hours || 0 }}h
+            {{ t('attendance.dailyAverage') }} {{ attendanceStats.avg_daily_hours || 0 }}h
           </div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value warning">{{ attendanceStats.work_days || 0 }}</div>
-          <div class="stat-label">出勤天数</div>
+          <div class="stat-label">{{ t('attendance.attendanceDays') }}</div>
           <div class="stat-sub">
-            应出勤 {{ attendanceStats.standard_workdays || 0 }} 天
+            {{ t('attendance.shouldAttendance') }} {{ attendanceStats.standard_workdays || 0 }} {{ t('common.unitDay') }}
           </div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value" :class="{ 'text-success': attendanceStats.remaining_hours <= 0, 'text-danger': attendanceStats.remaining_hours > 0 }">
-            {{ attendanceStats.remaining_hours <= 0 ? '已达标' : (attendanceStats.remaining_hours || 0) + 'h' }}
+            {{ attendanceStats.remaining_hours <= 0 ? t('attendance.achieved') : (attendanceStats.remaining_hours || 0) + 'h' }}
           </div>
-          <div class="stat-label">剩余应工时</div>
+          <div class="stat-label">{{ t('attendance.remainingWorkHours') }}</div>
           <div class="stat-sub" v-if="attendanceStats.late_days > 0">
-            迟到 {{ attendanceStats.late_days }} 次
+            {{ t('attendance.late') }} {{ attendanceStats.late_days }} {{ t('attendance.times') }}
           </div>
           <div class="stat-sub text-success" v-else>
-            全勤无迟到
+            {{ t('attendance.noLate') }}
           </div>
         </div>
       </el-col>
@@ -80,27 +81,27 @@
       <el-col :xs="24" :md="12">
         <el-card>
           <template #header>
-            <span>本月员工考勤汇总</span>
+            <span>{{ t('attendance.monthlyAttendanceSummary') }}</span>
           </template>
           <el-table :data="managerOverview.employee_stats" size="small" v-loading="managerLoading" height="300">
-            <el-table-column label="姓名" prop="real_name" width="100" />
-            <el-table-column label="部门" prop="department" width="120" />
-            <el-table-column label="打卡天数" prop="check_in_days" width="90" />
-            <el-table-column label="迟到" prop="late_days" width="70">
+            <el-table-column :label="t('attendance.name')" prop="real_name" width="100" />
+            <el-table-column :label="t('attendance.department')" prop="department" width="120" />
+            <el-table-column :label="t('attendance.checkInDays')" prop="check_in_days" width="90" />
+            <el-table-column :label="t('attendance.late')" prop="late_days" width="70">
               <template #default="{ row }">
                 <span :class="{ 'text-danger': row.late_days > 0 }">{{ row.late_days }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="早退" prop="early_days" width="70" />
-            <el-table-column label="工时" prop="total_work_hours" width="90" />
-            <el-table-column label="请假" prop="leave_days" width="90" />
+            <el-table-column :label="t('attendance.earlyLeave')" prop="early_days" width="70" />
+            <el-table-column :label="t('attendance.workHours')" prop="total_work_hours" width="90" />
+            <el-table-column :label="t('attendance.leave')" prop="leave_days" width="90" />
           </el-table>
         </el-card>
       </el-col>
       <el-col :xs="24" :md="12">
         <el-card>
           <template #header>
-            <span>工时使用分布</span>
+            <span>{{ t('attendance.workTimeDistribution') }}</span>
           </template>
           <div ref="pieChartRef" style="height: 300px;"></div>
         </el-card>
@@ -112,19 +113,19 @@
       <el-col :xs="24" :md="8">
         <el-card>
           <template #header>
-            <span>假期余额（{{ currentYear }}年）</span>
+            <span>{{ t('attendance.leaveBalance') }}（{{ currentYear }}{{ t('attendance.year') }}）</span>
           </template>
           <div v-for="item in leaveBalances" :key="item.leave_type" class="balance-item">
             <div class="balance-info">
               <span class="balance-label">{{ leaveTypeLabel(item.leave_type) }}</span>
-              <span class="balance-value">{{ item.remaining_days }} / {{ item.total_days }} 天</span>
+              <span class="balance-value">{{ item.remaining_days }} / {{ item.total_days }} {{ t('common.unitDay') }}</span>
             </div>
             <el-progress
               :percentage="Math.round((item.used_days / item.total_days) * 100)"
               :status="item.remaining_days === 0 ? 'exception' : ''"
             />
           </div>
-          <el-empty v-if="leaveBalances.length === 0" description="暂无假期数据" />
+          <el-empty v-if="leaveBalances.length === 0" :description="t('attendance.noLeaveData')" />
         </el-card>
       </el-col>
 
@@ -133,14 +134,14 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>工时记录</span>
+              <span>{{ t('attendance.workTimeRecords') }}</span>
               <div class="header-right">
                 <el-date-picker
                   v-model="dateRange"
                   type="daterange"
-                  range-separator="至"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
+                  :range-separator="t('attendance.to')"
+                  :start-placeholder="t('attendance.startDate')"
+                  :end-placeholder="t('attendance.endDate')"
                   value-format="YYYY-MM-DD"
                   size="small"
                   style="width: 220px; margin-right: 10px;"
@@ -158,31 +159,31 @@
             </div>
           </template>
           <el-table :data="workTimeRecords" v-loading="loading" size="small">
-            <el-table-column label="日期" width="100">
+            <el-table-column :label="t('common.date')" width="100">
               <template #default="{ row }">
                 {{ formatDate(row.work_date) }}
               </template>
             </el-table-column>
-            <el-table-column label="提交人" width="100">
+            <el-table-column :label="t('attendance.submitter')" width="100">
               <template #default="{ row }">
                 {{ row.user?.real_name || '-' }}
               </template>
             </el-table-column>
-            <el-table-column label="项目" min-width="130">
+            <el-table-column :label="t('attendance.project')" min-width="130">
               <template #default="{ row }">
-                {{ row.project?.name || '未关联项目' }}
+                {{ row.project?.name || t('attendance.noRelatedProject') }}
               </template>
             </el-table-column>
-            <el-table-column label="工时" width="70">
+            <el-table-column :label="t('attendance.workHours')" width="70">
               <template #default="{ row }">
                 <span style="color: #1890ff; font-weight: 500;">{{ row.hours }}h</span>
               </template>
             </el-table-column>
-            <el-table-column label="工作内容" prop="description" min-width="180" show-overflow-tooltip />
-            <el-table-column label="操作" width="120" fixed="right">
+            <el-table-column :label="t('attendance.workContent')" prop="description" min-width="180" show-overflow-tooltip />
+            <el-table-column :label="t('common.operation')" width="120" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="editWorkTime(row)">编辑</el-button>
-                <el-button link type="danger" size="small" @click="deleteWorkTime(row)">删除</el-button>
+                <el-button link type="primary" size="small" @click="editWorkTime(row)">{{ t('common.edit') }}</el-button>
+                <el-button link type="danger" size="small" @click="deleteWorkTime(row)">{{ t('common.delete') }}</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -203,17 +204,17 @@
     <el-card style="margin-top: 20px;">
       <template #header>
         <div class="card-header">
-          <span>请假记录</span>
+          <span>{{ t('attendance.leaveRecords') }}</span>
           <div class="header-right">
-            <el-select v-model="leaveFilterType" placeholder="请假类型" clearable size="small" style="width: 120px; margin-right: 10px;" @change="fetchLeaveRecords">
-              <el-option label="年假" value="annual" />
-              <el-option label="病假" value="sick" />
-              <el-option label="事假" value="personal" />
+            <el-select v-model="leaveFilterType" :placeholder="t('attendance.leaveType')" clearable size="small" style="width: 120px; margin-right: 10px;" @change="fetchLeaveRecords">
+              <el-option :label="t('attendance.annualLeave')" value="annual" />
+              <el-option :label="t('attendance.sickLeave')" value="sick" />
+              <el-option :label="t('attendance.personalLeave')" value="personal" />
             </el-select>
-            <el-select v-model="leaveFilterStatus" placeholder="审批状态" clearable size="small" style="width: 120px; margin-right: 10px;" @change="fetchLeaveRecords">
-              <el-option label="待审批" value="pending" />
-              <el-option label="已通过" value="approved" />
-              <el-option label="已拒绝" value="rejected" />
+            <el-select v-model="leaveFilterStatus" :placeholder="t('attendance.approvalStatus')" clearable size="small" style="width: 120px; margin-right: 10px;" @change="fetchLeaveRecords">
+              <el-option :label="t('attendance.pendingApproval')" value="pending" />
+              <el-option :label="t('attendance.approved')" value="approved" />
+              <el-option :label="t('attendance.rejected')" value="rejected" />
             </el-select>
             <el-select v-model="selectedMonth" size="small" style="width: 120px;" @change="fetchLeaveRecords">
               <el-option
@@ -227,29 +228,29 @@
         </div>
       </template>
       <el-table :data="leaveRecords" v-loading="leaveLoading" size="small">
-        <el-table-column label="请假类型" width="80">
+        <el-table-column :label="t('attendance.leaveType')" width="80">
           <template #default="{ row }">
-            <el-tag :type="getLeaveTagType(row.leave_type)">{{ row.leave_type }}</el-tag>
+            <el-tag :type="getLeaveTagType(row.leave_type)">{{ leaveTypeLabel(row.leave_type) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="提交人" width="100">
+        <el-table-column :label="t('attendance.submitter')" width="100">
           <template #default="{ row }">
             {{ row.applicant?.real_name || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="开始日期" prop="start_date" width="110" />
-        <el-table-column label="结束日期" prop="end_date" width="110" />
-        <el-table-column label="天数" prop="days" width="70" />
-        <el-table-column label="原因" prop="reason" min-width="160" show-overflow-tooltip />
-        <el-table-column label="状态" width="90">
+        <el-table-column :label="t('attendance.startDateLabel')" prop="start_date" width="110" />
+        <el-table-column :label="t('attendance.endDateLabel')" prop="end_date" width="110" />
+        <el-table-column :label="t('attendance.days')" prop="days" width="70" />
+        <el-table-column :label="t('attendance.reason')" prop="reason" min-width="160" show-overflow-tooltip />
+        <el-table-column :label="t('attendance.approvalStatus')" width="90">
           <template #default="{ row }">
             <el-tag :type="getStatusTagType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column :label="t('common.operation')" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'pending'" link type="primary" size="small" @click="editLeave(row)">编辑</el-button>
-            <el-button v-if="row.status === 'pending'" link type="danger" size="small" @click="deleteLeave(row)">删除</el-button>
+            <el-button v-if="row.status === 'pending'" link type="primary" size="small" @click="editLeave(row)">{{ t('common.edit') }}</el-button>
+            <el-button v-if="row.status === 'pending'" link type="danger" size="small" @click="deleteLeave(row)">{{ t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -267,86 +268,88 @@
     <!-- 项目工时分布 -->
     <el-card style="margin-top: 20px;">
       <template #header>
-        <span>项目工时分布（{{ selectedMonth }}）</span>
+        <span>{{ t('attendance.projectWorkTimeDistribution') }}（{{ selectedMonth }}）</span>
       </template>
       <el-row :gutter="20">
         <el-col :xs="24" :md="12">
           <div id="worktime-chart" style="height: 300px;">
             <el-table :data="workTimeStats.by_project" size="small" border>
-              <el-table-column label="项目名称" prop="project_name" min-width="150" />
-              <el-table-column label="工时" prop="hours" width="100" />
-              <el-table-column label="记录数" prop="record_count" width="100" />
+              <el-table-column :label="t('attendance.projectName')" prop="project_name" min-width="150" />
+              <el-table-column :label="t('attendance.workHours')" prop="hours" width="100" />
+              <el-table-column :label="t('attendance.recordCount')" prop="record_count" width="100" />
             </el-table>
           </div>
         </el-col>
         <el-col :xs="24" :md="12">
-          <el-descriptions title="汇总" :column="1" border>
-            <el-descriptions-item label="总工时">{{ workTimeStats.total_hours || 0 }} 小时</el-descriptions-item>
-            <el-descriptions-item label="项目数">{{ workTimeStats.by_project?.length || 0 }} 个</el-descriptions-item>
-            <el-descriptions-item label="平均每日">{{ avgDailyHours }} 小时</el-descriptions-item>
+          <el-descriptions :title="t('attendance.summary')" :column="1" border>
+            <el-descriptions-item :label="t('attendance.totalWorkHours')">{{ workTimeStats.total_hours || 0 }} {{ t('common.unitHour') }}</el-descriptions-item>
+            <el-descriptions-item :label="t('attendance.projectCount')">{{ workTimeStats.by_project?.length || 0 }} {{ t('common.unitItem') }}</el-descriptions-item>
+            <el-descriptions-item :label="t('attendance.averageDaily')">{{ avgDailyHours }} {{ t('common.unitHour') }}</el-descriptions-item>
           </el-descriptions>
         </el-col>
       </el-row>
     </el-card>
 
     <!-- 填报工时对话框 -->
-    <el-dialog v-model="showWorkTimeDialog" :title="isEditWorkTime ? '编辑工时' : '填报工时'" width="500px">
+    <el-dialog v-model="showWorkTimeDialog" :title="isEditWorkTime ? t('attendance.editWorkTime') : t('attendance.reportWorkTime')" width="500px">
       <el-form :model="workTimeForm" label-width="100px">
-        <el-form-item label="工作日期" required>
-          <el-date-picker v-model="workTimeForm.work_date" type="date" placeholder="选择日期" style="width: 100%" value-format="YYYY-MM-DD" />
+        <el-form-item :label="t('attendance.workDate')" required>
+          <el-date-picker v-model="workTimeForm.work_date" type="date" :placeholder="t('attendance.selectDate')" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
-        <el-form-item label="关联项目">
-          <el-select v-model="workTimeForm.project_id" placeholder="选择项目" clearable style="width: 100%">
+        <el-form-item :label="t('attendance.relatedProject')">
+          <el-select v-model="workTimeForm.project_id" :placeholder="t('attendance.selectProject')" clearable style="width: 100%">
             <el-option v-for="p in projectOptions" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="工时" required>
+        <el-form-item :label="t('attendance.workHoursLabel')" required>
           <el-input-number v-model="workTimeForm.hours" :min="0.5" :max="24" :step="0.5" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="工作内容">
-          <el-input v-model="workTimeForm.description" type="textarea" :rows="3" placeholder="描述今天的工作内容" />
+        <el-form-item :label="t('attendance.workContent')">
+          <el-input v-model="workTimeForm.description" type="textarea" :rows="3" :placeholder="t('attendance.workContentPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showWorkTimeDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveWorkTime" :loading="saving">保存</el-button>
+        <el-button @click="showWorkTimeDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveWorkTime" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 请假申请对话框 -->
-    <el-dialog v-model="showLeaveDialog" :title="isEditLeave ? '编辑请假申请' : '请假申请'" width="500px">
+    <el-dialog v-model="showLeaveDialog" :title="isEditLeave ? t('attendance.editLeave') : t('attendance.leaveApplication')" width="500px">
       <el-form :model="leaveForm" label-width="100px" :rules="leaveRules" ref="leaveFormRef">
-        <el-form-item label="请假类型" prop="leave_type" required>
-          <el-select v-model="leaveForm.leave_type" placeholder="选择请假类型" style="width: 100%">
-            <el-option label="年假" value="annual" />
-            <el-option label="病假" value="sick" />
-            <el-option label="事假" value="personal" />
+        <el-form-item :label="t('attendance.leaveType')" prop="leave_type" required>
+          <el-select v-model="leaveForm.leave_type" :placeholder="t('attendance.selectLeaveType')" style="width: 100%">
+            <el-option :label="t('attendance.annualLeave')" value="annual" />
+            <el-option :label="t('attendance.sickLeave')" value="sick" />
+            <el-option :label="t('attendance.personalLeave')" value="personal" />
           </el-select>
         </el-form-item>
-        <el-form-item label="开始日期" prop="start_date" required>
-          <el-date-picker v-model="leaveForm.start_date" type="date" placeholder="选择开始日期" style="width: 100%" value-format="YYYY-MM-DD" />
+        <el-form-item :label="t('attendance.startDateLabel')" prop="start_date" required>
+          <el-date-picker v-model="leaveForm.start_date" type="date" :placeholder="t('attendance.selectStartDate')" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
-        <el-form-item label="结束日期" prop="end_date" required>
-          <el-date-picker v-model="leaveForm.end_date" type="date" placeholder="选择结束日期" style="width: 100%" value-format="YYYY-MM-DD" />
+        <el-form-item :label="t('attendance.endDateLabel')" prop="end_date" required>
+          <el-date-picker v-model="leaveForm.end_date" type="date" :placeholder="t('attendance.selectEndDate')" style="width: 100%" value-format="YYYY-MM-DD" />
         </el-form-item>
-        <el-form-item label="请假天数" prop="days" required>
+        <el-form-item :label="t('attendance.leaveDays')" prop="days" required>
           <el-input-number v-model="leaveForm.days" :min="0.5" :max="30" :step="0.5" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="请假原因" prop="reason">
-          <el-input v-model="leaveForm.reason" type="textarea" :rows="3" placeholder="请输入请假原因" />
+        <el-form-item :label="t('attendance.leaveReason')" prop="reason">
+          <el-input v-model="leaveForm.reason" type="textarea" :rows="3" :placeholder="t('attendance.leaveReasonPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showLeaveDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveLeave" :loading="leaveSaving">提交</el-button>
+        <el-button @click="showLeaveDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveLeave" :loading="leaveSaving">{{ t('common.submit') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/stores/user'
@@ -359,17 +362,19 @@ import {
 } from '@/api/attendance'
 import { getProjects } from '@/api/projects'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const isManager = computed(() => userStore.isAdmin)
 
 // 月份选项（近12个月）
+// 第三次迭代陈思言负责
 const generateMonthOptions = () => {
   const options = []
   for (let i = 0; i < 12; i++) {
     const d = dayjs().subtract(i, 'month')
     options.push({
       value: d.format('YYYY-MM'),
-      label: d.format('YYYY年M月')
+      label: d.format(t('attendance.monthOptionFormat'))
     })
   }
   return options
@@ -420,10 +425,10 @@ const leaveForm = ref({
   reason: ''
 })
 const leaveRules = {
-  leave_type: [{ required: true, message: '请选择请假类型', trigger: 'change' }],
-  start_date: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
-  end_date: [{ required: true, message: '请选择结束日期', trigger: 'change' }],
-  days: [{ required: true, message: '请输入请假天数', trigger: 'blur' }]
+  leave_type: [{ required: true, message: t('attendance.pleaseSelectLeaveType'), trigger: 'change' }],
+  start_date: [{ required: true, message: t('attendance.pleaseSelectStartDate'), trigger: 'change' }],
+  end_date: [{ required: true, message: t('attendance.pleaseSelectEndDate'), trigger: 'change' }],
+  days: [{ required: true, message: t('attendance.pleaseEnterLeaveDays'), trigger: 'blur' }]
 }
 
 // 请假记录
@@ -447,7 +452,7 @@ const avgDailyHours = computed(() => {
 })
 
 const leaveTypeLabel = (type) => {
-  const map = { annual: '年假', sick: '病假', personal: '事假', marriage: '婚假', maternity: '产假' }
+  const map = { annual: t('attendance.annualLeave'), sick: t('attendance.sickLeave'), personal: t('attendance.personalLeave'), marriage: t('attendance.marriageLeave'), maternity: t('attendance.maternityLeave') }
   return map[type] || type
 }
 
@@ -462,7 +467,7 @@ const getStatusTagType = (status) => {
 }
 
 const getStatusLabel = (status) => {
-  const map = { pending: '待审批', approved: '已通过', rejected: '已拒绝' }
+  const map = { pending: t('attendance.pendingApproval'), approved: t('attendance.approved'), rejected: t('attendance.rejected') }
   return map[status] || status
 }
 
@@ -475,10 +480,10 @@ const handleCheckIn = async () => {
   checkingIn.value = true
   try {
     const res = await checkIn()
-    ElMessage.success(res.message || '打卡成功')
+    ElMessage.success(res.message || t('attendance.checkInSuccess'))
     fetchAttendanceStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '打卡失败')
+    ElMessage.error(error.response?.data?.message || t('attendance.checkInFailed'))
   } finally {
     checkingIn.value = false
   }
@@ -489,10 +494,10 @@ const handleCheckOut = async () => {
   checkingOut.value = true
   try {
     const res = await checkOut()
-    ElMessage.success(res.message || '下班打卡成功')
+    ElMessage.success(res.message || t('attendance.checkOutSuccess'))
     fetchAttendanceStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '下班打卡失败')
+    ElMessage.error(error.response?.data?.message || t('attendance.checkOutFailed'))
   } finally {
     checkingOut.value = false
   }
@@ -503,7 +508,7 @@ const fetchAttendanceStats = async () => {
     const res = await getAttendanceStats({ month: selectedMonth.value })
     attendanceStats.value = res
   } catch (error) {
-    console.error('获取考勤统计失败', error)
+    console.error(t('attendance.fetchStatsFailed'), error)
   }
 }
 
@@ -512,7 +517,7 @@ const fetchLeaveBalances = async () => {
     const res = await getLeaveBalances({ year: currentYear.value })
     leaveBalances.value = res.balances || []
   } catch (error) {
-    console.error('获取假期余额失败', error)
+    console.error(t('attendance.fetchLeaveBalancesFailed'), error)
   }
 }
 
@@ -532,7 +537,7 @@ const fetchWorkTimeRecords = async () => {
     workTimeRecords.value = res.records || []
     total.value = res.total || 0
   } catch (error) {
-    console.error('获取工时记录失败', error)
+    console.error(t('attendance.fetchWorkTimeRecordsFailed'), error)
   } finally {
     loading.value = false
   }
@@ -543,7 +548,7 @@ const fetchWorkTimeStats = async () => {
     const res = await getWorkTimeStats({ month: selectedMonth.value })
     workTimeStats.value = res
   } catch (error) {
-    console.error('获取工时统计失败', error)
+    console.error(t('attendance.fetchWorkTimeStatsFailed'), error)
   }
 }
 
@@ -552,7 +557,7 @@ const fetchProjects = async () => {
     const res = await getProjects()
     projectOptions.value = res.projects || []
   } catch (error) {
-    console.error('获取项目失败', error)
+    console.error(t('attendance.fetchProjectsFailed'), error)
   }
 }
 
@@ -572,32 +577,32 @@ const editWorkTime = (row) => {
 // 工时删除
 const deleteWorkTime = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要删除这条工时记录吗？', '确认删除', { type: 'warning' })
+    await ElMessageBox.confirm(t('attendance.deleteWorkTimeConfirm'), t('attendance.confirmDelete'), { type: 'warning' })
     await deleteWorkTimeRecord(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('common.delete') + t('common.success'))
     fetchWorkTimeRecords()
     fetchWorkTimeStats()
     fetchAttendanceStats()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || '删除失败')
+      ElMessage.error(error.response?.data?.message || t('common.delete') + t('common.failed'))
     }
   }
 }
 
 const saveWorkTime = async () => {
   if (!workTimeForm.value.work_date || !workTimeForm.value.hours) {
-    ElMessage.warning('请填写日期和工时')
+    ElMessage.warning(t('attendance.pleaseFillDateHours'))
     return
   }
   saving.value = true
   try {
     if (isEditWorkTime.value && editingWorkTimeId.value) {
       await updateWorkTimeRecord(editingWorkTimeId.value, workTimeForm.value)
-      ElMessage.success('工时记录已更新')
+      ElMessage.success(t('attendance.workTimeUpdated'))
     } else {
       await createWorkTimeRecord(workTimeForm.value)
-      ElMessage.success('工时记录已保存')
+      ElMessage.success(t('attendance.workTimeSaved'))
     }
     showWorkTimeDialog.value = false
     workTimeForm.value = { work_date: dayjs().format('YYYY-MM-DD'), project_id: null, hours: 8, description: '' }
@@ -607,7 +612,7 @@ const saveWorkTime = async () => {
     fetchWorkTimeStats()
     fetchAttendanceStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    ElMessage.error(error.response?.data?.message || t('common.save') + t('common.failed'))
   } finally {
     saving.value = false
   }
@@ -628,7 +633,7 @@ const fetchLeaveRecords = async () => {
     leaveRecords.value = res.records || []
     leaveTotal.value = res.total || 0
   } catch (error) {
-    console.error('获取请假记录失败', error)
+    console.error(t('attendance.fetchLeaveRecordsFailed'), error)
   } finally {
     leaveLoading.value = false
   }
@@ -639,7 +644,7 @@ const editLeave = (row) => {
   isEditLeave.value = true
   editingLeaveId.value = row.id
   leaveForm.value = {
-    leave_type: row.leave_type === '年假' ? 'annual' : row.leave_type === '病假' ? 'sick' : 'personal',
+    leave_type: row.leave_type === t('attendance.annualLeave') ? 'annual' : row.leave_type === t('attendance.sickLeave') ? 'sick' : 'personal',
     start_date: row.start_date,
     end_date: row.end_date,
     days: parseFloat(row.days),
@@ -651,14 +656,14 @@ const editLeave = (row) => {
 // 请假删除
 const deleteLeave = async (row) => {
   try {
-    await ElMessageBox.confirm('确定要删除这条请假申请吗？', '确认删除', { type: 'warning' })
+    await ElMessageBox.confirm(t('attendance.deleteLeaveConfirm'), t('attendance.confirmDelete'), { type: 'warning' })
     await deleteLeaveRecord(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('common.delete') + t('common.success'))
     fetchLeaveRecords()
     fetchLeaveBalances()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || '删除失败')
+      ElMessage.error(error.response?.data?.message || t('common.delete') + t('common.failed'))
     }
   }
 }
@@ -671,10 +676,10 @@ const saveLeave = async () => {
   try {
     if (isEditLeave.value && editingLeaveId.value) {
       await updateLeaveRecord(editingLeaveId.value, leaveForm.value)
-      ElMessage.success('请假申请已更新')
+      ElMessage.success(t('attendance.leaveUpdated'))
     } else {
       await createLeaveRecord(leaveForm.value)
-      ElMessage.success('请假申请已提交')
+      ElMessage.success(t('attendance.leaveSubmitted'))
     }
     showLeaveDialog.value = false
     leaveForm.value = { leave_type: '', start_date: '', end_date: '', days: 1, reason: '' }
@@ -683,7 +688,7 @@ const saveLeave = async () => {
     fetchLeaveRecords()
     fetchLeaveBalances()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '提交失败')
+    ElMessage.error(error.response?.data?.message || t('common.submit') + t('common.failed'))
   } finally {
     leaveSaving.value = false
   }
@@ -700,7 +705,7 @@ const fetchManagerOverview = async () => {
       initPieChart()
     })
   } catch (error) {
-    console.error('获取高管概览失败', error)
+    console.error(t('attendance.fetchManagerOverviewFailed'), error)
   } finally {
     managerLoading.value = false
   }

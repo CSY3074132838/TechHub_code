@@ -1,14 +1,15 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="users-page">
     <div class="page-header">
-      <h2>用户管理</h2>
+      <h2>{{ $t('users.pageTitle') }}</h2>
       <div class="header-actions">
         <!-- 【第二次迭代】批量导入导出按钮 -->
         <el-button size="small" @click="handleExport" v-if="userStore.hasPermission('user_manage')">
-          <el-icon><Download /></el-icon>导出
+          <el-icon><Download /></el-icon>{{ $t('users.export') }}
         </el-button>
         <el-button type="primary" @click="showCreateDialog = true" v-if="userStore.hasPermission('user_manage')">
-          <el-icon><Plus /></el-icon>添加用户
+          <el-icon><Plus /></el-icon>{{ $t('users.addUser') }}
         </el-button>
       </div>
     </div>
@@ -16,27 +17,27 @@
     <!-- 【第二次迭代】统计卡片 - 点击穿透筛选 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6">
-        <div class="stat-card clickable" @click="handleStatClick('total')" title="点击查看全部用户">
+        <div class="stat-card clickable" @click="handleStatClick('total')" :title="$t('users.clickViewAll')">
           <div class="stat-value">{{ stats.total || 0 }}</div>
-          <div class="stat-label">总用户</div>
+          <div class="stat-label">{{ $t('users.totalUsers') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card clickable" @click="handleStatClick('active')" title="点击查看在职用户">
+        <div class="stat-card clickable" @click="handleStatClick('active')" :title="$t('users.clickViewActive')">
           <div class="stat-value success">{{ stats.active || 0 }}</div>
-          <div class="stat-label">在职用户</div>
+          <div class="stat-label">{{ $t('users.activeUsers') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card clickable" @click="handleStatClick('new_this_month')" title="点击查看本月入职">
+        <div class="stat-card clickable" @click="handleStatClick('new_this_month')" :title="$t('users.clickViewNew')">
           <div class="stat-value warning">{{ stats.new_this_month || 0 }}</div>
-          <div class="stat-label">本月入职</div>
+          <div class="stat-label">{{ $t('users.newThisMonth') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card clickable" @click="handleStatClick('inactive')" title="点击查看离职用户">
+        <div class="stat-card clickable" @click="handleStatClick('inactive')" :title="$t('users.clickViewInactive')">
           <div class="stat-value info">{{ stats.inactive || 0 }}</div>
-          <div class="stat-label">离职用户</div>
+          <div class="stat-label">{{ $t('users.resignedUsers') }}</div>
         </div>
       </el-col>
     </el-row>
@@ -45,36 +46,36 @@
     <el-card class="filter-card" style="margin-bottom: 20px;">
       <el-row :gutter="12" align="middle">
         <el-col :xs="24" :sm="6">
-          <el-input v-model="filter.search" placeholder="搜索：姓名/用户名/邮箱/手机/工号" clearable @change="handleFilterChange">
+          <el-input v-model="filter.search" :placeholder="$t('users.searchPlaceholder')" clearable @change="handleFilterChange">
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
         </el-col>
         <el-col :xs="12" :sm="4">
-          <el-select v-model="filter.department_id" placeholder="选择部门" clearable @change="handleFilterChange" style="width: 100%">
+          <el-select v-model="filter.department_id" :placeholder="$t('users.selectDepartment')" clearable @change="handleFilterChange" style="width: 100%">
             <el-option v-for="dept in flatDepartments" :key="dept.id" :label="dept.name" :value="dept.id" />
           </el-select>
         </el-col>
         <el-col :xs="12" :sm="4">
-          <el-select v-model="filter.employee_status" placeholder="员工状态" clearable @change="handleFilterChange" style="width: 100%">
-            <el-option label="试用期" value="probation" />
-            <el-option label="正式员工" value="active" />
-            <el-option label="待离职" value="pending_leave" />
-            <el-option label="已离职" value="left" />
+          <el-select v-model="filter.employee_status" :placeholder="$t('users.employeeStatus')" clearable @change="handleFilterChange" style="width: 100%">
+            <el-option :label="$t('users.probation')" value="probation" />
+            <el-option :label="$t('users.formal')" value="active" />
+            <el-option :label="$t('users.pendingResign')" value="pending_leave" />
+            <el-option :label="$t('users.resigned')" value="left" />
           </el-select>
         </el-col>
         <el-col :xs="12" :sm="4">
-          <el-select v-model="filter.role_id" placeholder="角色" clearable @change="handleFilterChange" style="width: 100%">
+          <el-select v-model="filter.role_id" :placeholder="$t('users.selectRole')" clearable @change="handleFilterChange" style="width: 100%">
             <el-option v-for="role in roles" :key="role.id" :label="role.description" :value="role.id" />
           </el-select>
         </el-col>
         <el-col :xs="12" :sm="4">
-          <el-select v-model="filter.is_active" placeholder="账号状态" clearable @change="handleFilterChange" style="width: 100%">
-            <el-option label="正常" :value="true" />
-            <el-option label="禁用" :value="false" />
+          <el-select v-model="filter.is_active" :placeholder="$t('users.accountStatus')" clearable @change="handleFilterChange" style="width: 100%">
+            <el-option :label="$t('users.normal')" :value="true" />
+            <el-option :label="$t('users.disabled')" :value="false" />
           </el-select>
         </el-col>
         <el-col :xs="24" :sm="2">
-          <el-button text type="primary" @click="resetFilter">重置</el-button>
+          <el-button text type="primary" @click="resetFilter">{{ $t('common.reset') }}</el-button>
         </el-col>
       </el-row>
     </el-card>
@@ -82,7 +83,7 @@
     <!-- 用户列表 -->
     <el-card class="users-list">
       <el-table :data="users" v-loading="loading" stripe>
-        <el-table-column label="用户" min-width="200">
+        <el-table-column :label="$t('users.user')" min-width="200">
           <template #default="{ row }">
             <div class="user-cell">
               <el-avatar :size="40" :src="row.avatar">
@@ -92,22 +93,22 @@
                 <div class="name">{{ row.real_name || row.username }}</div>
                 <div class="email">{{ row.email }}</div>
                 <!-- 【第二次迭代】显示工号 -->
-                <div class="employee-no" v-if="row.employee_no">工号: {{ row.employee_no }}</div>
+                <div class="employee-no" v-if="row.employee_no">{{ $t('users.employeeNo') }}: {{ row.employee_no }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="部门" width="120">
+        <el-table-column :label="$t('users.department')" width="120">
           <template #default="{ row }">
             {{ row.department || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="职位" width="120">
+        <el-table-column :label="$t('users.position')" width="120">
           <template #default="{ row }">
             {{ row.position || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="角色" width="150">
+        <el-table-column :label="$t('users.role')" width="150">
           <template #default="{ row }">
             <el-tag
               v-for="role in row.roles"
@@ -120,24 +121,24 @@
           </template>
         </el-table-column>
         <!-- 【第二次迭代】员工状态列 -->
-        <el-table-column label="员工状态" width="100">
+        <el-table-column :label="$t('users.employeeStatus')" width="100">
           <template #default="{ row }">
             <el-tag :type="employeeStatusType(row.employee_status)" size="small">
               {{ employeeStatusLabel(row.employee_status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="80">
+        <el-table-column :label="$t('users.accountStatus')" width="80">
           <template #default="{ row }">
             <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
-              {{ row.is_active ? '正常' : '禁用' }}
+              {{ row.is_active ? $t('users.normal') : $t('users.disabled') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column :label="$t('common.operation')" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button text size="small" @click="viewDetail(row)">详情</el-button>
-            <el-button text size="small" @click="editUser(row)">编辑</el-button>
+            <el-button text size="small" @click="viewDetail(row)">{{ $t('users.detail') }}</el-button>
+            <el-button text size="small" @click="editUser(row)">{{ $t('common.edit') }}</el-button>
             <el-button
               v-if="userStore.hasPermission('user_manage')"
               :type="row.is_active ? 'danger' : 'success'"
@@ -145,7 +146,7 @@
               size="small"
               @click="toggleStatus(row)"
             >
-              {{ row.is_active ? '禁用' : '启用' }}
+              {{ row.is_active ? $t('users.disable') : $t('users.enable') }}
             </el-button>
           </template>
         </el-table-column>
@@ -168,22 +169,22 @@
     <el-card class="roles-card" style="margin-top: 20px;">
       <template #header>
         <div class="card-header">
-          <span>角色管理</span>
+          <span>{{ $t('users.roleManagement') }}</span>
           <el-button type="primary" size="small" @click="showRoleDialog = true" v-if="userStore.hasPermission('role_manage')">
-            <el-icon><Plus /></el-icon>新增角色
+            <el-icon><Plus /></el-icon>{{ $t('users.newRole') }}
           </el-button>
         </div>
       </template>
       
       <el-table :data="roles" size="small" border>
-        <el-table-column label="角色名称" prop="description" min-width="150" />
-        <el-table-column label="标识" prop="name" width="150" />
-        <el-table-column label="等级" prop="level" width="100">
+        <el-table-column :label="$t('users.roleName')" prop="description" min-width="150" />
+        <el-table-column :label="$t('users.roleCode')" prop="name" width="150" />
+        <el-table-column :label="$t('users.level')" prop="level" width="100">
           <template #default="{ row }">
             <el-tag size="small">{{ row.level }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="权限" min-width="300">
+        <el-table-column :label="$t('users.permissions')" min-width="300">
           <template #default="{ row }">
             <el-tag
               v-for="perm in row.permissions"
@@ -196,17 +197,17 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column :label="$t('common.operation')" width="150">
           <template #default="{ row }">
-            <el-button text size="small" @click="editRole(row)">编辑</el-button>
-            <el-button v-if="userStore.hasPermission('role_manage')" text type="danger" size="small" @click="removeRole(row)">删除</el-button>
+            <el-button text size="small" @click="editRole(row)">{{ $t('common.edit') }}</el-button>
+            <el-button v-if="userStore.hasPermission('role_manage')" text type="danger" size="small" @click="removeRole(row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
     <!-- 【第二次迭代】用户详情抽屉 -->
-    <el-drawer v-model="showDetailDrawer" title="员工档案" size="600px" :destroy-on-close="true">
+    <el-drawer v-model="showDetailDrawer" :title="$t('users.employeeProfile')" size="600px" :destroy-on-close="true">
       <div v-if="detailUser" class="user-detail">
         <div class="detail-header">
           <el-avatar :size="64" :src="detailUser.avatar">
@@ -214,60 +215,60 @@
           </el-avatar>
           <div class="detail-header-info">
             <h3>{{ detailUser.real_name || detailUser.username }}</h3>
-            <p>{{ detailUser.employee_no ? `工号：${detailUser.employee_no}` : '' }}</p>
+            <p>{{ detailUser.employee_no ? `${$t('users.employeeNo')}：${detailUser.employee_no}` : '' }}</p>
             <div class="detail-tags">
               <el-tag v-for="role in detailUser.roles" :key="role.id" size="small">{{ role.description }}</el-tag>
-              <el-tag :type="detailUser.is_active ? 'success' : 'info'" size="small">{{ detailUser.is_active ? '正常' : '禁用' }}</el-tag>
+              <el-tag :type="detailUser.is_active ? 'success' : 'info'" size="small">{{ detailUser.is_active ? $t('users.normal') : $t('users.disabled') }}</el-tag>
             </div>
           </div>
         </div>
         <el-divider />
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="用户名">{{ detailUser.username }}</el-descriptions-item>
-          <el-descriptions-item label="邮箱">{{ detailUser.email }}</el-descriptions-item>
-          <el-descriptions-item label="电话">{{ detailUser.phone || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="部门">{{ detailUser.department || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="职位">{{ detailUser.position || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.username')">{{ detailUser.username }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.email')">{{ detailUser.email }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.phone')">{{ detailUser.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.department')">{{ detailUser.department || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.position')">{{ detailUser.position || '-' }}</el-descriptions-item>
           <!-- 【第二次迭代】扩展档案字段 -->
-          <el-descriptions-item label="员工状态">{{ employeeStatusLabel(detailUser.employee_status) }}</el-descriptions-item>
-          <el-descriptions-item label="入职日期">{{ detailUser.entry_date || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="转正日期">{{ detailUser.probation_end_date || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="离职日期">{{ detailUser.leave_date || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="性别">{{ detailUser.gender || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="生日">{{ detailUser.birthday || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="籍贯">{{ detailUser.native_place || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="学历">{{ detailUser.education || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="毕业院校">{{ detailUser.school || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="专业">{{ detailUser.major || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="紧急联系人">{{ detailUser.emergency_contact || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="紧急电话">{{ detailUser.emergency_phone || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="现居地址" :span="2">{{ detailUser.address || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.employeeStatus')">{{ employeeStatusLabel(detailUser.employee_status) }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.entryDate')">{{ detailUser.entry_date || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.formalDate')">{{ detailUser.probation_end_date || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.resignDate')">{{ detailUser.leave_date || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.gender')">{{ detailUser.gender || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.birthday')">{{ detailUser.birthday || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.birthplace')">{{ detailUser.native_place || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.education')">{{ detailUser.education || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.school')">{{ detailUser.school || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.major')">{{ detailUser.major || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.emergencyContact')">{{ detailUser.emergency_contact || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.emergencyPhone')">{{ detailUser.emergency_phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('users.address')" :span="2">{{ detailUser.address || '-' }}</el-descriptions-item>
         </el-descriptions>
       </div>
     </el-drawer>
 
     <!-- 添加/编辑用户对话框 -->
-    <el-dialog v-model="showCreateDialog" :title="isEdit ? '编辑用户' : '添加用户'" width="700px">
+    <el-dialog v-model="showCreateDialog" :title="isEdit ? $t('users.editUser') : $t('users.addUserDialog')" width="700px">
       <el-tabs v-model="activeTab">
-        <el-tab-pane label="基本信息" name="basic">
+        <el-tab-pane :label="$t('users.basicInfo')" name="basic">
           <el-form :model="form" label-width="100px">
-            <el-form-item label="用户名">
-              <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isEdit" />
+            <el-form-item :label="$t('users.username')">
+              <el-input v-model="form.username" :placeholder="$t('users.usernamePlaceholder')" :disabled="isEdit" />
             </el-form-item>
-            <el-form-item label="邮箱">
-              <el-input v-model="form.email" placeholder="请输入邮箱" :disabled="isEdit" />
+            <el-form-item :label="$t('users.email')">
+              <el-input v-model="form.email" :placeholder="$t('users.emailPlaceholder')" :disabled="isEdit" />
             </el-form-item>
-            <el-form-item label="密码" v-if="!isEdit">
-              <el-input v-model="form.password" type="password" placeholder="请输入密码" />
+            <el-form-item :label="$t('users.password')" v-if="!isEdit">
+              <el-input v-model="form.password" type="password" :placeholder="$t('users.passwordPlaceholder')" />
             </el-form-item>
-            <el-form-item label="真实姓名">
-              <el-input v-model="form.real_name" placeholder="请输入真实姓名" />
+            <el-form-item :label="$t('users.realName')">
+              <el-input v-model="form.real_name" :placeholder="$t('users.realNamePlaceholder')" />
             </el-form-item>
-            <el-form-item label="工号">
-              <el-input v-model="form.employee_no" placeholder="如：TECH-2025-001" />
+            <el-form-item :label="$t('users.employeeNo')">
+              <el-input v-model="form.employee_no" :placeholder="$t('users.employeeNoPlaceholder')" />
             </el-form-item>
-            <el-form-item label="部门">
-              <el-select v-model="form.department" placeholder="选择部门" clearable style="width: 100%">
+            <el-form-item :label="$t('users.department')">
+              <el-select v-model="form.department" :placeholder="$t('users.selectDepartment')" clearable style="width: 100%">
                 <el-option
                   v-for="dept in flatDepartments"
                   :key="dept.id"
@@ -276,8 +277,8 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="职位">
-              <el-select v-model="form.position" placeholder="选择职位" clearable style="width: 100%">
+            <el-form-item :label="$t('users.position')">
+              <el-select v-model="form.position" :placeholder="$t('users.selectPosition')" clearable style="width: 100%">
                 <el-option
                   v-for="pos in positionOptions"
                   :key="pos"
@@ -286,127 +287,131 @@
                 />
               </el-select>
             </el-form-item>
-            <el-form-item label="电话">
-              <el-input v-model="form.phone" placeholder="请输入电话" />
+            <el-form-item :label="$t('users.phone')">
+              <el-input v-model="form.phone" :placeholder="$t('users.phonePlaceholder')" />
             </el-form-item>
-            <el-form-item label="角色">
-              <el-select v-model="form.role_ids" multiple placeholder="选择角色" style="width: 100%;">
+            <el-form-item :label="$t('users.role')">
+              <el-select v-model="form.role_ids" multiple :placeholder="$t('users.selectRole')" style="width: 100%;">
                 <el-option v-for="role in roles" :key="role.id" :label="role.description" :value="role.id" />
               </el-select>
             </el-form-item>
           </el-form>
         </el-tab-pane>
         <!-- 【第二次迭代】员工档案详情 Tab -->
-        <el-tab-pane label="档案详情" name="detail" v-if="isEdit">
+        <el-tab-pane :label="$t('users.profileDetail')" name="detail" v-if="isEdit">
           <el-form :model="detailForm" label-width="100px">
-            <el-form-item label="员工状态">
-              <el-select v-model="detailForm.employee_status" placeholder="选择状态" style="width: 100%">
-                <el-option label="试用期" value="probation" />
-                <el-option label="正式员工" value="active" />
-                <el-option label="待离职" value="pending_leave" />
-                <el-option label="已离职" value="left" />
-                <el-option label="停薪留职" value="suspended" />
+            <el-form-item :label="$t('users.employeeStatus')">
+              <el-select v-model="detailForm.employee_status" :placeholder="$t('users.selectStatus')" style="width: 100%">
+                <el-option :label="$t('users.probation')" value="probation" />
+                <el-option :label="$t('users.formal')" value="active" />
+                <el-option :label="$t('users.pendingResign')" value="pending_leave" />
+                <el-option :label="$t('users.resigned')" value="left" />
+                <el-option :label="$t('users.suspended')" value="suspended" />
               </el-select>
             </el-form-item>
-            <el-form-item label="入职日期">
-              <el-date-picker v-model="detailForm.entry_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+            <el-form-item :label="$t('users.entryDate')">
+              <el-date-picker v-model="detailForm.entry_date" type="date" :placeholder="$t('users.selectDate')" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="转正日期">
-              <el-date-picker v-model="detailForm.probation_end_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+            <el-form-item :label="$t('users.formalDate')">
+              <el-date-picker v-model="detailForm.probation_end_date" type="date" :placeholder="$t('users.selectDate')" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="离职日期">
-              <el-date-picker v-model="detailForm.leave_date" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+            <el-form-item :label="$t('users.resignDate')">
+              <el-date-picker v-model="detailForm.leave_date" type="date" :placeholder="$t('users.selectDate')" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="身份证号">
-              <el-input v-model="detailForm.id_card" placeholder="请输入身份证号" />
+            <el-form-item :label="$t('users.idCard')">
+              <el-input v-model="detailForm.id_card" :placeholder="$t('users.idCardPlaceholder')" />
             </el-form-item>
-            <el-form-item label="性别">
+            <el-form-item :label="$t('users.gender')">
               <el-radio-group v-model="detailForm.gender">
-                <el-radio label="男">男</el-radio>
-                <el-radio label="女">女</el-radio>
+                <el-radio :label="$t('users.male')">{{ $t('users.male') }}</el-radio>
+                <el-radio :label="$t('users.female')">{{ $t('users.female') }}</el-radio>
               </el-radio-group>
             </el-form-item>
-            <el-form-item label="生日">
-              <el-date-picker v-model="detailForm.birthday" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%" />
+            <el-form-item :label="$t('users.birthday')">
+              <el-date-picker v-model="detailForm.birthday" type="date" :placeholder="$t('users.selectDate')" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
-            <el-form-item label="籍贯">
-              <el-input v-model="detailForm.native_place" placeholder="请输入籍贯" />
+            <el-form-item :label="$t('users.birthplace')">
+              <el-input v-model="detailForm.native_place" :placeholder="$t('users.birthplacePlaceholder')" />
             </el-form-item>
-            <el-form-item label="学历">
-              <el-select v-model="detailForm.education" placeholder="选择学历" clearable style="width: 100%">
-                <el-option label="高中及以下" value="高中及以下" />
-                <el-option label="大专" value="大专" />
-                <el-option label="本科" value="本科" />
-                <el-option label="硕士" value="硕士" />
-                <el-option label="博士" value="博士" />
+            <el-form-item :label="$t('users.education')">
+              <el-select v-model="detailForm.education" :placeholder="$t('users.selectEducation')" clearable style="width: 100%">
+                <el-option :label="$t('users.highSchoolBelow')" value="高中及以下" />
+                <el-option :label="$t('users.juniorCollege')" value="大专" />
+                <el-option :label="$t('users.bachelor')" value="本科" />
+                <el-option :label="$t('users.master')" value="硕士" />
+                <el-option :label="$t('users.doctor')" value="博士" />
               </el-select>
             </el-form-item>
-            <el-form-item label="毕业院校">
-              <el-input v-model="detailForm.school" placeholder="请输入毕业院校" />
+            <el-form-item :label="$t('users.school')">
+              <el-input v-model="detailForm.school" :placeholder="$t('users.schoolPlaceholder')" />
             </el-form-item>
-            <el-form-item label="专业">
-              <el-input v-model="detailForm.major" placeholder="请输入专业" />
+            <el-form-item :label="$t('users.major')">
+              <el-input v-model="detailForm.major" :placeholder="$t('users.majorPlaceholder')" />
             </el-form-item>
-            <el-form-item label="紧急联系人">
-              <el-input v-model="detailForm.emergency_contact" placeholder="请输入紧急联系人姓名" />
+            <el-form-item :label="$t('users.emergencyContact')">
+              <el-input v-model="detailForm.emergency_contact" :placeholder="$t('users.emergencyContactPlaceholder')" />
             </el-form-item>
-            <el-form-item label="紧急电话">
-              <el-input v-model="detailForm.emergency_phone" placeholder="请输入紧急联系人电话" />
+            <el-form-item :label="$t('users.emergencyPhone')">
+              <el-input v-model="detailForm.emergency_phone" :placeholder="$t('users.emergencyPhonePlaceholder')" />
             </el-form-item>
-            <el-form-item label="现居地址">
-              <el-input v-model="detailForm.address" type="textarea" :rows="2" placeholder="请输入现居地址" />
+            <el-form-item :label="$t('users.address')">
+              <el-input v-model="detailForm.address" type="textarea" :rows="2" :placeholder="$t('users.addressPlaceholder')" />
             </el-form-item>
           </el-form>
         </el-tab-pane>
       </el-tabs>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveUser" :loading="saving">保存</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveUser" :loading="saving">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 添加/编辑角色对话框 -->
-    <el-dialog v-model="showRoleDialog" :title="isEditRole ? '编辑角色' : '新增角色'" width="500px">
+    <el-dialog v-model="showRoleDialog" :title="isEditRole ? $t('users.editRole') : $t('users.newRoleDialog')" width="500px">
       <el-form :model="roleForm" label-width="100px">
-        <el-form-item label="角色标识">
-          <el-input v-model="roleForm.name" placeholder="如：project_manager" :disabled="isEditRole" />
+        <el-form-item :label="$t('users.roleCode')">
+          <el-input v-model="roleForm.name" :placeholder="$t('users.roleCodePlaceholder')" :disabled="isEditRole" />
         </el-form-item>
-        <el-form-item label="角色名称">
-          <el-input v-model="roleForm.description" placeholder="如：项目经理" />
+        <el-form-item :label="$t('users.roleName')">
+          <el-input v-model="roleForm.description" :placeholder="$t('users.roleNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="等级">
+        <el-form-item :label="$t('users.level')">
           <el-input-number v-model="roleForm.level" :min="1" :max="10" />
         </el-form-item>
-        <el-form-item label="权限">
-          <el-select v-model="roleForm.permissions" multiple placeholder="选择权限" style="width: 100%;">
+        <el-form-item :label="$t('users.permissions')">
+          <el-select v-model="roleForm.permissions" multiple :placeholder="$t('users.selectPermissions')" style="width: 100%;">
             <el-option v-for="perm in permissionOptions" :key="perm.code" :label="perm.label" :value="perm.code" />
           </el-select>
         </el-form-item>
-        <el-form-item label="数据范围">
-          <el-select v-model="roleForm.data_scope" placeholder="选择数据范围" style="width: 100%;">
-            <el-option label="全部数据" value="all" />
-            <el-option label="本部门数据" value="dept" />
-            <el-option label="本部门及子部门" value="dept_and_below" />
-            <el-option label="仅自己的数据" value="self" />
-            <el-option label="自定义" value="custom" />
+        <el-form-item :label="$t('users.dataScope')">
+          <el-select v-model="roleForm.data_scope" :placeholder="$t('users.selectDataScope')" style="width: 100%;">
+            <el-option :label="$t('users.allData')" value="all" />
+            <el-option :label="$t('users.deptData')" value="dept" />
+            <el-option :label="$t('users.deptAndBelow')" value="dept_and_below" />
+            <el-option :label="$t('users.onlySelf')" value="self" />
+            <el-option :label="$t('users.custom')" value="custom" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showRoleDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveRole" :loading="savingRole">保存</el-button>
+        <el-button @click="showRoleDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveRole" :loading="savingRole">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { getUsers, getUser, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole, getPermissions, exportUsers } from '@/api/users'
 import { getDepartmentsFlat } from '@/api/departments'
 import dayjs from 'dayjs'
+
+const { t } = useI18n()
 
 const userStore = useUserStore()
 const users = ref([])
@@ -430,16 +435,16 @@ const flatDepartments = ref([])
 
 // 预定义职位选项
 const positionOptions = [
-  '工程师',
-  '高级工程师',
-  '产品经理',
-  '设计师',
-  '测试工程师',
-  '运营专员',
-  '技术总监',
-  '项目经理',
-  '部门经理',
-  '行政专员'
+  t('users.engineer'),
+  t('users.seniorEngineer'),
+  t('users.productManager'),
+  t('users.designer'),
+  t('users.testEngineer'),
+  t('users.operationSpecialist'),
+  t('users.techDirector'),
+  t('users.projectManager'),
+  t('users.deptManager'),
+  t('users.adminSpecialist')
 ]
 
 const showCreateDialog = ref(false)
@@ -510,7 +515,7 @@ const fetchUsers = async () => {
     users.value = res.users
     total.value = res.total
   } catch (error) {
-    console.error('获取用户失败', error)
+    console.error(t('users.fetchFailed'), error)
   } finally {
     loading.value = false
   }
@@ -521,7 +526,7 @@ const fetchStats = async () => {
     const res = await getUserStats()
     stats.value = res
   } catch (error) {
-    console.error('获取统计失败', error)
+    console.error(t('users.fetchStatsFailed'), error)
   }
 }
 
@@ -552,7 +557,7 @@ const fetchRoles = async () => {
       return indexA - indexB
     })
   } catch (error) {
-    console.error('获取角色失败', error)
+    console.error(t('users.fetchRolesFailed'), error)
   }
 }
 
@@ -562,7 +567,7 @@ const fetchDepartments = async () => {
     const res = await getDepartmentsFlat()
     flatDepartments.value = res.departments || []
   } catch (error) {
-    console.error('获取部门失败', error)
+    console.error(t('users.fetchDeptsFailed'), error)
   }
 }
 
@@ -601,7 +606,13 @@ const handleStatClick = (type) => {
   
   page.value = 1
   fetchUsers()
-  ElMessage.info(`已筛选：${type === 'total' ? '全部用户' : type === 'active' ? '在职用户' : type === 'inactive' ? '离职用户' : '本月入职用户'}`)
+  const msgMap = {
+    total: t('users.filteredAll'),
+    active: t('users.filteredActive'),
+    inactive: t('users.filteredResigned'),
+    new_this_month: t('users.filteredNew')
+  }
+  ElMessage.info(msgMap[type])
 }
 
 // 【第二次迭代】查看用户详情抽屉
@@ -652,7 +663,7 @@ const editUser = (row) => {
 
 const saveUser = async () => {
   if (!isEdit.value && (!form.value.username || !form.value.email)) {
-    ElMessage.warning('请填写完整信息')
+    ElMessage.warning(t('users.pleaseFillInfo'))
     return
   }
   
@@ -670,38 +681,38 @@ const saveUser = async () => {
         ...detailForm.value
       }
       const res = await updateUser(form.value.id, payload)
-      ElMessage.success(res.message || '用户更新成功')
+      ElMessage.success(res.message || t('users.updateSuccess'))
       if (res.require_relogin) {
-        ElMessage.warning('您的权限已变更，请重新登录')
+        ElMessage.warning(t('users.permissionChanged'))
       }
     }
     showCreateDialog.value = false
     fetchUsers()
     fetchStats()
   } catch (error) {
-    console.error('保存用户失败', error)
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    console.error(t('users.saveFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('users.saveFailed'))
   } finally {
     saving.value = false
   }
 }
 
 const toggleStatus = async (row) => {
-  const action = row.is_active ? '禁用' : '启用'
+  const action = row.is_active ? t('users.disable') : t('users.enable')
   try {
-    await ElMessageBox.confirm(`确定要${action}该用户吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(`${t('users.operationConfirmPrefix')}${action}${t('users.operationConfirmSuffix')}`, t('common.tip'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     
     await updateUser(row.id, { is_active: !row.is_active })
-    ElMessage.success(`${action}成功`)
+    ElMessage.success(`${action}${t('common.success')}`)
     fetchUsers()
     fetchStats()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error(`${action}用户失败`, error)
+      console.error(`${action}${t('common.failed')}`, error)
     }
   }
 }
@@ -718,9 +729,9 @@ const handleExport = async () => {
     a.download = `users_export_${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success(t('users.exportSuccess'))
   } catch (error) {
-    ElMessage.error('导出失败')
+    ElMessage.error(t('users.exportFailed'))
   }
 }
 
@@ -740,24 +751,24 @@ const editRole = (role) => {
 
 const removeRole = async (role) => {
   try {
-    await ElMessageBox.confirm(`确定要删除角色 "${role.description}" 吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(`${t('users.deleteRoleConfirmPrefix')} "${role.description}" ${t('users.deleteConfirmSuffix')}`, t('common.tip'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     await deleteRole(role.id)
-    ElMessage.success('角色已删除')
+    ElMessage.success(t('users.roleDeleted'))
     fetchRoles()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error(error.response?.data?.message || '删除失败')
+      ElMessage.error(error.response?.data?.message || t('users.saveFailed'))
     }
   }
 }
 
 const saveRole = async () => {
   if (!roleForm.value.name || !roleForm.value.description) {
-    ElMessage.warning('请填写完整信息')
+    ElMessage.warning(t('users.pleaseFillInfo'))
     return
   }
   
@@ -770,7 +781,7 @@ const saveRole = async () => {
         level: roleForm.value.level,
         permissions: roleForm.value.permissions
       })
-      ElMessage.success('角色更新成功')
+      ElMessage.success(t('users.roleUpdateSuccess'))
     } else {
       await createRole({
         name: roleForm.value.name,
@@ -778,14 +789,14 @@ const saveRole = async () => {
         level: roleForm.value.level,
         permissions: roleForm.value.permissions
       })
-      ElMessage.success('角色创建成功')
+      ElMessage.success(t('users.roleCreateSuccess'))
     }
     showRoleDialog.value = false
     roleForm.value = { id: '', name: '', description: '', level: 4, permissions: [], data_scope: 'self', data_scope_custom: [] }
     fetchRoles()
   } catch (error) {
-    console.error('保存角色失败', error)
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    console.error(t('users.saveRoleFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('users.saveFailed'))
   } finally {
     savingRole.value = false
   }
@@ -796,20 +807,20 @@ const fetchPermissions = async () => {
     const res = await getPermissions()
     permissionOptions.value = res.permissions || []
   } catch (error) {
-    console.error('获取权限列表失败', error)
+    console.error(t('users.fetchPermsFailed'), error)
   }
 }
 
 // 【第二次迭代】员工状态显示转换
 const employeeStatusLabel = (status) => {
   const map = {
-    probation: '试用期',
-    active: '正式',
-    pending_leave: '待离职',
-    left: '已离职',
-    suspended: '停薪留职'
+    probation: t('users.probation'),
+    active: t('users.formal'),
+    pending_leave: t('users.pendingResign'),
+    left: t('users.resigned'),
+    suspended: t('users.suspended')
   }
-  return map[status] || status || '试用期'
+  return map[status] || status || t('users.probation')
 }
 
 const employeeStatusType = (status) => {
@@ -858,7 +869,7 @@ onMounted(() => {
       .stat-value {
         font-size: 28px;
         font-weight: 600;
-        color: #1890ff;
+        color: #333;
         margin-bottom: 8px;
         &.success { color: #67c23a; }
         &.warning { color: #e6a23c; }

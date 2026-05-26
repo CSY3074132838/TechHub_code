@@ -1,11 +1,12 @@
 <template>
+  <!-- 第三次迭代陈思言负责 -->
   <!-- 【UI重构】组织架构管理页面 - 支持部门/角色/职位三分类 -->
   <div class="departments-page">
     <!-- 页面头部 -->
     <div class="page-header">
       <div class="header-left">
-        <h2>组织架构</h2>
-        <span class="header-subtitle">管理公司部门、成员及组织信息</span>
+        <h2>{{ t('departments.pageTitle') }}</h2>
+        <span class="header-subtitle">{{ t('departments.subtitle') }}</span>
       </div>
       <el-button type="primary" @click="openAddDialog()" v-if="userStore.hasPermission('user_manage')">
         <el-icon><Plus /></el-icon>
@@ -64,7 +65,7 @@
                     <el-icon class="node-icon"><OfficeBuilding /></el-icon>
                     <span class="node-label">{{ node.label }}</span>
                   </div>
-                  <span class="node-count">{{ data.total_member_count }}人</span>
+                  <span class="node-count">{{ data.total_member_count }}{{ t('common.unitPeople') }}</span>
                 </div>
               </template>
             </el-tree>
@@ -85,7 +86,7 @@
                     <span class="item-sub">{{ role.name }}</span>
                   </div>
                 </div>
-                <span class="node-count">{{ role.user_count }}人</span>
+                <span class="node-count">{{ role.user_count }}{{ t('common.unitPeople') }}</span>
               </div>
             </div>
 
@@ -102,7 +103,7 @@
                   <el-icon class="node-icon"><Postcard /></el-icon>
                   <span class="node-label">{{ pos.name }}</span>
                 </div>
-                <span class="node-count">{{ pos.user_count }}人</span>
+                <span class="node-count">{{ pos.user_count }}{{ t('common.unitPeople') }}</span>
               </div>
             </div>
           </div>
@@ -137,10 +138,10 @@
         <template v-if="activeCategory === 'department' && currentDept">
           <el-card class="detail-card">
             <div class="detail-header">
-              <div class="detail-title">部门详情</div>
+              <div class="detail-title">{{ t('departments.departmentDetail') }}</div>
               <div class="detail-actions" v-if="userStore.hasPermission('user_manage')">
-                <el-button text size="small" @click="openEditDialog(currentDept)">编辑</el-button>
-                <el-button text type="danger" size="small" @click="removeDept(currentDept)">删除</el-button>
+                <el-button text size="small" @click="openEditDialog(currentDept)">{{ t('common.edit') }}</el-button>
+                <el-button text type="danger" size="small" @click="removeDept(currentDept)">{{ t('common.delete') }}</el-button>
               </div>
             </div>
             <div class="detail-body">
@@ -156,31 +157,31 @@
                 <el-row :gutter="40" class="detail-grid">
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">部门编码</div>
+                      <div class="grid-label">{{ t('departments.departmentCode') }}</div>
                       <div class="grid-value">{{ currentDept.code }}</div>
                     </div>
                   </el-col>
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">直属人数</div>
-                      <div class="grid-value">{{ currentDept.member_count }}人</div>
+                      <div class="grid-label">{{ t('departments.directMembers') }}</div>
+                      <div class="grid-value">{{ currentDept.member_count }}{{ t('common.unitPeople') }}</div>
                     </div>
                   </el-col>
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">总人数（含子部门）</div>
-                      <div class="grid-value">{{ currentDept.total_member_count }}人</div>
+                      <div class="grid-label">{{ t('departments.totalMembers') }}</div>
+                      <div class="grid-value">{{ currentDept.total_member_count }}{{ t('common.unitPeople') }}</div>
                     </div>
                   </el-col>
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">部门负责人</div>
+                      <div class="grid-label">{{ t('departments.departmentLeader') }}</div>
                       <div class="grid-value">{{ currentDept.manager?.real_name || '-' }}</div>
                     </div>
                   </el-col>
                   <el-col :span="16">
                     <div class="grid-item">
-                      <div class="grid-label">描述</div>
+                      <div class="grid-label">{{ t('common.description') }}</div>
                       <div class="grid-value">{{ currentDept.description || '-' }}</div>
                     </div>
                   </el-col>
@@ -192,13 +193,13 @@
           <!-- 部门成员表格 -->
           <el-card class="member-card">
             <div class="member-header">
-              <div class="member-title">部门成员</div>
+              <div class="member-title">{{ t('departments.departmentMembers') }}</div>
               <el-button type="primary" size="small" @click="openAddMemberDialog" v-if="userStore.hasPermission('user_manage')">
-                <el-icon><Plus /></el-icon>添加成员
+                <el-icon><Plus /></el-icon>{{ t('departments.addMember') }}
               </el-button>
             </div>
             <el-table :data="members" v-loading="memberLoading" size="small" class="member-table">
-              <el-table-column label="姓名" min-width="140">
+              <el-table-column :label="t('common.name')" min-width="140">
                 <template #default="{ row }">
                   <div class="user-cell">
                     <el-avatar :size="32" :src="row.avatar">{{ row.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -206,27 +207,27 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="职位" prop="position" width="140" />
-              <el-table-column label="邮箱" prop="email" min-width="180" />
-              <el-table-column label="电话" width="130">
+              <el-table-column :label="t('common.position')" prop="position" width="140" />
+              <el-table-column :label="t('users.email')" prop="email" min-width="180" />
+              <el-table-column :label="t('users.phone')" width="130">
                 <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
               </el-table-column>
-              <el-table-column label="状态" width="90">
+              <el-table-column :label="t('common.status')" width="90">
                 <template #default="{ row }">
                   <div class="status-dot">
                     <span class="dot" :class="row.is_active ? 'active' : 'inactive'"></span>
-                    <span>{{ row.is_active ? '在职' : '离职' }}</span>
+                    <span>{{ row.is_active ? t('users.active') : t('users.resigned') }}</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="80" fixed="right" v-if="userStore.hasPermission('user_manage')">
+              <el-table-column :label="t('common.operation')" width="80" fixed="right" v-if="userStore.hasPermission('user_manage')">
                 <template #default="{ row }">
                   <el-dropdown trigger="click" @command="(cmd) => handleMemberCommand(cmd, row)">
                     <el-button type="primary" link><el-icon><MoreFilled /></el-icon></el-button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item command="transfer">转移</el-dropdown-item>
-                        <el-dropdown-item command="remove" style="color: #f56c6c;">移除</el-dropdown-item>
+                        <el-dropdown-item command="transfer">{{ t('common.transfer') }}</el-dropdown-item>
+                        <el-dropdown-item command="remove" style="color: #f56c6c;">{{ t('common.remove') }}</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -234,7 +235,7 @@
               </el-table-column>
             </el-table>
             <div class="member-footer">
-              <span class="total-text">共 {{ memberTotal }} 人</span>
+              <span class="total-text">{{ t('departments.total') }} {{ memberTotal }} {{ t('common.unitPeople') }}</span>
               <el-pagination
                 v-model:current-page="memberPage"
                 v-model:page-size="memberPageSize"
@@ -253,10 +254,10 @@
         <template v-if="activeCategory === 'role' && currentRole">
           <el-card class="detail-card">
             <div class="detail-header">
-              <div class="detail-title">角色详情</div>
+              <div class="detail-title">{{ t('departments.roleDetail') }}</div>
               <div class="detail-actions" v-if="userStore.hasPermission('user_manage')">
-                <el-button text size="small" @click="openEditDialog(currentRole)">编辑</el-button>
-                <el-button text type="danger" size="small" @click="removeRole(currentRole)">删除</el-button>
+                <el-button text size="small" @click="openEditDialog(currentRole)">{{ t('common.edit') }}</el-button>
+                <el-button text type="danger" size="small" @click="removeRole(currentRole)">{{ t('common.delete') }}</el-button>
               </div>
             </div>
             <div class="detail-body">
@@ -273,31 +274,31 @@
                 <el-row :gutter="40" class="detail-grid">
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">角色编码</div>
+                      <div class="grid-label">{{ t('departments.roleCode') }}</div>
                       <div class="grid-value">{{ currentRole.name }}</div>
                     </div>
                   </el-col>
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">等级</div>
+                      <div class="grid-label">{{ t('users.level') }}</div>
                       <div class="grid-value">Level {{ currentRole.level }}</div>
                     </div>
                   </el-col>
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">成员人数</div>
-                      <div class="grid-value">{{ currentRole.user_count }}人</div>
+                      <div class="grid-label">{{ t('departments.memberCount') }}</div>
+                      <div class="grid-value">{{ currentRole.user_count }}{{ t('common.unitPeople') }}</div>
                     </div>
                   </el-col>
                   <el-col :span="8">
                     <div class="grid-item">
-                      <div class="grid-label">数据范围</div>
+                      <div class="grid-label">{{ t('departments.dataScope') }}</div>
                       <div class="grid-value">{{ currentRole.data_scope || 'self' }}</div>
                     </div>
                   </el-col>
                   <el-col :span="16">
                     <div class="grid-item">
-                      <div class="grid-label">描述</div>
+                      <div class="grid-label">{{ t('common.description') }}</div>
                       <div class="grid-value">{{ currentRole.description || '-' }}</div>
                     </div>
                   </el-col>
@@ -309,13 +310,13 @@
           <!-- 角色成员表格 -->
           <el-card class="member-card">
             <div class="member-header">
-              <div class="member-title">角色成员</div>
+              <div class="member-title">{{ t('departments.roleMembers') }}</div>
               <el-button type="primary" size="small" @click="openAddRoleMemberDialog" v-if="userStore.hasPermission('user_manage')">
-                <el-icon><Plus /></el-icon>添加成员
+                <el-icon><Plus /></el-icon>{{ t('departments.addMember') }}
               </el-button>
             </div>
             <el-table :data="roleMembers" v-loading="roleMemberLoading" size="small" class="member-table">
-              <el-table-column label="姓名" min-width="140">
+              <el-table-column :label="t('common.name')" min-width="140">
                 <template #default="{ row }">
                   <div class="user-cell">
                     <el-avatar :size="32" :src="row.avatar">{{ row.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -323,27 +324,27 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="职位" prop="position" width="140" />
-              <el-table-column label="邮箱" prop="email" min-width="180" />
-              <el-table-column label="电话" width="130">
+              <el-table-column :label="t('common.position')" prop="position" width="140" />
+              <el-table-column :label="t('users.email')" prop="email" min-width="180" />
+              <el-table-column :label="t('users.phone')" width="130">
                 <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
               </el-table-column>
-              <el-table-column label="状态" width="90">
+              <el-table-column :label="t('common.status')" width="90">
                 <template #default="{ row }">
                   <div class="status-dot">
                     <span class="dot" :class="row.is_active ? 'active' : 'inactive'"></span>
-                    <span>{{ row.is_active ? '在职' : '离职' }}</span>
+                    <span>{{ row.is_active ? t('users.active') : t('users.resigned') }}</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="80" fixed="right" v-if="userStore.hasPermission('user_manage')">
+              <el-table-column :label="t('common.operation')" width="80" fixed="right" v-if="userStore.hasPermission('user_manage')">
                 <template #default="{ row }">
-                  <el-button type="danger" link size="small" @click="handleRemoveRoleMember(row)">移除</el-button>
+                  <el-button type="danger" link size="small" @click="handleRemoveRoleMember(row)">{{ t('common.remove') }}</el-button>
                 </template>
               </el-table-column>
             </el-table>
             <div class="member-footer">
-              <span class="total-text">共 {{ roleMemberTotal }} 人</span>
+              <span class="total-text">{{ t('departments.total') }} {{ roleMemberTotal }} {{ t('common.unitPeople') }}</span>
               <el-pagination
                 v-model:current-page="roleMemberPage"
                 v-model:page-size="roleMemberPageSize"
@@ -362,10 +363,10 @@
         <template v-if="activeCategory === 'position' && currentPosition">
           <el-card class="detail-card">
             <div class="detail-header">
-              <div class="detail-title">职位详情</div>
+              <div class="detail-title">{{ t('departments.positionDetail') }}</div>
               <div class="detail-actions" v-if="userStore.hasPermission('user_manage')">
-                <el-button text size="small" @click="openEditDialog(currentPosition)">编辑</el-button>
-                <el-button text type="danger" size="small" @click="removePosition(currentPosition)">删除</el-button>
+                <el-button text size="small" @click="openEditDialog(currentPosition)">{{ t('common.edit') }}</el-button>
+                <el-button text type="danger" size="small" @click="removePosition(currentPosition)">{{ t('common.delete') }}</el-button>
               </div>
             </div>
             <div class="detail-body">
@@ -381,14 +382,14 @@
                 <el-row :gutter="40" class="detail-grid">
                   <el-col :span="12">
                     <div class="grid-item">
-                      <div class="grid-label">职位名称</div>
+                      <div class="grid-label">{{ t('departments.positionName') }}</div>
                       <div class="grid-value">{{ currentPosition.name }}</div>
                     </div>
                   </el-col>
                   <el-col :span="12">
                     <div class="grid-item">
-                      <div class="grid-label">在职人数</div>
-                      <div class="grid-value">{{ currentPosition.user_count }}人</div>
+                      <div class="grid-label">{{ t('departments.activeMembers') }}</div>
+                      <div class="grid-value">{{ currentPosition.user_count }}{{ t('common.unitPeople') }}</div>
                     </div>
                   </el-col>
                 </el-row>
@@ -399,13 +400,13 @@
           <!-- 职位成员表格 -->
           <el-card class="member-card">
             <div class="member-header">
-              <div class="member-title">职位成员</div>
+              <div class="member-title">{{ t('departments.positionMembers') }}</div>
               <el-button type="primary" size="small" @click="openAddPositionMemberDialog" v-if="userStore.hasPermission('user_manage')">
-                <el-icon><Plus /></el-icon>添加成员
+                <el-icon><Plus /></el-icon>{{ t('departments.addMember') }}
               </el-button>
             </div>
             <el-table :data="positionMembers" v-loading="positionMemberLoading" size="small" class="member-table">
-              <el-table-column label="姓名" min-width="140">
+              <el-table-column :label="t('common.name')" min-width="140">
                 <template #default="{ row }">
                   <div class="user-cell">
                     <el-avatar :size="32" :src="row.avatar">{{ row.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -413,27 +414,27 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="部门" prop="department" width="140" />
-              <el-table-column label="邮箱" prop="email" min-width="180" />
-              <el-table-column label="电话" width="130">
+              <el-table-column :label="t('common.department')" prop="department" width="140" />
+              <el-table-column :label="t('users.email')" prop="email" min-width="180" />
+              <el-table-column :label="t('users.phone')" width="130">
                 <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
               </el-table-column>
-              <el-table-column label="状态" width="90">
+              <el-table-column :label="t('common.status')" width="90">
                 <template #default="{ row }">
                   <div class="status-dot">
                     <span class="dot" :class="row.is_active ? 'active' : 'inactive'"></span>
-                    <span>{{ row.is_active ? '在职' : '离职' }}</span>
+                    <span>{{ row.is_active ? t('users.active') : t('users.resigned') }}</span>
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="80" fixed="right" v-if="userStore.hasPermission('user_manage')">
+              <el-table-column :label="t('common.operation')" width="80" fixed="right" v-if="userStore.hasPermission('user_manage')">
                 <template #default="{ row }">
                   <el-dropdown trigger="click" @command="(cmd) => handlePositionMemberCommand(cmd, row)">
                     <el-button type="primary" link><el-icon><MoreFilled /></el-icon></el-button>
                     <template #dropdown>
                       <el-dropdown-menu>
-                        <el-dropdown-item command="transfer">转移</el-dropdown-item>
-                        <el-dropdown-item command="remove" style="color: #f56c6c;">移除</el-dropdown-item>
+                        <el-dropdown-item command="transfer">{{ t('common.transfer') }}</el-dropdown-item>
+                        <el-dropdown-item command="remove" style="color: #f56c6c;">{{ t('common.remove') }}</el-dropdown-item>
                       </el-dropdown-menu>
                     </template>
                   </el-dropdown>
@@ -441,7 +442,7 @@
               </el-table-column>
             </el-table>
             <div class="member-footer">
-              <span class="total-text">共 {{ positionMemberTotal }} 人</span>
+              <span class="total-text">{{ t('departments.total') }} {{ positionMemberTotal }} {{ t('common.unitPeople') }}</span>
               <el-pagination
                 v-model:current-page="positionMemberPage"
                 v-model:page-size="positionMemberPageSize"
@@ -457,94 +458,94 @@
         </template>
 
         <!-- 未选择提示 -->
-        <el-empty v-if="!hasCurrentItem" description="请从左侧选择一项查看详情" style="margin-top: 40px;" />
+        <el-empty v-if="!hasCurrentItem" :description="t('departments.pleaseSelectItem')" style="margin-top: 40px;" />
       </el-col>
     </el-row>
 
     <!-- ========== 对话框 ========== -->
 
     <!-- 部门添加/编辑对话框 -->
-    <el-dialog v-model="showDeptDialog" :title="isEdit ? '编辑部门' : '添加部门'" width="500px">
+    <el-dialog v-model="showDeptDialog" :title="isEdit ? t('departments.editDepartment') : t('departments.addDepartmentDialog')" width="500px">
       <el-form :model="deptForm" label-width="100px">
-        <el-form-item label="部门名称" required>
-          <el-input v-model="deptForm.name" placeholder="请输入部门名称" />
+        <el-form-item :label="t('departments.departmentName')" required>
+          <el-input v-model="deptForm.name" :placeholder="t('departments.deptNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="部门编码" required>
-          <el-input v-model="deptForm.code" placeholder="如：DEV-001" :disabled="isEdit" />
+        <el-form-item :label="t('departments.departmentCode')" required>
+          <el-input v-model="deptForm.code" :placeholder="t('departments.deptCodePlaceholder')" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="上级部门">
+        <el-form-item :label="t('departments.parentDepartment')">
           <el-tree-select v-model="deptForm.parent_id" :data="departmentTree"
             :props="{ label: 'name', value: 'id', children: 'children' }"
-            placeholder="选择上级部门" check-strictly clearable style="width: 100%" />
+            :placeholder="t('departments.selectParentDept')" check-strictly clearable style="width: 100%" />
         </el-form-item>
-        <el-form-item label="部门负责人">
-          <el-select v-model="deptForm.manager_id" placeholder="选择负责人" clearable style="width: 100%">
+        <el-form-item :label="t('departments.departmentLeader')">
+          <el-select v-model="deptForm.manager_id" :placeholder="t('departments.selectLeader')" clearable style="width: 100%">
             <el-option v-for="user in managerOptions" :key="user.id" :label="user.real_name" :value="user.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="排序号">
+        <el-form-item :label="t('departments.sortOrder')">
           <el-input-number v-model="deptForm.sort_order" :min="0" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="deptForm.description" type="textarea" :rows="2" placeholder="部门描述" />
+        <el-form-item :label="t('common.description')">
+          <el-input v-model="deptForm.description" type="textarea" :rows="2" :placeholder="t('departments.deptDescPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showDeptDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveDept" :loading="saving">保存</el-button>
+        <el-button @click="showDeptDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveDept" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 角色添加/编辑对话框 -->
-    <el-dialog v-model="showRoleDialog" :title="isEdit ? '编辑角色' : '添加角色'" width="500px">
+    <el-dialog v-model="showRoleDialog" :title="isEdit ? t('departments.editRole') : t('departments.addRoleDialog')" width="500px">
       <el-form :model="roleForm" label-width="100px">
-        <el-form-item label="角色名称" required>
-          <el-input v-model="roleForm.name" placeholder="如：project_manager" />
+        <el-form-item :label="t('users.roleName')" required>
+          <el-input v-model="roleForm.name" :placeholder="t('departments.roleNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="显示名称" required>
-          <el-input v-model="roleForm.description" placeholder="如：项目经理" />
+        <el-form-item :label="t('departments.displayName')" required>
+          <el-input v-model="roleForm.description" :placeholder="t('departments.displayNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="等级">
+        <el-form-item :label="t('users.level')">
           <el-input-number v-model="roleForm.level" :min="1" :max="10" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="数据范围">
+        <el-form-item :label="t('departments.dataScope')">
           <el-select v-model="roleForm.data_scope" style="width: 100%">
-            <el-option label="全部" value="all" />
-            <el-option label="本部门" value="dept" />
-            <el-option label="本部门及子部门" value="dept_and_below" />
-            <el-option label="仅自己" value="self" />
-            <el-option label="自定义" value="custom" />
+            <el-option :label="t('users.allData')" value="all" />
+            <el-option :label="t('users.deptData')" value="dept" />
+            <el-option :label="t('users.deptAndBelow')" value="dept_and_below" />
+            <el-option :label="t('users.onlySelf')" value="self" />
+            <el-option :label="t('users.custom')" value="custom" />
           </el-select>
         </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="roleForm.description" type="textarea" :rows="2" placeholder="角色描述" />
+        <el-form-item :label="t('common.description')">
+          <el-input v-model="roleForm.description" type="textarea" :rows="2" :placeholder="t('departments.roleDescPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showRoleDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveRole" :loading="saving">保存</el-button>
+        <el-button @click="showRoleDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveRole" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 职位添加/编辑对话框 -->
-    <el-dialog v-model="showPositionDialog" :title="isEdit ? '编辑职位' : '添加职位'" width="400px">
+    <el-dialog v-model="showPositionDialog" :title="isEdit ? t('departments.editPosition') : t('departments.addPositionDialog')" width="400px">
       <el-form :model="positionForm" label-width="80px">
-        <el-form-item label="职位名称" required>
-          <el-input v-model="positionForm.name" placeholder="请输入职位名称" />
+        <el-form-item :label="t('departments.positionName')" required>
+          <el-input v-model="positionForm.name" :placeholder="t('departments.positionNamePlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showPositionDialog = false">取消</el-button>
-        <el-button type="primary" @click="savePosition" :loading="saving">保存</el-button>
+        <el-button @click="showPositionDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="savePosition" :loading="saving">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 添加成员到部门对话框 -->
-    <el-dialog v-model="showAddMemberDialog" title="添加成员到部门" width="600px">
+    <el-dialog v-model="showAddMemberDialog" :title="t('departments.addMemberToDept')" width="600px">
       <div v-loading="addMemberLoading">
-        <el-empty v-if="!noDeptUsers.length" description="暂无可分配的用户（所有用户已分配部门）" />
+        <el-empty v-if="!noDeptUsers.length" :description="t('departments.noAssignableUsers')" />
         <el-table v-else :data="noDeptUsers" size="small" max-height="400">
-          <el-table-column label="姓名" min-width="120">
+          <el-table-column :label="t('common.name')" min-width="120">
             <template #default="{ row }">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <el-avatar :size="28">{{ row.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -552,11 +553,11 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="职位" prop="position" width="120" />
-          <el-table-column label="邮箱" prop="email" min-width="180" />
-          <el-table-column label="操作" width="100" fixed="right">
+          <el-table-column :label="t('common.position')" prop="position" width="120" />
+          <el-table-column :label="t('users.email')" prop="email" min-width="180" />
+          <el-table-column :label="t('common.operation')" width="100" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" size="small" @click="handleAddMember(row)">添加</el-button>
+              <el-button type="primary" size="small" @click="handleAddMember(row)">{{ t('common.add') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -564,11 +565,11 @@
     </el-dialog>
 
     <!-- 添加成员到角色对话框 -->
-    <el-dialog v-model="showAddRoleMemberDialog" title="添加成员到角色" width="600px">
+    <el-dialog v-model="showAddRoleMemberDialog" :title="t('departments.addMemberToRole')" width="600px">
       <div v-loading="addMemberLoading">
-        <el-empty v-if="!noRoleUsers.length" description="暂无可分配的用户" />
+        <el-empty v-if="!noRoleUsers.length" :description="t('departments.noAssignableUsersRole')" />
         <el-table v-else :data="noRoleUsers" size="small" max-height="400">
-          <el-table-column label="姓名" min-width="120">
+          <el-table-column :label="t('common.name')" min-width="120">
             <template #default="{ row }">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <el-avatar :size="28">{{ row.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -576,11 +577,11 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="职位" prop="position" width="120" />
-          <el-table-column label="邮箱" prop="email" min-width="180" />
-          <el-table-column label="操作" width="100" fixed="right">
+          <el-table-column :label="t('common.position')" prop="position" width="120" />
+          <el-table-column :label="t('users.email')" prop="email" min-width="180" />
+          <el-table-column :label="t('common.operation')" width="100" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" size="small" @click="handleAddRoleMember(row)">添加</el-button>
+              <el-button type="primary" size="small" @click="handleAddRoleMember(row)">{{ t('common.add') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -588,11 +589,11 @@
     </el-dialog>
 
     <!-- 添加成员到职位对话框 -->
-    <el-dialog v-model="showAddPositionMemberDialog" title="添加成员到职位" width="600px">
+    <el-dialog v-model="showAddPositionMemberDialog" :title="t('departments.addMemberToPosition')" width="600px">
       <div v-loading="addMemberLoading">
-        <el-empty v-if="!noPositionUsers.length" description="暂无可分配的用户" />
+        <el-empty v-if="!noPositionUsers.length" :description="t('departments.noAssignableUsersRole')" />
         <el-table v-else :data="noPositionUsers" size="small" max-height="400">
-          <el-table-column label="姓名" min-width="120">
+          <el-table-column :label="t('common.name')" min-width="120">
             <template #default="{ row }">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <el-avatar :size="28">{{ row.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -600,11 +601,11 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="部门" prop="department" width="120" />
-          <el-table-column label="邮箱" prop="email" min-width="180" />
-          <el-table-column label="操作" width="100" fixed="right">
+          <el-table-column :label="t('common.department')" prop="department" width="120" />
+          <el-table-column :label="t('users.email')" prop="email" min-width="180" />
+          <el-table-column :label="t('common.operation')" width="100" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" size="small" @click="handleAddPositionMember(row)">添加</el-button>
+              <el-button type="primary" size="small" @click="handleAddPositionMember(row)">{{ t('common.add') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -612,10 +613,10 @@
     </el-dialog>
 
     <!-- 转移成员对话框 -->
-    <el-dialog v-model="showTransferDialog" title="转移成员" width="400px">
+    <el-dialog v-model="showTransferDialog" :title="t('departments.transferMember')" width="400px">
       <div v-if="transferringUser">
         <p style="margin-bottom: 16px;">
-          将 <strong>{{ transferringUser.real_name || transferringUser.username }}</strong>
+          {{ t('departments.transferFrom') }} <strong>{{ transferringUser.real_name || transferringUser.username }}</strong>
           {{ transferSourceText }}
         </p>
         <el-tree-select
@@ -623,25 +624,27 @@
           v-model="transferTargetId"
           :data="departmentTree"
           :props="{ label: 'name', value: 'id', children: 'children' }"
-          placeholder="选择目标部门"
+          :placeholder="t('departments.selectTargetDept')"
           check-strictly
           style="width: 100%"
         />
-        <el-select v-else-if="activeCategory === 'position'" v-model="transferTargetName" placeholder="选择目标职位" style="width: 100%">
+        <el-select v-else-if="activeCategory === 'position'" v-model="transferTargetName" :placeholder="t('departments.selectTargetPosition')" style="width: 100%">
           <el-option v-for="pos in positionList" :key="pos.id" :label="pos.name" :value="pos.name" />
         </el-select>
       </div>
       <template #footer>
-        <el-button @click="showTransferDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleTransfer">确认转移</el-button>
+        <el-button @click="showTransferDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleTransfer">{{ t('departments.confirmTransfer') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import {
   getDepartments, createDepartment, updateDepartment, deleteDepartment,
@@ -664,15 +667,16 @@ import {
   Plus, MoreFilled, Postcard
 } from '@element-plus/icons-vue'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 
 // ==================== 分类切换 ====================
 const activeCategory = ref('department')
-const categoryTabs = [
-  { key: 'department', label: '部门', icon: 'OfficeBuilding' },
-  { key: 'role', label: '角色', icon: 'UserFilled' },
-  { key: 'position', label: '职位', icon: 'Postcard' }
-]
+const categoryTabs = computed(() => [
+  { key: 'department', label: t('departments.department'), icon: 'OfficeBuilding' },
+  { key: 'role', label: t('departments.role'), icon: 'UserFilled' },
+  { key: 'position', label: t('departments.position'), icon: 'Postcard' }
+])
 
 const switchCategory = (key) => {
   activeCategory.value = key
@@ -681,22 +685,22 @@ const switchCategory = (key) => {
 }
 
 const addButtonText = computed(() => {
-  const map = { department: '添加部门', role: '添加角色', position: '添加职位' }
+  const map = { department: t('departments.addDepartment'), role: t('departments.addRole'), position: t('departments.addPosition') }
   return map[activeCategory.value]
 })
 
 const leftCardTitle = computed(() => {
-  const map = { department: '组织树', role: '角色列表', position: '职位列表' }
+  const map = { department: t('departments.orgTree'), role: t('departments.roleList'), position: t('departments.positionList') }
   return map[activeCategory.value]
 })
 
 const searchPlaceholder = computed(() => {
-  const map = { department: '搜索部门名称', role: '搜索角色名称', position: '搜索职位名称' }
+  const map = { department: t('departments.searchDept'), role: t('departments.searchRole'), position: t('departments.searchPosition') }
   return map[activeCategory.value]
 })
 
 const chartTitle = computed(() => {
-  const map = { department: '部门成员分布', role: '角色成员分布', position: '职位成员分布' }
+  const map = { department: t('departments.memberDistribution'), role: t('departments.memberDistribution'), position: t('departments.memberDistribution') }
   return map[activeCategory.value]
 })
 
@@ -776,24 +780,24 @@ const filteredPositionList = computed(() => {
 const currentStats = computed(() => {
   if (activeCategory.value === 'department') {
     return [
-      { value: stats.value.total_departments || 0, label: '部门总数', trend: '较上月 +2', icon: 'OfficeBuilding', iconStyle: 'background: #e6f7ff; color: #1890ff;', color: '#1890ff' },
-      { value: stats.value.total_members_with_dept || 0, label: '已分配部门', trend: '较上月 +5', icon: 'UserFilled', iconStyle: 'background: #f6ffed; color: #52c41a;', color: '#52c41a' },
-      { value: currentDept.value?.total_member_count || 0, label: '当前部门人数', trend: '较上月 +0', icon: 'User', iconStyle: 'background: #fff7e6; color: #fa8c16;', color: '#fa8c16' },
-      { value: stats.value.total_members_with_dept || 0, label: '公司总人数', trend: '较上月 +3', icon: 'UserFilled', iconStyle: 'background: #f9f0ff; color: #722ed1;', color: '#722ed1' }
+      { value: stats.value.total_departments || 0, label: t('departments.totalDepartments'), trend: t('departments.comparedLastMonth') + ' +2', icon: 'OfficeBuilding', iconStyle: 'background: #e6f7ff; color: #1890ff;', color: '#1890ff' },
+      { value: stats.value.total_members_with_dept || 0, label: t('departments.assignedDepartments'), trend: t('departments.comparedLastMonth') + ' +5', icon: 'UserFilled', iconStyle: 'background: #f6ffed; color: #52c41a;', color: '#52c41a' },
+      { value: currentDept.value?.total_member_count || 0, label: t('departments.currentDeptMembers'), trend: t('departments.comparedLastMonth') + ' +0', icon: 'User', iconStyle: 'background: #fff7e6; color: #fa8c16;', color: '#fa8c16' },
+      { value: stats.value.total_members_with_dept || 0, label: t('departments.totalCompanyMembers'), trend: t('departments.comparedLastMonth') + ' +3', icon: 'UserFilled', iconStyle: 'background: #f9f0ff; color: #722ed1;', color: '#722ed1' }
     ]
   } else if (activeCategory.value === 'role') {
     return [
-      { value: roleStats.value.total_roles || 0, label: '角色总数', trend: '较上月 +1', icon: 'UserFilled', iconStyle: 'background: #e6f7ff; color: #1890ff;', color: '#1890ff' },
-      { value: roleStats.value.total_users_with_role || 0, label: '已分配角色', trend: '较上月 +3', icon: 'UserFilled', iconStyle: 'background: #f6ffed; color: #52c41a;', color: '#52c41a' },
-      { value: currentRole.value?.user_count || 0, label: '当前角色人数', trend: '较上月 +0', icon: 'User', iconStyle: 'background: #fff7e6; color: #fa8c16;', color: '#fa8c16' },
-      { value: roleStats.value.total_users_with_role || 0, label: '公司总人数', trend: '较上月 +3', icon: 'UserFilled', iconStyle: 'background: #f9f0ff; color: #722ed1;', color: '#722ed1' }
+      { value: roleStats.value.total_roles || 0, label: t('departments.totalRoles'), trend: t('departments.comparedLastMonth') + ' +1', icon: 'UserFilled', iconStyle: 'background: #e6f7ff; color: #1890ff;', color: '#1890ff' },
+      { value: roleStats.value.total_users_with_role || 0, label: t('departments.assignedRoles'), trend: t('departments.comparedLastMonth') + ' +3', icon: 'UserFilled', iconStyle: 'background: #f6ffed; color: #52c41a;', color: '#52c41a' },
+      { value: currentRole.value?.user_count || 0, label: t('departments.currentRoleMembers'), trend: t('departments.comparedLastMonth') + ' +0', icon: 'User', iconStyle: 'background: #fff7e6; color: #fa8c16;', color: '#fa8c16' },
+      { value: roleStats.value.total_users_with_role || 0, label: t('departments.totalCompanyMembers'), trend: t('departments.comparedLastMonth') + ' +3', icon: 'UserFilled', iconStyle: 'background: #f9f0ff; color: #722ed1;', color: '#722ed1' }
     ]
   } else {
     return [
-      { value: positionStats.value.total_positions || 0, label: '职位总数', trend: '较上月 +1', icon: 'Postcard', iconStyle: 'background: #e6f7ff; color: #1890ff;', color: '#1890ff' },
-      { value: positionStats.value.total_users_with_position || 0, label: '已分配职位', trend: '较上月 +2', icon: 'UserFilled', iconStyle: 'background: #f6ffed; color: #52c41a;', color: '#52c41a' },
-      { value: currentPosition.value?.user_count || 0, label: '当前职位人数', trend: '较上月 +0', icon: 'User', iconStyle: 'background: #fff7e6; color: #fa8c16;', color: '#fa8c16' },
-      { value: positionStats.value.total_users_with_position || 0, label: '公司总人数', trend: '较上月 +3', icon: 'UserFilled', iconStyle: 'background: #f9f0ff; color: #722ed1;', color: '#722ed1' }
+      { value: positionStats.value.total_positions || 0, label: t('departments.totalPositions'), trend: t('departments.comparedLastMonth') + ' +1', icon: 'Postcard', iconStyle: 'background: #e6f7ff; color: #1890ff;', color: '#1890ff' },
+      { value: positionStats.value.total_users_with_position || 0, label: t('departments.assignedPositions'), trend: t('departments.comparedLastMonth') + ' +2', icon: 'UserFilled', iconStyle: 'background: #f6ffed; color: #52c41a;', color: '#52c41a' },
+      { value: currentPosition.value?.user_count || 0, label: t('departments.currentPositionMembers'), trend: t('departments.comparedLastMonth') + ' +0', icon: 'User', iconStyle: 'background: #fff7e6; color: #fa8c16;', color: '#fa8c16' },
+      { value: positionStats.value.total_users_with_position || 0, label: t('departments.totalCompanyMembers'), trend: t('departments.comparedLastMonth') + ' +3', icon: 'UserFilled', iconStyle: 'background: #f9f0ff; color: #722ed1;', color: '#722ed1' }
     ]
   }
 })
@@ -804,7 +808,7 @@ const fetchDepartments = async () => {
   try {
     const res = await getDepartments()
     departmentTree.value = res.departments || []
-  } catch (error) { console.error('获取部门失败', error) }
+  } catch (error) { console.error(t('departments.fetchDeptFailed'), error) }
   finally { treeLoading.value = false }
 }
 
@@ -813,7 +817,7 @@ const fetchRoles = async () => {
   try {
     const res = await getRoles()
     roleList.value = res.roles || []
-  } catch (error) { console.error('获取角色失败', error) }
+  } catch (error) { console.error(t('departments.fetchRoleFailed'), error) }
   finally { treeLoading.value = false }
 }
 
@@ -822,7 +826,7 @@ const fetchPositions = async () => {
   try {
     const res = await getPositions()
     positionList.value = res.positions || []
-  } catch (error) { console.error('获取职位失败', error) }
+  } catch (error) { console.error(t('departments.fetchPositionFailed'), error) }
   finally { treeLoading.value = false }
 }
 
@@ -838,7 +842,7 @@ const fetchStats = async () => {
       const res = await getPositionStats()
       positionStats.value = res
     }
-  } catch (error) { console.error('获取统计失败', error) }
+  } catch (error) { console.error(t('departments.fetchStatsFailed'), error) }
 }
 
 const fetchMembers = async () => {
@@ -850,7 +854,7 @@ const fetchMembers = async () => {
     })
     members.value = res.members || []
     memberTotal.value = res.total || 0
-  } catch (error) { console.error('获取成员失败', error) }
+  } catch (error) { console.error(t('departments.fetchMembersFailed'), error) }
   finally { memberLoading.value = false }
 }
 
@@ -863,7 +867,7 @@ const fetchRoleMembers = async () => {
     })
     roleMembers.value = res.members || []
     roleMemberTotal.value = res.total || 0
-  } catch (error) { console.error('获取角色成员失败', error) }
+  } catch (error) { console.error(t('departments.fetchRoleMembersFailed'), error) }
   finally { roleMemberLoading.value = false }
 }
 
@@ -876,7 +880,7 @@ const fetchPositionMembers = async () => {
     })
     positionMembers.value = res.members || []
     positionMemberTotal.value = res.total || 0
-  } catch (error) { console.error('获取职位成员失败', error) }
+  } catch (error) { console.error(t('departments.fetchPositionMembersFailed'), error) }
   finally { positionMemberLoading.value = false }
 }
 
@@ -963,7 +967,7 @@ const openEditDialog = (item) => {
 // ==================== 保存操作 ====================
 const saveDept = async () => {
   if (!deptForm.value.name || !deptForm.value.code) {
-    ElMessage.warning('请填写部门名称和编码')
+    ElMessage.warning(t('departments.pleaseFillNameCode'))
     return
   }
   saving.value = true
@@ -974,25 +978,25 @@ const saveDept = async () => {
         parent_id: deptForm.value.parent_id, manager_id: deptForm.value.manager_id,
         sort_order: deptForm.value.sort_order
       })
-      ElMessage.success('部门更新成功')
+      ElMessage.success(t('departments.deptUpdateSuccess'))
     } else {
       await createDepartment({
         name: deptForm.value.name, code: deptForm.value.code,
         description: deptForm.value.description, parent_id: deptForm.value.parent_id,
         manager_id: deptForm.value.manager_id, sort_order: deptForm.value.sort_order
       })
-      ElMessage.success('部门创建成功')
+      ElMessage.success(t('departments.deptCreateSuccess'))
     }
     showDeptDialog.value = false
     fetchDepartments()
     fetchStats()
-  } catch (error) { ElMessage.error(error.response?.data?.message || '保存失败') }
+  } catch (error) { ElMessage.error(error.response?.data?.message || t('common.save') + t('common.failed')) }
   finally { saving.value = false }
 }
 
 const saveRole = async () => {
   if (!roleForm.value.name) {
-    ElMessage.warning('请填写角色名称')
+    ElMessage.warning(t('departments.pleaseFillRoleName'))
     return
   }
   saving.value = true
@@ -1003,83 +1007,83 @@ const saveRole = async () => {
         level: roleForm.value.level, data_scope: roleForm.value.data_scope,
         permissions: roleForm.value.permissions
       })
-      ElMessage.success('角色更新成功')
+      ElMessage.success(t('departments.roleUpdateSuccess'))
     } else {
       await createRole({
         name: roleForm.value.name, description: roleForm.value.description,
         level: roleForm.value.level, data_scope: roleForm.value.data_scope,
         permissions: roleForm.value.permissions
       })
-      ElMessage.success('角色创建成功')
+      ElMessage.success(t('departments.roleCreateSuccess'))
     }
     showRoleDialog.value = false
     fetchRoles()
     fetchStats()
-  } catch (error) { ElMessage.error(error.response?.data?.message || '保存失败') }
+  } catch (error) { ElMessage.error(error.response?.data?.message || t('common.save') + t('common.failed')) }
   finally { saving.value = false }
 }
 
 const savePosition = async () => {
   if (!positionForm.value.name) {
-    ElMessage.warning('请填写职位名称')
+    ElMessage.warning(t('departments.pleaseFillPositionName'))
     return
   }
   saving.value = true
   try {
     if (isEdit.value) {
       await updatePosition(positionForm.value.oldName, { name: positionForm.value.name })
-      ElMessage.success('职位更新成功')
+      ElMessage.success(t('departments.positionUpdateSuccess'))
       if (currentPosition.value?.name === positionForm.value.oldName) {
         currentPosition.value = { ...currentPosition.value, name: positionForm.value.name }
       }
     } else {
       await createPosition({ name: positionForm.value.name })
-      ElMessage.success('职位创建成功')
+      ElMessage.success(t('departments.positionCreateSuccess'))
     }
     showPositionDialog.value = false
     fetchPositions()
     fetchStats()
-  } catch (error) { ElMessage.error(error.response?.data?.message || '保存失败') }
+  } catch (error) { ElMessage.error(error.response?.data?.message || t('common.save') + t('common.failed')) }
   finally { saving.value = false }
 }
 
 // ==================== 删除操作 ====================
 const removeDept = async (dept) => {
   try {
-    await ElMessageBox.confirm(`确定要删除部门 "${dept.name}" 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`${t('departments.deleteDeptConfirmPrefix')} "${dept.name}" ?`, t('common.tip'), { type: 'warning' })
     await deleteDepartment(dept.id)
-    ElMessage.success('部门已删除')
+    ElMessage.success(t('departments.deptDeleted'))
     currentDept.value = null
     fetchDepartments()
     fetchStats()
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || '删除失败')
+    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || t('common.delete') + t('common.failed'))
   }
 }
 
 const removeRole = async (role) => {
   try {
-    await ElMessageBox.confirm(`确定要删除角色 "${role.description || role.name}" 吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`${t('departments.deleteRoleConfirmPrefix')} "${role.description || role.name}" ?`, t('common.tip'), { type: 'warning' })
     await deleteRole(role.id)
-    ElMessage.success('角色已删除')
+    ElMessage.success(t('departments.roleDeleted'))
     currentRole.value = null
     fetchRoles()
     fetchStats()
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || '删除失败')
+    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || t('common.delete') + t('common.failed'))
   }
 }
 
 const removePosition = async (pos) => {
   try {
-    await ElMessageBox.confirm(`确定要删除职位 "${pos.name}" 吗？该职位下所有用户将被清空职位信息。`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`${t('departments.deletePositionConfirmPrefix')} "${pos.name}" ? ${t('departments.positionDeleteWarning')}`, t('common.tip'), { type: 'warning' })
     await deletePosition(pos.name)
-    ElMessage.success('职位已删除')
+    ElMessage.success(t('departments.positionDeleted'))
     currentPosition.value = null
     fetchPositions()
     fetchStats()
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || '删除失败')
+    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || t('common.delete') + t('common.failed'))
   }
 }
 
@@ -1098,7 +1102,7 @@ const openAddMemberDialog = async () => {
   try {
     const res = await getUsers({ per_page: 1000 })
     noDeptUsers.value = (res.users || []).filter(u => !u.department_id)
-  } catch (error) { console.error('获取用户失败', error) }
+  } catch (error) { console.error(t('departments.fetchUsersFailed'), error) }
   finally { addMemberLoading.value = false }
 }
 
@@ -1108,7 +1112,7 @@ const openAddRoleMemberDialog = async () => {
   try {
     const res = await getUsers({ per_page: 1000 })
     noRoleUsers.value = (res.users || []).filter(u => !u.roles?.some(r => r.id === currentRole.value?.id))
-  } catch (error) { console.error('获取用户失败', error) }
+  } catch (error) { console.error(t('departments.fetchUsersFailed'), error) }
   finally { addMemberLoading.value = false }
 }
 
@@ -1118,41 +1122,41 @@ const openAddPositionMemberDialog = async () => {
   try {
     const res = await getUsersWithoutPosition()
     noPositionUsers.value = res.users || []
-  } catch (error) { console.error('获取用户失败', error) }
+  } catch (error) { console.error(t('departments.fetchUsersFailed'), error) }
   finally { addMemberLoading.value = false }
 }
 
 const handleAddMember = async (user) => {
   try {
     await addDepartmentMember(currentDept.value.id, user.id)
-    ElMessage.success(`已将 ${user.real_name || user.username} 添加到部门`)
+    ElMessage.success(`${t('departments.addedToDeptPrefix')} ${user.real_name || user.username} ${t('departments.addedToDeptSuffix')}`)
     fetchMembers()
     fetchDepartments()
     fetchStats()
     noDeptUsers.value = noDeptUsers.value.filter(u => u.id !== user.id)
-  } catch (error) { ElMessage.error(error.response?.data?.message || '添加失败') }
+  } catch (error) { ElMessage.error(error.response?.data?.message || t('common.add') + t('common.failed')) }
 }
 
 const handleAddRoleMember = async (user) => {
   try {
     await addRoleMember(currentRole.value.id, user.id)
-    ElMessage.success(`已将 ${user.real_name || user.username} 添加到角色`)
+    ElMessage.success(`${t('departments.addedToDeptPrefix')} ${user.real_name || user.username} ${t('departments.addedToRoleSuffix')}`)
     fetchRoleMembers()
     fetchRoles()
     fetchStats()
     noRoleUsers.value = noRoleUsers.value.filter(u => u.id !== user.id)
-  } catch (error) { ElMessage.error(error.response?.data?.message || '添加失败') }
+  } catch (error) { ElMessage.error(error.response?.data?.message || t('common.add') + t('common.failed')) }
 }
 
 const handleAddPositionMember = async (user) => {
   try {
     await addPositionMember(currentPosition.value.name, user.id)
-    ElMessage.success(`已将 ${user.real_name || user.username} 设置为 ${currentPosition.value.name}`)
+    ElMessage.success(`${t('departments.addedToDeptPrefix')} ${user.real_name || user.username} ${t('departments.setToSuffix')} ${currentPosition.value.name}`)
     fetchPositionMembers()
     fetchPositions()
     fetchStats()
     noPositionUsers.value = noPositionUsers.value.filter(u => u.id !== user.id)
-  } catch (error) { ElMessage.error(error.response?.data?.message || '添加失败') }
+  } catch (error) { ElMessage.error(error.response?.data?.message || t('common.add') + t('common.failed')) }
 }
 
 const handleMemberCommand = (command, row) => {
@@ -1162,27 +1166,27 @@ const handleMemberCommand = (command, row) => {
 
 const handleRemoveMember = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定将 "${row.real_name || row.username}" 从 ${currentDept.value.name} 移除吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`${t('departments.removeConfirmPrefix')} "${row.real_name || row.username}" ${t('departments.removeConfirmFrom')} ${currentDept.value.name} ${t('departments.removeConfirmSuffix')}`, t('common.tip'), { type: 'warning' })
     await removeDepartmentMember(currentDept.value.id, row.id)
-    ElMessage.success('已移除')
+    ElMessage.success(t('departments.removed'))
     fetchMembers()
     fetchDepartments()
     fetchStats()
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || '移除失败')
+    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || t('departments.removeFailed'))
   }
 }
 
 const handleRemoveRoleMember = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定将 "${row.real_name || row.username}" 从 ${currentRole.value.description || currentRole.value.name} 移除吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`${t('departments.removeConfirmPrefix')} "${row.real_name || row.username}" ${t('departments.removeConfirmFrom')} ${currentRole.value.description || currentRole.value.name} ${t('departments.removeConfirmSuffix')}`, t('common.tip'), { type: 'warning' })
     await removeRoleMember(currentRole.value.id, row.id)
-    ElMessage.success('已移除')
+    ElMessage.success(t('departments.removed'))
     fetchRoleMembers()
     fetchRoles()
     fetchStats()
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || '移除失败')
+    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || t('departments.removeFailed'))
   }
 }
 
@@ -1193,14 +1197,14 @@ const handlePositionMemberCommand = (command, row) => {
 
 const handleRemovePositionMember = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定将 "${row.real_name || row.username}" 从 ${currentPosition.value.name} 移除吗？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`${t('departments.removeConfirmPrefix')} "${row.real_name || row.username}" ${t('departments.removeConfirmFrom')} ${currentPosition.value.name} ${t('departments.removeConfirmSuffix')}`, t('common.tip'), { type: 'warning' })
     await removePositionMember(currentPosition.value.name, row.id)
-    ElMessage.success('已移除')
+    ElMessage.success(t('departments.removed'))
     fetchPositionMembers()
     fetchPositions()
     fetchStats()
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || '移除失败')
+    if (error !== 'cancel') ElMessage.error(error.response?.data?.message || t('departments.removeFailed'))
   }
 }
 
@@ -1211,8 +1215,8 @@ const transferTargetName = ref('')
 const transferringUser = ref(null)
 
 const transferSourceText = computed(() => {
-  if (activeCategory.value === 'department') return `从 ${currentDept.value?.name} 转移到：`
-  if (activeCategory.value === 'position') return `从 ${currentPosition.value?.name} 转移到：`
+  if (activeCategory.value === 'department') return `${t('departments.transferFromText')} ${currentDept.value?.name} ${t('departments.transferTo')}`
+  if (activeCategory.value === 'position') return `${t('departments.transferFromText')} ${currentPosition.value?.name} ${t('departments.transferTo')}`
   return ''
 })
 
@@ -1225,25 +1229,25 @@ const openTransferDialog = (row) => {
 
 const handleTransfer = async () => {
   if (activeCategory.value === 'department') {
-    if (!transferTargetId.value) { ElMessage.warning('请选择目标部门'); return }
+    if (!transferTargetId.value) { ElMessage.warning(t('departments.selectTargetDeptMsg')); return }
     try {
       await transferDepartmentMember(currentDept.value.id, transferringUser.value.id, transferTargetId.value)
-      ElMessage.success('转移成功')
+      ElMessage.success(t('departments.transferSuccess'))
       showTransferDialog.value = false
       fetchMembers()
       fetchDepartments()
       fetchStats()
-    } catch (error) { ElMessage.error(error.response?.data?.message || '转移失败') }
+    } catch (error) { ElMessage.error(error.response?.data?.message || t('departments.transferFailed')) }
   } else if (activeCategory.value === 'position') {
-    if (!transferTargetName.value) { ElMessage.warning('请选择目标职位'); return }
+    if (!transferTargetName.value) { ElMessage.warning(t('departments.selectTargetPositionMsg')); return }
     try {
       await transferPositionMember(currentPosition.value.name, transferringUser.value.id, transferTargetName.value)
-      ElMessage.success('转移成功')
+      ElMessage.success(t('departments.transferSuccess'))
       showTransferDialog.value = false
       fetchPositionMembers()
       fetchPositions()
       fetchStats()
-    } catch (error) { ElMessage.error(error.response?.data?.message || '转移失败') }
+    } catch (error) { ElMessage.error(error.response?.data?.message || t('departments.transferFailed')) }
   }
 }
 
@@ -1275,14 +1279,14 @@ const initPieChart = () => {
   const colors = ['#1890ff', '#52c41a', '#722ed1', '#fa8c16', '#13c2c2', '#fadb14', '#999999']
 
   pieChartInstance.setOption({
-    tooltip: { trigger: 'item', formatter: '{b}: {c}人 ({d}%)' },
+    tooltip: { trigger: 'item', formatter: '{b}: {c}' + t('common.unitPeople') + ' ({d}%)' },
     legend: {
       orient: 'vertical', right: '5%', top: 'center', itemGap: 12,
       textStyle: { fontSize: 12 },
       formatter: (name) => {
         const item = chartData.find(d => d.name === name)
         const percent = total > 0 ? ((item?.value || 0) / total * 100).toFixed(1) : 0
-        return `${name}    ${item?.value || 0}人    ${percent}%`
+        return `${name}    ${item?.value || 0}${t('common.unitPeople')}    ${percent}%`
       }
     },
     series: [{
@@ -1292,12 +1296,12 @@ const initPieChart = () => {
       label: { show: false, position: 'center' },
       emphasis: { label: { show: false } },
       labelLine: { show: false },
-      data: chartData.length > 0 ? chartData : [{ name: '暂无数据', value: 0 }],
+      data: chartData.length > 0 ? chartData : [{ name: t('departments.pieNoData'), value: 0 }],
       color: colors
     }],
     graphic: [
       { type: 'text', left: '24%', top: '42%', style: { text: String(total), fontSize: 28, fontWeight: 'bold', fill: '#333', textAlign: 'center' } },
-      { type: 'text', left: '26%', top: '55%', style: { text: '总人数', fontSize: 12, fill: '#999', textAlign: 'center' } }
+      { type: 'text', left: '26%', top: '55%', style: { text: t('departments.totalPeople'), fontSize: 12, fill: '#999', textAlign: 'center' } }
     ]
   })
 }

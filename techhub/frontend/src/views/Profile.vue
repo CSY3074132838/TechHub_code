@@ -1,3 +1,4 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
   <!-- 【第二次迭代】增强个人中心 - 员工自助与档案查看 -->
   <div class="profile-page">
@@ -33,27 +34,27 @@
           
           <div class="profile-info">
             <div class="info-item">
-              <span class="label">用户名</span>
+              <span class="label">{{ $t('profile.username') }}</span>
               <span class="value">{{ userInfo?.username }}</span>
             </div>
             <div class="info-item">
-              <span class="label">工号</span>
+              <span class="label">{{ $t('profile.employeeNo') }}</span>
               <span class="value">{{ userInfo?.employee_no || '-' }}</span>
             </div>
             <div class="info-item">
-              <span class="label">部门</span>
+              <span class="label">{{ $t('profile.department') }}</span>
               <span class="value">{{ userInfo?.department || '-' }}</span>
             </div>
             <div class="info-item">
-              <span class="label">职位</span>
+              <span class="label">{{ $t('profile.position') }}</span>
               <span class="value">{{ userInfo?.position || '-' }}</span>
             </div>
             <div class="info-item">
-              <span class="label">电话</span>
+              <span class="label">{{ $t('profile.phone') }}</span>
               <span class="value">{{ userInfo?.phone || '-' }}</span>
             </div>
             <div class="info-item">
-              <span class="label">入职日期</span>
+              <span class="label">{{ $t('profile.entryDate') }}</span>
               <span class="value">{{ userInfo?.entry_date || '-' }}</span>
             </div>
           </div>
@@ -63,9 +64,9 @@
         <el-card class="permissions-card" style="margin-top: 20px;">
           <template #header>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span>我的权限</span>
+              <span>{{ $t('profile.myPermissions') }}</span>
               <el-button type="primary" size="small" @click="openApplyDialog">
-                申请权限
+                {{ $t('profile.applyPermission') }}
               </el-button>
             </div>
           </template>
@@ -78,7 +79,7 @@
           >
             {{ perm }}
           </el-tag>
-          <el-empty v-if="permissions.length === 0" description="暂无权限" />
+          <el-empty v-if="permissions.length === 0" :description="$t('profile.noPermission')" />
         </el-card>
       </el-col>
       
@@ -87,48 +88,48 @@
         <!-- 【第二次迭代】档案详情 Tab 页 -->
         <el-card class="archive-card">
           <template #header>
-            <span>我的档案</span>
+            <span>{{ $t('profile.myProfile') }}</span>
           </template>
           <el-tabs v-model="activeTab">
-            <el-tab-pane label="基本信息" name="basic">
+            <el-tab-pane :label="$t('profile.basicInfo')" name="basic">
               <el-form :model="form" label-width="100px">
-                <el-form-item label="真实姓名">
-                  <el-input v-model="form.real_name" placeholder="请输入真实姓名" />
+                <el-form-item :label="$t('profile.realName')">
+                  <el-input v-model="form.real_name" :placeholder="$t('profile.realNamePlaceholder')" />
                 </el-form-item>
-                <el-form-item label="电话">
-                  <el-input v-model="form.phone" placeholder="请输入电话" />
+                <el-form-item :label="$t('profile.phone')">
+                  <el-input v-model="form.phone" :placeholder="$t('profile.phonePlaceholder')" />
                 </el-form-item>
-                <el-form-item label="现居地址">
-                  <el-input v-model="form.address" type="textarea" :rows="2" placeholder="请输入现居地址" />
+                <el-form-item :label="$t('profile.address')">
+                  <el-input v-model="form.address" type="textarea" :rows="2" :placeholder="$t('profile.addressPlaceholder')" />
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" @click="saveProfile" :loading="saving">保存</el-button>
+                  <el-button type="primary" @click="saveProfile" :loading="saving">{{ $t('profile.save') }}</el-button>
                 </el-form-item>
               </el-form>
             </el-tab-pane>
             
             <!-- 【第二次迭代】档案详情（只读，修改需审批） -->
-            <el-tab-pane label="档案详情" name="detail">
+            <el-tab-pane :label="$t('profile.profileDetail')" name="detail">
               <el-descriptions :column="2" border>
-                <el-descriptions-item label="员工状态">{{ employeeStatusLabel(userInfo?.employee_status) }}</el-descriptions-item>
-                <el-descriptions-item label="工号">{{ userInfo?.employee_no || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="入职日期">{{ userInfo?.entry_date || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="转正日期">{{ userInfo?.probation_end_date || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="性别">{{ userInfo?.gender || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="生日">{{ userInfo?.birthday || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="籍贯">{{ userInfo?.native_place || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="身份证号">{{ maskIdCard(userInfo?.id_card) }}</el-descriptions-item>
-                <el-descriptions-item label="学历">{{ userInfo?.education || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="毕业院校">{{ userInfo?.school || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="专业">{{ userInfo?.major || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="紧急联系人">{{ userInfo?.emergency_contact || '-' }}</el-descriptions-item>
-                <el-descriptions-item label="紧急电话">{{ maskPhone(userInfo?.emergency_phone) }}</el-descriptions-item>
-                <el-descriptions-item label="直属上级">
+                <el-descriptions-item :label="$t('profile.employeeStatus')">{{ employeeStatusLabel(userInfo?.employee_status) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.employeeNo')">{{ userInfo?.employee_no || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.entryDate')">{{ userInfo?.entry_date || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.formalDate')">{{ userInfo?.probation_end_date || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.gender')">{{ userInfo?.gender || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.birthday')">{{ userInfo?.birthday || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.birthplace')">{{ userInfo?.native_place || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.idCard')">{{ maskIdCard(userInfo?.id_card) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.education')">{{ userInfo?.education || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.school')">{{ userInfo?.school || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.major')">{{ userInfo?.major || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.emergencyContact')">{{ userInfo?.emergency_contact || '-' }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.emergencyPhone')">{{ maskPhone(userInfo?.emergency_phone) }}</el-descriptions-item>
+                <el-descriptions-item :label="$t('profile.directManager')">
                   {{ userInfo?.manager?.real_name || '-' }}
                 </el-descriptions-item>
               </el-descriptions>
               <el-alert
-                title="如需修改档案信息，请联系HR"
+                :title="$t('profile.contactHR')"
                 type="info"
                 :closable="false"
                 style="margin-top: 16px;"
@@ -136,8 +137,8 @@
             </el-tab-pane>
             
             <!-- 【第二次迭代】我的考勤 -->
-            <el-tab-pane label="我的考勤" name="attendance">
-              <el-empty v-if="attendanceRecords.length === 0" description="暂无考勤记录" />
+            <el-tab-pane :label="$t('profile.myAttendance')" name="attendance">
+              <el-empty v-if="attendanceRecords.length === 0" :description="$t('profile.noAttendanceRecords')" />
               <el-timeline v-else>
                 <el-timeline-item
                   v-for="record in attendanceRecords"
@@ -145,8 +146,8 @@
                   :type="record.status === 'normal' ? 'primary' : 'warning'"
                   :timestamp="formatDate(record.work_date)"
                 >
-                  <p>工时：{{ record.work_hours }}h {{ record.overtime_hours > 0 ? `(加班 ${record.overtime_hours}h)` : '' }}</p>
-                  <p v-if="record.remark">备注：{{ record.remark }}</p>
+                  <p>{{ $t('profile.workTimePrefix') }}{{ record.work_hours }}h {{ record.overtime_hours > 0 ? `(${$t('profile.overtime')} ${record.overtime_hours}h)` : '' }}</p>
+                  <p v-if="record.remark">{{ $t('profile.remarkPrefix') }}{{ record.remark }}</p>
                 </el-timeline-item>
               </el-timeline>
             </el-tab-pane>
@@ -155,21 +156,21 @@
         
         <el-card class="password-card">
           <template #header>
-            <span>修改密码</span>
+            <span>{{ $t('profile.changePassword') }}</span>
           </template>
           
           <el-form :model="pwdForm" label-width="100px" :rules="pwdRules" ref="pwdFormRef">
-            <el-form-item label="旧密码" prop="old_password">
-              <el-input v-model="pwdForm.old_password" type="password" placeholder="请输入旧密码" />
+            <el-form-item :label="$t('profile.oldPassword')" prop="old_password">
+              <el-input v-model="pwdForm.old_password" type="password" :placeholder="$t('profile.oldPasswordPlaceholder')" />
             </el-form-item>
-            <el-form-item label="新密码" prop="new_password">
-              <el-input v-model="pwdForm.new_password" type="password" placeholder="请输入新密码" />
+            <el-form-item :label="$t('profile.newPassword')" prop="new_password">
+              <el-input v-model="pwdForm.new_password" type="password" :placeholder="$t('profile.newPasswordPlaceholder')" />
             </el-form-item>
-            <el-form-item label="确认密码" prop="confirm_password">
-              <el-input v-model="pwdForm.confirm_password" type="password" placeholder="请再次输入新密码" />
+            <el-form-item :label="$t('profile.confirmPassword')" prop="confirm_password">
+              <el-input v-model="pwdForm.confirm_password" type="password" :placeholder="$t('profile.confirmPasswordPlaceholder')" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="changePassword" :loading="pwdLoading">修改密码</el-button>
+              <el-button type="primary" @click="changePassword" :loading="pwdLoading">{{ $t('profile.changePasswordButton') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -177,28 +178,30 @@
     </el-row>
 
     <!-- 申请权限对话框 -->
-    <el-dialog v-model="showApplyDialog" title="申请权限" width="500px" :close-on-click-modal="false">
+    <el-dialog v-model="showApplyDialog" :title="$t('profile.applyPermissionDialog')" width="500px" :close-on-click-modal="false">
       <el-form :model="applyForm" label-width="100px">
-        <el-form-item label="申请权限">
-          <el-select v-model="applyForm.permission" placeholder="请选择要申请的权限" style="width: 100%">
+        <el-form-item :label="$t('profile.applyPermissionLabel')">
+          <el-select v-model="applyForm.permission" :placeholder="$t('profile.selectPermission')" style="width: 100%">
             <el-option v-for="perm in availablePermissions" :key="perm.code" :label="perm.label" :value="perm.code" />
           </el-select>
         </el-form-item>
-        <el-form-item label="申请理由">
-          <el-input v-model="applyForm.reason" type="textarea" :rows="3" placeholder="请描述申请该权限的理由" />
+        <el-form-item :label="$t('profile.applyReason')">
+          <el-input v-model="applyForm.reason" type="textarea" :rows="3" :placeholder="$t('profile.applyReasonPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showApplyDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitApply" :loading="applyLoading">提交申请</el-button>
+        <el-button @click="showApplyDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="submitApply" :loading="applyLoading">{{ $t('profile.submitApply') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { updateUser, getPermissions, getMyDetail } from '@/api/users'
 import { changePassword as apiChangePassword } from '@/api/auth'
@@ -206,6 +209,7 @@ import { createApproval } from '@/api/approvals'
 import { getAttendanceRecords } from '@/api/attendance'
 import dayjs from 'dayjs'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const userInfo = computed(() => userStore.userInfo)
 const permissions = computed(() => userStore.permissions)
@@ -220,7 +224,7 @@ const fetchMyDetail = async () => {
       userStore.userInfo = { ...userStore.userInfo, ...res.user }
     }
   } catch (error) {
-    console.error('获取档案详情失败', error)
+    console.error(t('profile.fetchDetailFailed'), error)
   }
 }
 
@@ -240,10 +244,10 @@ const saveProfile = async () => {
       phone: form.value.phone,
       address: form.value.address
     })
-    ElMessage.success('资料更新成功')
+    ElMessage.success(t('profile.profileUpdateSuccess'))
     await userStore.fetchUserInfo()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '更新失败')
+    ElMessage.error(error.response?.data?.message || t('profile.updateFailed'))
   } finally {
     saving.value = false
   }
@@ -254,17 +258,17 @@ const pwdForm = ref({ old_password: '', new_password: '', confirm_password: '' }
 const pwdLoading = ref(false)
 
 const pwdRules = {
-  old_password: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  old_password: [{ required: true, message: t('profile.oldPasswordRequired'), trigger: 'blur' }],
   new_password: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { required: true, message: t('profile.newPasswordRequired'), trigger: 'blur' },
+    { min: 6, message: t('profile.passwordMinLength'), trigger: 'blur' }
   ],
   confirm_password: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
+    { required: true, message: t('profile.confirmPasswordRequired'), trigger: 'blur' },
     {
       validator: (rule, value, callback) => {
         if (value !== pwdForm.value.new_password) {
-          callback(new Error('两次输入的密码不一致'))
+          callback(new Error(t('profile.passwordMismatch')))
         } else {
           callback()
         }
@@ -291,13 +295,13 @@ const openApplyDialog = async () => {
     const res = await getPermissions()
     allPermissions.value = res.permissions || []
   } catch (error) {
-    console.error('获取权限列表失败', error)
+    console.error(t('profile.fetchPermissionsFailed'), error)
   }
 }
 
 const submitApply = async () => {
   if (!applyForm.value.permission) {
-    ElMessage.warning('请选择要申请的权限')
+    ElMessage.warning(t('profile.pleaseSelectPermission'))
     return
   }
   
@@ -305,16 +309,16 @@ const submitApply = async () => {
   try {
     const perm = allPermissions.value.find(p => p.code === applyForm.value.permission)
     await createApproval({
-      title: `权限申请：${perm?.label || applyForm.value.permission}`,
+      title: `${t('profile.permissionApplyPrefix')}${perm?.label || applyForm.value.permission}`,
       approval_type: 'permission',
-      description: applyForm.value.reason || `用户申请 ${perm?.label || applyForm.value.permission} 权限`,
+      description: applyForm.value.reason || `${t('profile.userApplyPrefix')} ${perm?.label || applyForm.value.permission} ${t('profile.permissionSuffix')}`,
       is_urgent: false
     })
-    ElMessage.success('权限申请已提交，等待审批')
+    ElMessage.success(t('profile.permissionApplySubmitted'))
     showApplyDialog.value = false
     applyForm.value = { permission: '', reason: '' }
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '申请提交失败')
+    ElMessage.error(error.response?.data?.message || t('profile.applySubmitFailed'))
   } finally {
     applyLoading.value = false
   }
@@ -330,11 +334,11 @@ const changePassword = async () => {
       old_password: pwdForm.value.old_password,
       new_password: pwdForm.value.new_password
     })
-    ElMessage.success('密码修改成功，请重新登录')
+    ElMessage.success(t('profile.passwordChangeSuccess'))
     userStore.logout()
     window.location.href = '/login'
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '修改失败')
+    ElMessage.error(error.response?.data?.message || t('profile.changePasswordFailed'))
   } finally {
     pwdLoading.value = false
   }
@@ -342,8 +346,8 @@ const changePassword = async () => {
 
 // 【第二次迭代】员工状态显示转换
 const employeeStatusLabel = (status) => {
-  const map = { probation: '试用期', active: '正式员工', pending_leave: '待离职', left: '已离职', suspended: '停薪留职' }
-  return map[status] || status || '试用期'
+  const map = { probation: t('users.probation'), active: t('users.formal'), pending_leave: t('users.pendingResign'), left: t('users.resigned'), suspended: t('users.suspended') }
+  return map[status] || status || t('users.probation')
 }
 
 const employeeStatusType = (status) => {
@@ -375,7 +379,7 @@ const fetchAttendance = async () => {
     const res = await getAttendanceRecords({ per_page: 10 })
     attendanceRecords.value = res.records || []
   } catch (error) {
-    console.error('获取考勤记录失败', error)
+    console.error(t('profile.fetchAttendanceFailed'), error)
   }
 }
 

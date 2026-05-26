@@ -1,10 +1,10 @@
+<!-- 第三次迭代陈思言负责 -->
 <template>
-  <!-- 【第三次迭代】财务概览看板 — 加入图表可视化 -->
   <div class="finance-page">
     <div class="page-header">
-      <h2>财务看板</h2>
+      <h2>{{ $t('finance.pageTitle') }}</h2>
       <el-button type="primary" @click="$router.push('/payments')">
-        <el-icon><DocumentCopy /></el-icon>收付款明细
+        <el-icon><DocumentCopy /></el-icon>{{ $t('finance.paymentDetails') }}
       </el-button>
     </div>
 
@@ -17,7 +17,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">¥{{ overview.month_income || 0 }}</div>
-            <div class="stat-label">本月收入</div>
+            <div class="stat-label">{{ $t('finance.monthlyIncome') }}</div>
           </div>
         </div>
       </el-col>
@@ -28,7 +28,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">¥{{ overview.month_expense || 0 }}</div>
-            <div class="stat-label">本月支出</div>
+            <div class="stat-label">{{ $t('finance.monthlyExpense') }}</div>
           </div>
         </div>
       </el-col>
@@ -39,7 +39,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">¥{{ overview.month_reimbursement || 0 }}</div>
-            <div class="stat-label">本月报销</div>
+            <div class="stat-label">{{ $t('finance.monthlyReimbursement') }}</div>
           </div>
         </div>
       </el-col>
@@ -50,7 +50,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">{{ overview.pending_expenses || 0 }}</div>
-            <div class="stat-label">待审批报销</div>
+            <div class="stat-label">{{ $t('finance.pendingReimbursement') }}</div>
           </div>
         </div>
       </el-col>
@@ -61,7 +61,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">¥{{ overview.total_contract_amount || 0 }}</div>
-            <div class="stat-label">合同总额</div>
+            <div class="stat-label">{{ $t('finance.contractTotal') }}</div>
           </div>
         </div>
       </el-col>
@@ -72,7 +72,7 @@
           </div>
           <div class="stat-info">
             <div class="stat-value">¥{{ overview.receivable || 0 }}</div>
-            <div class="stat-label">应收账款</div>
+            <div class="stat-label">{{ $t('finance.receivables') }}</div>
           </div>
         </div>
       </el-col>
@@ -83,7 +83,7 @@
       <el-col :xs="24" :lg="12">
         <el-card class="dashboard-card">
           <template #header>
-            <span>近6个月财务趋势</span>
+            <span>{{ $t('finance.financialTrend6m') }}</span>
           </template>
           <div ref="trendChart" class="chart-container"></div>
         </el-card>
@@ -92,7 +92,7 @@
       <el-col :xs="24" :lg="12">
         <el-card class="dashboard-card">
           <template #header>
-            <span>本月收支构成</span>
+            <span>{{ $t('finance.incomeExpenseComposition') }}</span>
           </template>
           <div ref="incomeExpenseChart" class="chart-container"></div>
         </el-card>
@@ -103,37 +103,37 @@
       <el-col :xs="24" :lg="12">
         <el-card class="dashboard-card">
           <template #header>
-            <span>本月报销类别分布</span>
+            <span>{{ $t('finance.reimbursementCategoryDistribution') }}</span>
           </template>
           <div ref="categoryChart" class="chart-container"></div>
-          <el-empty v-if="!categoryDistribution.length" description="暂无数据" />
+          <el-empty v-if="!categoryDistribution.length" :description="$t('common.noData')" />
         </el-card>
       </el-col>
 
       <el-col :xs="24" :lg="12">
         <el-card class="dashboard-card">
           <template #header>
-            <span>近6个月财务数据明细</span>
+            <span>{{ $t('finance.financialDetails6m') }}</span>
           </template>
           <div class="table-container">
             <el-table :data="trendWithBalance" size="small" border stripe>
-              <el-table-column label="月份" prop="month" width="100" align="center" />
-              <el-table-column label="收入" width="110" align="right">
+              <el-table-column :label="$t('finance.month')" prop="month" width="100" align="center" />
+              <el-table-column :label="$t('finance.income')" width="110" align="right">
                 <template #default="{ row }">
                   <span style="color: #52c41a; font-weight: 600;">¥{{ row.income }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="支出" width="110" align="right">
+              <el-table-column :label="$t('finance.expense')" width="110" align="right">
                 <template #default="{ row }">
                   <span style="color: #f5222d; font-weight: 600;">¥{{ row.expense }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="报销" width="110" align="right">
+              <el-table-column :label="$t('finance.reimbursement')" width="110" align="right">
                 <template #default="{ row }">
                   <span style="color: #faad14; font-weight: 600;">¥{{ row.reimbursement }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="结余" align="right">
+              <el-table-column :label="$t('finance.balance')" align="right">
                 <template #default="{ row }">
                   <span :style="{ color: row.balance >= 0 ? '#52c41a' : '#f5222d', fontWeight: 600 }">
                     ¥{{ row.balance }}
@@ -152,12 +152,12 @@
         <el-card class="dashboard-card">
           <template #header>
             <div class="card-header">
-              <span>待审批报销</span>
-              <el-button text type="primary" size="small" @click="$router.push('/expenses')">查看全部</el-button>
+              <span>{{ $t('finance.pendingReimbursementList') }}</span>
+              <el-button text type="primary" size="small" @click="$router.push('/expenses')">{{ $t('common.viewAll') }}</el-button>
             </div>
           </template>
           <el-table :data="pendingExpenseList.slice(0, 5)" size="small">
-            <el-table-column label="报销人" width="120">
+            <el-table-column :label="$t('finance.reimbursementPerson')" width="120">
               <template #default="{ row }">
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <el-avatar :size="24">{{ row.user?.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -165,21 +165,21 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="标题" prop="title" min-width="200" show-overflow-tooltip />
-            <el-table-column label="金额" width="120">
+            <el-table-column :label="$t('finance.title')" prop="title" min-width="200" show-overflow-tooltip />
+            <el-table-column :label="$t('finance.amount')" width="120">
               <template #default="{ row }">
                 <span style="color: #f56c6c; font-weight: 600;">¥{{ row.amount }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="类别" width="100">
+            <el-table-column :label="$t('finance.category')" width="100">
               <template #default="{ row }">
                 <el-tag size="small">{{ row.category }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column :label="$t('common.operation')" width="150" fixed="right">
               <template #default="{ row }">
-                <el-button type="primary" link size="small" @click="approveExpense(row)">通过</el-button>
-                <el-button type="danger" link size="small" @click="rejectExpense(row)">驳回</el-button>
+                <el-button type="primary" link size="small" @click="approveExpense(row)">{{ $t('finance.pass') }}</el-button>
+                <el-button type="danger" link size="small" @click="rejectExpense(row)">{{ $t('finance.reject') }}</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -190,12 +190,16 @@
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 import { getFinanceOverview } from '@/api/dashboard'
 import { approveExpense as apiApprove, rejectExpense as apiReject } from '@/api/expenses'
+
+const { t } = useI18n()
 
 const overview = ref({})
 const trend = ref([])
@@ -237,7 +241,7 @@ const fetchData = async () => {
       initCharts()
     })
   } catch (error) {
-    console.error('获取财务概览失败', error)
+    console.error(t('finance.fetchFailed'), error)
   } finally {
     loading.value = false
   }
@@ -259,7 +263,7 @@ const initCharts = () => {
         axisPointer: { type: 'cross' }
       },
       legend: {
-        data: ['收入', '支出', '报销'],
+        data: [t('finance.income'), t('finance.expense'), t('finance.reimbursement')],
         bottom: 0
       },
       grid: {
@@ -283,7 +287,7 @@ const initCharts = () => {
       },
       series: [
         {
-          name: '收入',
+          name: t('finance.income'),
           type: 'bar',
           data: incomes,
           itemStyle: {
@@ -296,7 +300,7 @@ const initCharts = () => {
           barWidth: '25%'
         },
         {
-          name: '支出',
+          name: t('finance.expense'),
           type: 'bar',
           data: expenses,
           itemStyle: {
@@ -309,7 +313,7 @@ const initCharts = () => {
           barWidth: '25%'
         },
         {
-          name: '报销',
+          name: t('finance.reimbursement'),
           type: 'line',
           data: reimbursements,
           smooth: true,
@@ -370,9 +374,9 @@ const initCharts = () => {
             show: false
           },
           data: [
-            { value: income, name: '本月收入', itemStyle: { color: '#52c41a' } },
-            { value: expense, name: '本月支出', itemStyle: { color: '#f5222d' } },
-            { value: reimbursement, name: '本月报销', itemStyle: { color: '#faad14' } }
+            { value: income, name: t('finance.monthlyIncome'), itemStyle: { color: '#52c41a' } },
+            { value: expense, name: t('finance.monthlyExpense'), itemStyle: { color: '#f5222d' } },
+            { value: reimbursement, name: t('finance.monthlyReimbursement'), itemStyle: { color: '#faad14' } }
           ]
         }
       ]
@@ -388,7 +392,7 @@ const initCharts = () => {
       tooltip: {
         trigger: 'item',
         formatter: (params) => {
-          return `${params.name}<br/>金额: ¥${params.value}<br/>占比: ${params.percent}%<br/>笔数: ${params.data.count}笔`
+          return `${params.name}<br/>${t('finance.amount')}: ¥${params.value}<br/>${t('finance.percent')}: ${params.percent}%<br/>${t('finance.count')}: ${params.data.count}${t('common.unitPiece')}`
         }
       },
       legend: {
@@ -430,27 +434,27 @@ const initCharts = () => {
     })
   }
   } catch (error) {
-    console.error('图表初始化失败', error)
+    console.error(t('finance.chartInitFailed'), error)
   }
 }
 
 const approveExpense = async (row) => {
   try {
     await apiApprove(row.id)
-    ElMessage.success('已通过')
+    ElMessage.success(t('finance.approved'))
     fetchData()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('finance.operationFailed'))
   }
 }
 
 const rejectExpense = async (row) => {
   try {
     await apiReject(row.id)
-    ElMessage.success('已驳回')
+    ElMessage.success(t('finance.rejected'))
     fetchData()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('finance.operationFailed'))
   }
 }
 

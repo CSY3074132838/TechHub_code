@@ -1,10 +1,10 @@
 <template>
-  <!-- 【第二次迭代】费用报销管理页面 -->
+  <!-- 第三次迭代陈思言负责 -->
   <div class="expenses-page">
     <div class="page-header">
-      <h2>费用报销</h2>
+      <h2>{{ $t('expenses.pageTitle') }}</h2>
       <el-button type="primary" @click="showCreateDialog = true">
-        <el-icon><Plus /></el-icon>新建报销
+        <el-icon><Plus /></el-icon>{{ $t('expenses.newExpense') }}
       </el-button>
     </div>
 
@@ -13,7 +13,7 @@
       <el-col :xs="12" :sm="6">
         <div class="stat-card">
           <div class="stat-value">{{ expenseStats.total_amount || 0 }}</div>
-          <div class="stat-label">本月报销金额</div>
+          <div class="stat-label">{{ $t('expenses.monthlyAmount') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
@@ -23,7 +23,7 @@
           @click="filterStatus = 'pending'"
         >
           <div class="stat-value success">{{ pendingCount }}</div>
-          <div class="stat-label">待审批</div>
+          <div class="stat-label">{{ $t('expenses.pendingApproval') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
@@ -33,7 +33,7 @@
           @click="filterStatus = 'approved'"
         >
           <div class="stat-value warning">{{ approvedCount }}</div>
-          <div class="stat-label">已审批</div>
+          <div class="stat-label">{{ $t('expenses.approved') }}</div>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
@@ -43,7 +43,7 @@
           @click="resetFilter"
         >
           <div class="stat-value">{{ expenses.length }}</div>
-          <div class="stat-label">本月记录</div>
+          <div class="stat-label">{{ $t('expenses.monthlyRecords') }}</div>
         </div>
       </el-col>
     </el-row>
@@ -52,31 +52,31 @@
     <el-card style="margin-top: 20px;">
       <template #header>
         <div class="card-header">
-          <span>报销记录</span>
+          <span>{{ $t('expenses.expenseRecords') }}</span>
           <div class="filter-bar">
-            <el-select v-model="filterStatus" placeholder="状态" clearable size="small" style="width: 120px; margin-right: 8px;">
-              <el-option label="待审批" value="pending" />
-              <el-option label="已审批" value="approved" />
-              <el-option label="已驳回" value="rejected" />
-              <el-option label="已打款" value="reimbursed" />
+            <el-select v-model="filterStatus" :placeholder="$t('expenses.status')" clearable size="small" style="width: 120px; margin-right: 8px;">
+              <el-option :label="$t('expenses.pendingApproval')" value="pending" />
+              <el-option :label="$t('expenses.approved')" value="approved" />
+              <el-option :label="$t('expenses.rejected')" value="rejected" />
+              <el-option :label="$t('expenses.paid')" value="reimbursed" />
             </el-select>
-            <el-select v-model="filterCategory" placeholder="类别" clearable size="small" style="width: 120px; margin-right: 8px;">
-              <el-option v-for="c in categories" :key="c.value" :label="c.label" :value="c.value" />
+            <el-select v-model="filterCategory" :placeholder="$t('expenses.category')" clearable size="small" style="width: 120px; margin-right: 8px;">
+              <el-option v-for="c in categories" :key="c.value" :label="categoryLabel(c.value)" :value="c.value" />
             </el-select>
             <el-input
               v-model="filterUserName"
-              placeholder="按人名筛选"
+              :placeholder="$t('expenses.filterByPerson')"
               clearable
               size="small"
               style="width: 140px; margin-right: 8px;"
             />
-            <el-button size="small" @click="resetFilter">重置</el-button>
+            <el-button size="small" @click="resetFilter">{{ $t('common.reset') }}</el-button>
           </div>
         </div>
       </template>
 
       <el-table :data="filteredExpenses" v-loading="loading" size="small">
-        <el-table-column label="报销人" width="120">
+        <el-table-column :label="$t('expenses.expensePerson')" width="120">
           <template #default="{ row }">
             <div style="display: flex; align-items: center; gap: 8px;">
               <el-avatar :size="24">{{ row.user?.real_name?.charAt(0) || 'U' }}</el-avatar>
@@ -84,37 +84,37 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="标题" prop="title" min-width="180" show-overflow-tooltip />
-        <el-table-column label="金额" width="120">
+        <el-table-column :label="$t('expenses.title')" prop="title" min-width="180" show-overflow-tooltip />
+        <el-table-column :label="$t('expenses.amount')" width="120">
           <template #default="{ row }">
             <span style="color: #f56c6c; font-weight: 600;">¥{{ row.amount }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="类别" width="100">
+        <el-table-column :label="$t('expenses.category')" width="100">
           <template #default="{ row }">
             <el-tag size="small">{{ categoryLabel(row.category) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column :label="$t('common.status')" width="100">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" size="small">
               {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="提交时间" width="160">
+        <el-table-column :label="$t('expenses.submitTime')" width="160">
           <template #default="{ row }">
             {{ formatDateTime(row.created_at) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="240" fixed="right">
+        <el-table-column :label="$t('common.operation')" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleViewDetail(row)">查看详情</el-button>
-            <el-button v-if="canApprove(row)" type="primary" link size="small" @click="handleApprove(row)">通过</el-button>
-            <el-button v-if="canApprove(row)" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
-            <el-button v-if="canReimburse(row)" type="success" link size="small" @click="handleReimburse(row)">打款</el-button>
-            <el-button v-if="canEdit(row)" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="canDelete(row)" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click="handleViewDetail(row)">{{ $t('expenses.viewDetail') }}</el-button>
+            <el-button v-if="canApprove(row)" type="primary" link size="small" @click="handleApprove(row)">{{ $t('expenses.pass') }}</el-button>
+            <el-button v-if="canApprove(row)" type="danger" link size="small" @click="handleReject(row)">{{ $t('expenses.reject') }}</el-button>
+            <el-button v-if="canReimburse(row)" type="success" link size="small" @click="handleReimburse(row)">{{ $t('expenses.pay') }}</el-button>
+            <el-button v-if="canEdit(row)" type="primary" link size="small" @click="handleEdit(row)">{{ $t('common.edit') }}</el-button>
+            <el-button v-if="canDelete(row)" type="danger" link size="small" @click="handleDelete(row)">{{ $t('common.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -133,14 +133,14 @@
     <!-- 类别分布 -->
     <el-card style="margin-top: 20px;" v-if="expenseStats.by_category?.length">
       <template #header>
-        <span>本月报销类别分布</span>
+        <span>{{ $t('expenses.monthlyCategoryDistribution') }}</span>
       </template>
       <el-row :gutter="20">
         <el-col :xs="24" :md="12" v-for="item in expenseStats.by_category" :key="item.category">
           <div class="category-stat">
             <div class="category-info">
               <span class="category-name">{{ categoryLabel(item.category) }}</span>
-              <span class="category-amount">¥{{ item.amount }} ({{ item.count }}笔)</span>
+              <span class="category-amount">¥{{ item.amount }} ({{ item.count }}{{ $t('common.unitPiece') }})</span>
             </div>
             <el-progress :percentage="Math.round((item.amount / (expenseStats.total_amount || 1)) * 100)" />
           </div>
@@ -149,31 +149,31 @@
     </el-card>
 
     <!-- 报销详情抽屉 -->
-    <el-drawer v-model="showDetailDrawer" title="报销详情" size="500px" :destroy-on-close="true">
+    <el-drawer v-model="showDetailDrawer" :title="$t('expenses.expenseDetail')" size="500px" :destroy-on-close="true">
       <div v-if="detailExpense" class="expense-detail">
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="报销标题">{{ detailExpense.title }}</el-descriptions-item>
-          <el-descriptions-item label="报销金额">
+          <el-descriptions-item :label="$t('expenses.expenseTitle')">{{ detailExpense.title }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('expenses.expenseAmount')">
             <span style="color: #f56c6c; font-weight: 600; font-size: 18px;">¥{{ detailExpense.amount }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="报销类别">
+          <el-descriptions-item :label="$t('expenses.expenseCategory')">
             <el-tag size="small">{{ categoryLabel(detailExpense.category) }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="当前状态">
+          <el-descriptions-item :label="$t('expenses.currentStatus')">
             <el-tag :type="statusType(detailExpense.status)" size="small">
               {{ statusLabel(detailExpense.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="报销人">
+          <el-descriptions-item :label="$t('expenses.expensePersonLabel')">
             <div style="display: flex; align-items: center; gap: 8px;">
               <el-avatar :size="32">{{ detailExpense.user?.real_name?.charAt(0) || 'U' }}</el-avatar>
               <span>{{ detailExpense.user?.real_name || detailExpense.user?.username }}</span>
             </div>
           </el-descriptions-item>
-          <el-descriptions-item label="费用说明" :span="1">
-            <div style="white-space: pre-wrap; line-height: 1.6;">{{ detailExpense.description || '无' }}</div>
+          <el-descriptions-item :label="$t('expenses.expenseDesc')" :span="1">
+            <div style="white-space: pre-wrap; line-height: 1.6;">{{ detailExpense.description || $t('expenses.none') }}</div>
           </el-descriptions-item>
-          <el-descriptions-item label="附件">
+          <el-descriptions-item :label="$t('expenses.attachment')">
             <div v-if="detailExpense.attachments?.length">
               <el-link
                 v-for="(file, idx) in detailExpense.attachments"
@@ -183,44 +183,44 @@
                 target="_blank"
                 style="display: block; margin-bottom: 4px;"
               >
-                {{ file.name || '附件' + (idx + 1) }}
+                {{ file.name || $t('expenses.attachmentName') + (idx + 1) }}
               </el-link>
             </div>
-            <span v-else style="color: #999;">无附件</span>
+            <span v-else style="color: #999;">{{ $t('expenses.noAttachment') }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="提交时间">{{ formatDateTime(detailExpense.created_at) }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ formatDateTime(detailExpense.updated_at) }}</el-descriptions-item>
-          <el-descriptions-item v-if="detailExpense.reimbursed_at" label="打款时间">{{ formatDateTime(detailExpense.reimbursed_at) }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('expenses.submitTimeLabel')">{{ formatDateTime(detailExpense.created_at) }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('expenses.updateTime')">{{ formatDateTime(detailExpense.updated_at) }}</el-descriptions-item>
+          <el-descriptions-item v-if="detailExpense.reimbursed_at" :label="$t('expenses.payTime')">{{ formatDateTime(detailExpense.reimbursed_at) }}</el-descriptions-item>
         </el-descriptions>
 
         <!-- 操作按钮 -->
         <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: center;">
-          <el-button v-if="canApprove(detailExpense)" type="primary" @click="handleApprove(detailExpense); showDetailDrawer = false">通过</el-button>
-          <el-button v-if="canApprove(detailExpense)" type="danger" @click="handleReject(detailExpense); showDetailDrawer = false">驳回</el-button>
-          <el-button v-if="canReimburse(detailExpense)" type="success" @click="handleReimburse(detailExpense); showDetailDrawer = false">标记打款</el-button>
-          <el-button v-if="canEdit(detailExpense)" type="primary" plain @click="handleEdit(detailExpense); showDetailDrawer = false">编辑</el-button>
+          <el-button v-if="canApprove(detailExpense)" type="primary" @click="handleApprove(detailExpense); showDetailDrawer = false">{{ $t('expenses.pass') }}</el-button>
+          <el-button v-if="canApprove(detailExpense)" type="danger" @click="handleReject(detailExpense); showDetailDrawer = false">{{ $t('expenses.reject') }}</el-button>
+          <el-button v-if="canReimburse(detailExpense)" type="success" @click="handleReimburse(detailExpense); showDetailDrawer = false">{{ $t('expenses.markPaid') }}</el-button>
+          <el-button v-if="canEdit(detailExpense)" type="primary" plain @click="handleEdit(detailExpense); showDetailDrawer = false">{{ $t('common.edit') }}</el-button>
         </div>
       </div>
     </el-drawer>
 
     <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="showCreateDialog" :title="isEdit ? '编辑报销单' : '新建报销单'" width="500px">
+    <el-dialog v-model="showCreateDialog" :title="isEdit ? $t('expenses.editExpense') : $t('expenses.newExpenseDialog')" width="500px">
       <el-form :model="form" label-width="100px">
-        <el-form-item label="报销标题" required>
-          <el-input v-model="form.title" placeholder="例如：北京出差差旅费" />
+        <el-form-item :label="$t('expenses.expenseTitle')" required>
+          <el-input v-model="form.title" :placeholder="$t('expenses.expenseTitlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="报销金额" required>
+        <el-form-item :label="$t('expenses.expenseAmount')" required>
           <el-input-number v-model="form.amount" :min="0.01" :precision="2" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="报销类别">
-          <el-select v-model="form.category" placeholder="选择类别" style="width: 100%">
-            <el-option v-for="c in categories" :key="c.value" :label="c.label" :value="c.value" />
+        <el-form-item :label="$t('expenses.expenseCategory')">
+          <el-select v-model="form.category" :placeholder="$t('expenses.selectCategory')" style="width: 100%">
+            <el-option v-for="c in categories" :key="c.value" :label="categoryLabel(c.value)" :value="c.value" />
           </el-select>
         </el-form-item>
-        <el-form-item label="费用说明">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请描述费用明细" />
+        <el-form-item :label="$t('expenses.expenseDesc')">
+          <el-input v-model="form.description" type="textarea" :rows="3" :placeholder="$t('expenses.expenseDescPlaceholder')" />
         </el-form-item>
-        <el-form-item label="附件上传">
+        <el-form-item :label="$t('expenses.attachmentUpload')">
           <el-upload
             action="#"
             :auto-upload="false"
@@ -231,10 +231,10 @@
             accept=".png,.jpg,.jpeg,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
           >
             <el-button type="primary" :loading="uploading" size="small">
-              <el-icon><Upload /></el-icon>选择文件
+              <el-icon><Upload /></el-icon>{{ $t('expenses.selectFile') }}
             </el-button>
             <template #tip>
-              <div class="upload-tip">支持图片(png/jpg/jpeg/gif/bmp/webp)和文档(pdf/doc/docx/xls/xlsx/ppt/pptx/txt)，单个文件不超过16MB</div>
+              <div class="upload-tip">{{ $t('expenses.uploadTip') }}</div>
             </template>
           </el-upload>
           <!-- 已上传文件列表 -->
@@ -252,17 +252,19 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="saveExpense" :loading="saving">保存</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveExpense" :loading="saving">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Picture, Document, Delete } from '@element-plus/icons-vue'
+import { Upload, Picture, Document, Delete, Plus } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import {
   getExpenses, createExpense, updateExpense, deleteExpense,
@@ -271,6 +273,7 @@ import {
 } from '@/api/expenses'
 import { useUserStore } from '@/stores/user'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 
 const loading = ref(false)
@@ -372,7 +375,7 @@ const fetchExpenses = async () => {
       allUsers.value = uniqueUsers
     }
   } catch (error) {
-    console.error('获取报销列表失败', error)
+    console.error(t('expenses.fetchFailed'), error)
   } finally {
     loading.value = false
   }
@@ -383,7 +386,7 @@ const fetchStats = async () => {
     const res = await getExpenseStats({ month: dayjs().format('YYYY-MM') })
     expenseStats.value = res
   } catch (error) {
-    console.error('获取报销统计失败', error)
+    console.error(t('expenses.fetchStatsFailed'), error)
   }
 }
 
@@ -392,30 +395,30 @@ const fetchCategories = async () => {
     const res = await getExpenseCategories()
     categories.value = res.categories || []
   } catch (error) {
-    console.error('获取类别失败', error)
+    console.error(t('expenses.fetchCategoriesFailed'), error)
   }
 }
 
 const saveExpense = async () => {
   if (!form.value.title || form.value.amount <= 0) {
-    ElMessage.warning('请填写标题和金额')
+    ElMessage.warning(t('expenses.pleaseFillTitleAmount'))
     return
   }
   saving.value = true
   try {
     if (isEdit.value) {
       await updateExpense(editingId.value, form.value)
-      ElMessage.success('报销单已更新')
+      ElMessage.success(t('expenses.expenseUpdated'))
     } else {
       await createExpense(form.value)
-      ElMessage.success('报销单已提交')
+      ElMessage.success(t('expenses.expenseSubmitted'))
     }
     showCreateDialog.value = false
     resetForm()
     fetchExpenses()
     fetchStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '保存失败')
+    ElMessage.error(error.response?.data?.message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -436,14 +439,14 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该报销单吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('expenses.deleteConfirm'), t('common.tip'), { type: 'warning' })
     await deleteExpense(row.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('expenses.deleted'))
     fetchExpenses()
     fetchStats()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除失败', error)
+      console.error(t('expenses.deleteFailed'), error)
     }
   }
 }
@@ -451,33 +454,33 @@ const handleDelete = async (row) => {
 const handleApprove = async (row) => {
   try {
     await approveExpense(row.id)
-    ElMessage.success('已通过')
+    ElMessage.success(t('expenses.approved'))
     fetchExpenses()
     fetchStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('common.operationFailed'))
   }
 }
 
 const handleReject = async (row) => {
   try {
     await rejectExpense(row.id)
-    ElMessage.success('已驳回')
+    ElMessage.success(t('expenses.rejected'))
     fetchExpenses()
     fetchStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('common.operationFailed'))
   }
 }
 
 const handleReimburse = async (row) => {
   try {
     await reimburseExpense(row.id)
-    ElMessage.success('已标记打款')
+    ElMessage.success(t('expenses.paidMarked'))
     fetchExpenses()
     fetchStats()
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '操作失败')
+    ElMessage.error(error.response?.data?.message || t('common.operationFailed'))
   }
 }
 
@@ -506,10 +509,10 @@ const handleUpload = async (file) => {
     const res = await uploadExpenseAttachment(file.raw)
     if (res.file) {
       form.value.attachments.push(res.file)
-      ElMessage.success('上传成功')
+      ElMessage.success(t('expenses.uploadSuccess'))
     }
   } catch (error) {
-    ElMessage.error(error.response?.data?.message || '上传失败')
+    ElMessage.error(error.response?.data?.message || t('expenses.uploadFailed'))
   } finally {
     uploading.value = false
   }
@@ -532,18 +535,32 @@ const beforeUpload = (file) => {
   ]
   const isAllowed = allowedTypes.includes(file.type)
   if (!isAllowed) {
-    ElMessage.error('仅支持图片(png/jpg/jpeg/gif/bmp/webp)和文档(pdf/doc/docx/xls/xlsx/ppt/pptx/txt)')
+    ElMessage.error(t('expenses.uploadTypeError'))
   }
   return isAllowed
 }
 
 const categoryLabel = (value) => {
-  const c = categories.value.find(item => item.value === value)
-  return c ? c.label : value
+  const map = {
+    travel: t('expenses.categoryTravel'),
+    office: t('expenses.categoryOffice'),
+    entertainment: t('expenses.categoryEntertainment'),
+    training: t('expenses.categoryTraining'),
+    meal: t('expenses.categoryMeal'),
+    transport: t('expenses.categoryTransport'),
+    other: t('expenses.categoryOther')
+  }
+  return map[value] || value
 }
 
 const statusLabel = (status) => {
-  const map = { pending: '待审批', approved: '已审批', rejected: '已驳回', reimbursed: '已打款', draft: '草稿' }
+  const map = {
+    pending: t('expenses.pendingApproval'),
+    approved: t('expenses.approved'),
+    rejected: t('expenses.rejected'),
+    reimbursed: t('expenses.paid'),
+    draft: t('expenses.draft')
+  }
   return map[status] || status
 }
 

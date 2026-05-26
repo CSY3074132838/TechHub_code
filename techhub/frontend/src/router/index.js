@@ -21,6 +21,12 @@ const routes = [
     meta: { title: '个人中心', icon: 'User' }
   },
   {
+    path: '/backup',
+    name: 'Backup',
+    component: () => import('@/views/Backup.vue'),
+    meta: { title: '数据备份', icon: 'Download' }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('@/layouts/MainLayout.vue'),

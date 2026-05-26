@@ -51,9 +51,9 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
-                <el-dropdown-item command="settings">系统设置</el-dropdown-item>
-                <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+                <el-dropdown-item command="profile">{{ t('menu.profile') }}</el-dropdown-item>
+                <el-dropdown-item command="backup">{{ t('menu.backup') }}</el-dropdown-item>
+                <el-dropdown-item divided command="logout">{{ t('menu.logout') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -73,14 +73,26 @@
 </template>
 
 <script setup>
+/**
+ * 主布局组件
+ * 第三次迭代陈思言负责
+ * 
+ * 功能说明：
+ * - 侧边栏导航菜单（支持国际化）
+ * - 顶部消息通知和用户下拉菜单
+ * - 根据用户角色动态显示菜单项
+ */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPendingCount, getApprovals } from '@/api/approvals'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notifications'
 import { initSocket, disconnectSocket } from '@/utils/socket'
 import dayjs from 'dayjs'
+
+const { t } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
@@ -97,38 +109,42 @@ const totalUnreadCount = computed(() => pendingCount.value + unreadCount.value)
 const MANAGER_ROLES = ['super_admin', 'deputy_general_manager']
 const isManager = computed(() => userStore.userInfo?.roles?.some(r => MANAGER_ROLES.includes(r.name)))
 
+/**
+ * 侧边栏菜单项配置
+ * 第三次迭代陈思言负责
+ * 使用 $t() 实现菜单标题国际化
+ */
 const menuItems = computed(() => [
-  { path: '/dashboard', title: '工作台', icon: 'HomeFilled' },
-  { path: '/projects', title: '项目管理', icon: 'FolderOpened' },
-  { path: '/clients', title: '客户管理', icon: 'OfficeBuilding' },
-  { path: '/contracts', title: '合同管理', icon: 'DocumentCopy' },
-  { path: '/tickets', title: '客户工单', icon: 'ChatDotSquare' },
-  { path: '/tasks', title: '我的任务', icon: 'List' },
-  { path: '/approvals', title: '审批中心', icon: 'DocumentChecked' },
+  { path: '/dashboard', title: t('menu.dashboard'), icon: 'HomeFilled' },
+  { path: '/projects', title: t('menu.projects'), icon: 'FolderOpened' },
+  { path: '/clients', title: t('menu.clients'), icon: 'OfficeBuilding' },
+  { path: '/contracts', title: t('menu.contracts'), icon: 'DocumentCopy' },
+  { path: '/tickets', title: t('menu.tickets'), icon: 'ChatDotSquare' },
+  { path: '/tasks', title: t('menu.tasks'), icon: 'List' },
+  { path: '/approvals', title: t('menu.approvals'), icon: 'DocumentChecked' },
   // 数据中心：仅总经理、副总经理、数据分析员可见
-  // 部门负责人、项目经理、项目组长、普通成员无法查看，需申请权限
   ...(userStore.userInfo?.roles?.some(r =>
     ['super_admin', 'deputy_general_manager', 'data_analyst'].includes(r.name)
   ) ? [
-    { path: '/analytics', title: '数据中心', icon: 'TrendCharts' }
+    { path: '/analytics', title: t('menu.analytics'), icon: 'TrendCharts' }
   ] : []),
   // 用户管理、组织架构：高管可见
   ...(isManager.value ? [
-    { path: '/users', title: '用户管理', icon: 'UserFilled' },
-    { path: '/departments', title: '组织架构', icon: 'OfficeBuilding' }
+    { path: '/users', title: t('menu.users'), icon: 'UserFilled' },
+    { path: '/departments', title: t('menu.departments'), icon: 'OfficeBuilding' }
   ] : []),
-  // 【第二次迭代】考勤工时菜单（所有登录用户可见）
-  { path: '/attendance', title: '考勤工时', icon: 'Clock' },
+  // 考勤工时菜单（所有登录用户可见）
+  { path: '/attendance', title: t('menu.attendance'), icon: 'Clock' },
   // 审计日志：高管可见
   ...(isManager.value ? [
-    { path: '/audit-logs', title: '审计日志', icon: 'Document' }
+    { path: '/audit-logs', title: t('menu.auditLogs'), icon: 'Document' }
   ] : []),
   // 财务看板：高管可见
   ...(isManager.value ? [
-    { path: '/finance', title: '财务看板', icon: 'TrendCharts' }
+    { path: '/finance', title: t('menu.finance'), icon: 'TrendCharts' }
   ] : []),
-  { path: '/expenses', title: '费用报销', icon: 'Money' },
-  { path: '/payments', title: '收付款', icon: 'Wallet' }
+  { path: '/expenses', title: t('menu.expenses'), icon: 'Money' },
+  { path: '/payments', title: t('menu.payments'), icon: 'Wallet' }
 ])
 
 const fetchPendingCount = async () => {
@@ -136,7 +152,7 @@ const fetchPendingCount = async () => {
     const res = await getPendingCount()
     pendingCount.value = res.my_pending
   } catch (error) {
-    console.error('获取待办数量失败', error)
+    console.error(t('menu.fetchPendingCountFailed'), error)
   }
 }
 
@@ -145,7 +161,7 @@ const fetchPendingApprovals = async () => {
     const res = await getApprovals({ scope: 'pending_me', per_page: 5 })
     pendingApprovals.value = res.approvals || []
   } catch (error) {
-    console.error('获取待办列表失败', error)
+    console.error(t('menu.fetchPendingApprovalsFailed'), error)
   }
 }
 
@@ -158,7 +174,7 @@ const fetchNotifications = async () => {
     notifications.value = listRes.notifications || []
     unreadCount.value = countRes.unread_count || 0
   } catch (error) {
-    console.error('获取通知失败', error)
+    console.error(t('menu.fetchNotificationsFailed'), error)
   }
 }
 
@@ -168,7 +184,7 @@ const readNotification = async (item) => {
     item.is_read = true
     unreadCount.value = Math.max(0, unreadCount.value - 1)
   } catch (error) {
-    console.error('标记已读失败', error)
+    console.error(t('menu.markReadFailed'), error)
   }
 }
 
@@ -178,7 +194,7 @@ const markAllRead = async () => {
     notifications.value.forEach(n => n.is_read = true)
     unreadCount.value = 0
   } catch (error) {
-    console.error('全部已读失败', error)
+    console.error(t('menu.markAllReadFailed'), error)
   }
 }
 
@@ -199,13 +215,13 @@ const handleCommand = (command) => {
     case 'profile':
       router.push('/profile')
       break
-    case 'settings':
-      ElMessage.info('系统设置功能开发中')
+    case 'backup':
+      router.push('/backup')
       break
     case 'logout':
-      ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      ElMessageBox.confirm(t('menu.logoutConfirm'), t('common.tip'), {
+        confirmButtonText: t('common.confirm'),
+        cancelButtonText: t('common.cancel'),
         type: 'warning'
       }).then(() => {
         userStore.logout()

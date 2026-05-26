@@ -61,6 +61,7 @@ def create_app(config_name='default'):
     from app.api.notifications import notifications_bp
     from app.api.roles import roles_bp
     from app.api.positions import positions_bp
+    from app.api.backup import backup_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -82,6 +83,7 @@ def create_app(config_name='default'):
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(roles_bp, url_prefix='/api/roles')
     app.register_blueprint(positions_bp, url_prefix='/api/positions')
+    app.register_blueprint(backup_bp, url_prefix='/api/backup')
     
     # JWT Token 黑名单检查 + 权限版本号校验（实现权限即时生效）
     @jwt.token_in_blocklist_loader

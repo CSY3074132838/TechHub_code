@@ -1,7 +1,7 @@
 """
 审计日志 API - 操作日志查询与管理
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from app.services import AuditService
 from app.decorators import require_permission
 
@@ -20,7 +20,9 @@ def get_audit_logs():
         'action': request.args.get('action'),
         'resource_type': request.args.get('resource_type'),
         'status': request.args.get('status'),
-        'username': request.args.get('username')
+        'username': request.args.get('username'),
+        'start_time': request.args.get('start_time'),
+        'end_time': request.args.get('end_time')
     }
     
     # 移除None值
@@ -119,3 +121,115 @@ def get_my_logs():
     filters = {'user_id': user_id}
     result = AuditService.get_logs(filters=filters, page=page, per_page=per_page)
     return jsonify(result), 200
+
+
+@audit_bp.route('/detail/<int:log_id>', methods=['GET'])
+@require_permission('audit_view')
+def get_audit_detail(log_id):
+    """获取审计日志详情"""
+    from app.models import AuditLog, User
+    
+    log = AuditLog.query.get(log_id)
+    if not log:
+        return jsonify({'message': '日志不存在'}), 404
+    
+    # 获取用户信息
+    user = User.query.get(log.user_id) if log.user_id else None
+    
+    detail = {
+        'id': log.id,
+        'action': log.action,
+        'resource_type': log.resource_type,
+        'resource_id': log.resource_id,
+        'detail': log.detail,
+        'ip_address': log.ip_address,
+        'status': log.status,
+        'created_at': log.created_at.isoformat() if log.created_at else None,
+        'user': {
+            'id': user.id if user else None,
+            'username': user.username if user else None,
+            'real_name': user.real_name if user else None
+        } if user else None
+    }
+    
+    return jsonify({'log': detail}), 200
+
+
+@audit_bp.route('/export', methods=['GET'])
+@require_permission('audit_view')
+def export_audit_logs():
+    """导出审计日志为Excel"""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from datetime import datetime
+    
+    # 获取筛选参数
+    filters = {
+        'user_id': request.args.get('user_id', type=int),
+        'action': request.args.get('action'),
+        'resource_type': request.args.get('resource_type'),
+        'status': request.args.get('status'),
+        'username': request.args.get('username'),
+        'start_time': request.args.get('start_time'),
+        'end_time': request.args.get('end_time')
+    }
+    filters = {k: v for k, v in filters.items() if v is not None}
+    
+    # 查询所有数据（不分页）
+    result = AuditService.get_logs(filters=filters, page=1, per_page=10000)
+    logs = result.get('logs', [])
+    
+    # 创建Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = '审计日志'
+    
+    # 表头
+    headers = ['时间', '操作人', '操作类型', '资源类型', '资源ID', 'IP地址', '状态', '详情']
+    ws.append(headers)
+    
+    # 表头样式
+    header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+    
+    # 数据行
+    for log in logs:
+        ws.append([
+            log.get('created_at', ''),
+            log.get('username', ''),
+            log.get('action', ''),
+            log.get('resource_type', ''),
+            log.get('resource_id', ''),
+            log.get('ip_address', ''),
+            log.get('status', ''),
+            str(log.get('detail', ''))[:500]
+        ])
+    
+    # 调整列宽
+    ws.column_dimensions['A'].width = 20
+    ws.column_dimensions['B'].width = 15
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 10
+    ws.column_dimensions['F'].width = 15
+    ws.column_dimensions['G'].width = 10
+    ws.column_dimensions['H'].width = 50
+    
+    # 保存到内存
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    filename = f'audit_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )

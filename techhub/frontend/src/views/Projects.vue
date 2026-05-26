@@ -1,9 +1,9 @@
 <template>
   <div class="projects-page">
     <div class="page-header">
-      <h2>项目管理</h2>
+      <h2>{{ $t('projects.pageTitle') }}</h2>
       <el-button type="primary" @click="showCreateDialog = true">
-        <el-icon><Plus /></el-icon>新建项目
+        <el-icon><Plus /></el-icon>{{ $t('projects.newProject') }}
       </el-button>
     </div>
 
@@ -11,16 +11,16 @@
     <div class="search-bar">
       <el-input
         v-model="searchQuery"
-        placeholder="搜索项目名、成员、客户、负责人..."
+        :placeholder="$t('projects.searchPlaceholder')"
         clearable
         :prefix-icon="SearchIcon"
         @keyup.enter="handleSearch"
         style="width: 400px;"
       />
       <el-button type="primary" @click="handleSearch">
-        <el-icon><Search /></el-icon>搜索
+        <el-icon><Search /></el-icon>{{ $t('common.search') }}
       </el-button>
-      <el-button @click="resetSearch">重置</el-button>
+      <el-button @click="resetSearch">{{ $t('common.reset') }}</el-button>
     </div>
 
     <!-- 项目列表 -->
@@ -39,18 +39,18 @@
             <div class="project-color" :style="{ background: project.color }"></div>
             <div class="project-info">
               <h3 class="project-name">{{ project.name }}</h3>
-              <p class="project-desc">{{ project.description || '暂无描述' }}</p>
+              <p class="project-desc">{{ project.description || $t('projects.noDescription') }}</p>
             </div>
           </div>
           
           <div class="project-meta">
             <div class="meta-item" v-if="project.leader">
               <el-icon><UserFilled /></el-icon>
-              <span>负责人：{{ project.leader.real_name }}</span>
+              <span>{{ $t('projects.leader') }}：{{ project.leader.real_name }}</span>
             </div>
             <div class="meta-item" v-if="project.client">
               <el-icon><OfficeBuilding /></el-icon>
-              <span>客户：{{ project.client.name }}</span>
+              <span>{{ $t('projects.client') }}：{{ project.client.name }}</span>
             </div>
             <div class="meta-item" v-if="project.start_date || project.end_date">
               <el-icon><Calendar /></el-icon>
@@ -60,15 +60,15 @@
           
           <div class="project-stats">
             <div class="stat-item">
-              <span class="stat-label">任务</span>
+              <span class="stat-label">{{ $t('projects.tasks') }}</span>
               <span class="stat-value">{{ project.stats?.total || 0 }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">已完成</span>
+              <span class="stat-label">{{ $t('projects.completed') }}</span>
               <span class="stat-value success">{{ project.stats?.done || 0 }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">进度</span>
+              <span class="stat-label">{{ $t('projects.progress') }}</span>
               <span class="stat-value primary">{{ project.stats?.progress || 0 }}%</span>
             </div>
           </div>
@@ -96,7 +96,7 @@
                 @click.stop="handleDelete(project)"
                 v-if="canDelete(project)"
               >
-                <el-icon><Delete /></el-icon>删除
+                <el-icon><Delete /></el-icon>{{ $t('common.delete') }}
               </el-button>
             </div>
           </div>
@@ -111,24 +111,24 @@
       </el-col>
     </el-row>
 
-    <el-empty v-if="projects.length === 0" description="暂无项目" />
+    <el-empty v-if="projects.length === 0" :description="$t('projects.noProjects')" />
 
     <!-- 新建项目对话框 -->
-    <el-dialog v-model="showCreateDialog" title="新建项目" width="600px">
+    <el-dialog v-model="showCreateDialog" :title="$t('projects.newProject')" width="600px">
       <el-form :model="form" label-width="100px" :rules="rules" ref="formRef">
-        <el-form-item label="项目名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入项目名称" />
+        <el-form-item :label="$t('projects.projectName')" prop="name">
+          <el-input v-model="form.name" :placeholder="$t('projects.projectNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="项目描述">
+        <el-form-item :label="$t('projects.projectDesc')">
           <el-input
             v-model="form.description"
             type="textarea"
             rows="3"
-            placeholder="请输入项目描述"
+            :placeholder="$t('projects.projectDescPlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="项目负责人">
-          <el-select v-model="form.leader_id" placeholder="选择项目负责人" style="width: 100%;">
+        <el-form-item :label="$t('projects.projectLeader')">
+          <el-select v-model="form.leader_id" :placeholder="$t('projects.selectLeader')" style="width: 100%;">
             <el-option
               v-for="user in users"
               :key="user.id"
@@ -137,30 +137,30 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="项目颜色">
+        <el-form-item :label="$t('projects.projectColor')">
           <el-color-picker v-model="form.color" />
         </el-form-item>
-        <el-form-item label="开始日期">
+        <el-form-item :label="$t('projects.startDate')">
           <el-date-picker
             v-model="form.start_date"
             type="date"
-            placeholder="选择开始日期"
+            :placeholder="$t('projects.startDatePlaceholder')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="结束日期">
+        <el-form-item :label="$t('projects.endDate')">
           <el-date-picker
             v-model="form.end_date"
             type="date"
-            placeholder="选择结束日期"
+            :placeholder="$t('projects.endDatePlaceholder')"
             style="width: 100%;"
           />
         </el-form-item>
-        <el-form-item label="关联客户">
+        <el-form-item :label="$t('projects.relatedClient')">
           <el-select
             v-model="form.client_id"
             clearable
-            placeholder="选择关联客户（可选）"
+            :placeholder="$t('projects.selectClientOptional')"
             style="width: 100%;"
           >
             <el-option
@@ -171,11 +171,11 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="项目成员">
+        <el-form-item :label="$t('projects.projectMembers')">
           <el-select
             v-model="form.member_ids"
             multiple
-            placeholder="选择项目成员"
+            :placeholder="$t('projects.selectMembers')"
             style="width: 100%;"
           >
             <el-option
@@ -188,16 +188,18 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleCreate" :loading="creating">创建</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="handleCreate" :loading="creating">{{ $t('common.create') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
+// 第三次迭代陈思言负责
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getProjects, createProject, deleteProject } from '@/api/projects'
 import { getUsers } from '@/api/users'
@@ -207,6 +209,7 @@ import { Search as SearchIcon, Calendar } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const projects = ref([])
 const users = ref([])
@@ -228,7 +231,7 @@ const form = ref({
 })
 
 const rules = {
-  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }]
+  name: [{ required: true, message: t('projects.projectNamePlaceholder'), trigger: 'blur' }]
 }
 
 const fetchProjects = async () => {
@@ -240,7 +243,7 @@ const fetchProjects = async () => {
     const res = await getProjects(params)
     projects.value = res.projects
   } catch (error) {
-    console.error('获取项目失败', error)
+    console.error(t('projects.fetchFailed'), error)
   }
 }
 
@@ -258,7 +261,7 @@ const fetchUsers = async () => {
     const res = await getUsers({ per_page: 100 })
     users.value = res.users
   } catch (error) {
-    console.error('获取用户失败', error)
+    console.error(t('projects.fetchUsersFailed'), error)
   }
 }
 
@@ -269,7 +272,7 @@ const handleCreate = async () => {
   creating.value = true
   try {
     await createProject(form.value)
-    ElMessage.success('项目创建成功')
+    ElMessage.success(t('projects.createSuccess'))
     showCreateDialog.value = false
     fetchProjects()
     form.value = {
@@ -283,8 +286,8 @@ const handleCreate = async () => {
       member_ids: []
     }
   } catch (error) {
-    console.error('创建项目失败', error)
-    ElMessage.error(error.response?.data?.message || '创建失败')
+    console.error(t('projects.createFailed'), error)
+    ElMessage.error(error.response?.data?.message || t('common.createFailed'))
   } finally {
     creating.value = false
   }
@@ -313,17 +316,17 @@ const canDelete = (project) => {
 const handleDelete = async (project) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除项目 "${project.name}" 吗？`,
-      '确认删除',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      `${t('projects.deleteConfirm')}"${project.name}"${t('projects.deleteConfirmSuffix')}`,
+      t('projects.deleteDialogTitle'),
+      { type: 'warning', confirmButtonText: t('common.delete'), cancelButtonText: t('common.cancel') }
     )
     await deleteProject(project.id)
-    ElMessage.success('项目已删除')
+    ElMessage.success(t('projects.deleteSuccess'))
     fetchProjects()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除项目失败', error)
-      ElMessage.error(error.response?.data?.message || '删除失败')
+      console.error(t('projects.deleteFailed'), error)
+      ElMessage.error(error.response?.data?.message || t('common.deleteFailed'))
     }
   }
 }
@@ -333,7 +336,7 @@ const fetchClientOptions = async () => {
     const res = await getClientOptions()
     clientOptions.value = res.clients
   } catch (error) {
-    console.error('获取客户选项失败', error)
+    console.error(t('projects.fetchClientsFailed'), error)
   }
 }
 
