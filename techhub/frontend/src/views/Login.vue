@@ -14,13 +14,20 @@
         :rules="loginRules"
         class="login-form"
         @keyup.enter="handleLogin"
+        autocomplete="off"
       >
+        <!-- 【第三次迭代陈思言负责】隐藏字段防止浏览器自动填充 -->
+        <input type="text" style="display:none" autocomplete="username" />
+        <input type="password" style="display:none" autocomplete="password" />
+        
         <el-form-item prop="username">
           <el-input
             v-model="loginForm.username"
             :placeholder="$t('login.usernamePlaceholder')"
             size="large"
             :prefix-icon="User"
+            autocomplete="off"
+            name="login-username"
           />
         </el-form-item>
         
@@ -32,6 +39,8 @@
             size="large"
             :prefix-icon="Lock"
             show-password
+            autocomplete="new-password"
+            name="login-password"
           />
         </el-form-item>
         

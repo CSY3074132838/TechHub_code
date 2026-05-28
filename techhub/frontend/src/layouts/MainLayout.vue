@@ -135,8 +135,10 @@ const menuItems = computed(() => [
   ] : []),
   // 考勤工时菜单（所有登录用户可见）
   { path: '/attendance', title: t('menu.attendance'), icon: 'Clock' },
-  // 审计日志：高管可见
-  ...(isManager.value ? [
+  // 【第三次迭代陈思言负责】审计日志：高管或数据分析员可见
+  ...(userStore.userInfo?.roles?.some(r =>
+    ['super_admin', 'deputy_general_manager', 'data_analyst'].includes(r.name)
+  ) ? [
     { path: '/audit-logs', title: t('menu.auditLogs'), icon: 'Document' }
   ] : []),
   // 财务看板：高管可见

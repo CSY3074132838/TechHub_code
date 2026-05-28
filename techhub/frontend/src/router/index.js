@@ -113,11 +113,12 @@ const routes = [
         component: () => import('@/views/Attendance.vue'),
         meta: { title: '考勤工时', icon: 'Clock' }
       },
+      // 【第三次迭代陈思言负责】审计日志：高管或数据分析员可见
       {
         path: '/audit-logs',
         name: 'AuditLogs',
         component: () => import('@/views/AuditLogs.vue'),
-        meta: { title: '审计日志', icon: 'Document', admin: true }
+        meta: { title: '审计日志', icon: 'Document', admin: true, allowRoles: ['super_admin', 'deputy_general_manager', 'data_analyst'] }
       },
       // 【第二次迭代】财务管理路由
       {
@@ -192,8 +193,14 @@ router.beforeEach(async (to, from, next) => {
 
   // 检查管理员权限
   if (to.meta.admin && !userStore.isAdmin) {
-    next('/')
-    return
+    // 【第三次迭代陈思言负责】允许特定角色访问（如数据分析员可访问审计日志）
+    const allowedRoles = to.meta.allowRoles || []
+    const userRoles = userStore.userInfo?.roles?.map(r => r.name) || []
+    const hasAllowedRole = allowedRoles.some(role => userRoles.includes(role))
+    if (!hasAllowedRole) {
+      next('/')
+      return
+    }
   }
 
   next()

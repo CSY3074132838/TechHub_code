@@ -138,8 +138,9 @@ class Role(db.Model):
              'permissions': ['all']},
             {'name': 'deputy_general_manager', 'description': '副总经理', 'level': 2,
              'permissions': ['all']},
+            # 【第三次迭代陈思言负责】数据分析员增加审计日志查看权限
             {'name': 'data_analyst', 'description': '数据分析员', 'level': 3,
-             'permissions': ['dashboard_view', 'data_export']},
+             'permissions': ['dashboard_view', 'data_export', 'audit_view']},
             {'name': 'operations_director', 'description': '运营总监', 'level': 3,
              'permissions': ['dashboard_view', 'team_manage', 'data_export', 'audit_view']},
             {'name': 'finance_director', 'description': '财务总监', 'level': 3,

@@ -154,8 +154,9 @@ def login():
     user.last_login = datetime.now()
     db.session.commit()
     
-    # 登录成功，清除失败计数
+    # 【第三次迭代陈思言负责】登录成功，清除失败计数（包括输入的用户名和数据库中的用户名）
     _clear_login_failures(username_input)
+    _clear_login_failures(user.username)
     
     # 记录登录成功审计日志
     AuditService.log(
