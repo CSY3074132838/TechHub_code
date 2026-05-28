@@ -122,6 +122,23 @@ def create_app(config_name='default'):
     def missing_token_callback(error):
         return {'message': '缺少认证 Token', 'error': 'authorization_required'}, 401
     
+    # 【第三次迭代陈思言负责】请求耗时统计：在请求开始时记录时间，结束后计算耗时并存入 g
+    @app.before_request
+    def before_request():
+        from flask import g
+        import time
+        g.request_start_time = time.time()
+    
+    @app.after_request
+    def after_request(response):
+        from flask import g, request
+        import time
+        if hasattr(g, 'request_start_time'):
+            duration = round((time.time() - g.request_start_time) * 1000, 2)  # 毫秒
+            # 将耗时存入请求上下文，供审计日志使用
+            g.request_duration_ms = f"{duration}ms"
+        return response
+    
     # 静态文件服务（上传的附件）
     import os
     upload_folder = os.path.join(os.path.dirname(app.root_path), 'uploads')

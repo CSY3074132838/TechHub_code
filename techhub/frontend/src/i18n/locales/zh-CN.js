@@ -965,7 +965,19 @@ export default {
     startTime: '开始时间',
     endTime: '结束时间',
     selectStartTime: '选择开始时间',
-    selectEndTime: '选择结束时间'
+    selectEndTime: '选择结束时间',
+    // 【第三次迭代陈思言负责】详情抽屉分组翻译
+    basicInfo: '基础信息',
+    requestDetail: '请求详情',
+    serverInfo: '服务端信息',
+    requestMethod: '请求方式',
+    requestUrl: '请求URL',
+    userAgent: 'User-Agent',
+    requestParams: '请求参数',
+    responseStatus: '响应状态码',
+    duration: '处理耗时',
+    backendService: '后端服务',
+    errorMessage: '错误信息'
   },
 
   // 财务看板

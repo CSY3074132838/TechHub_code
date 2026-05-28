@@ -9,29 +9,34 @@
     </div>
 
     <!-- 统计卡片 -->
+    <!-- 【第三次迭代陈思言负责】统计卡片可点击，点击后自动填充筛选条件 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" :class="{ active: isTodayActive }" @click="filterToday">
           <div class="stat-value">{{ stats.today_count || 0 }}</div>
           <div class="stat-label">{{ $t('auditLogs.todayOperations') }}</div>
+          <el-icon class="click-hint"><Filter /></el-icon>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" :class="{ active: isWeekActive }" @click="filterWeek">
           <div class="stat-value">{{ stats.week_count || 0 }}</div>
           <div class="stat-label">{{ $t('auditLogs.weeklyOperations') }}</div>
+          <el-icon class="click-hint"><Filter /></el-icon>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable danger-card" :class="{ active: isLoginFailedActive }" @click="filterLoginFailed">
           <div class="stat-value danger">{{ stats.failed_logins || 0 }}</div>
           <div class="stat-label">{{ $t('auditLogs.loginFailures7d') }}</div>
+          <el-icon class="click-hint"><Filter /></el-icon>
         </div>
       </el-col>
       <el-col :xs="12" :sm="6">
-        <div class="stat-card">
+        <div class="stat-card clickable warning-card" :class="{ active: isPermissionDeniedActive }" @click="filterPermissionDenied">
           <div class="stat-value warning">{{ stats.permission_denied || 0 }}</div>
           <div class="stat-label">{{ $t('auditLogs.permissionDenied7d') }}</div>
+          <el-icon class="click-hint"><Filter /></el-icon>
         </div>
       </el-col>
     </el-row>
@@ -155,55 +160,127 @@
     </el-card>
 
     <!-- 日志详情抽屉 -->
+    <!-- 【第三次迭代陈思言负责】按分组格式展示审计日志详情 -->
     <el-drawer
       v-model="detailDrawerVisible"
       :title="$t('auditLogs.logDetail')"
-      size="500px"
+      size="560px"
       :destroy-on-close="true"
       @close="closeDetail"
     >
       <div v-loading="detailLoading" class="detail-drawer-content">
         <template v-if="detailData.id">
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.time') }}</div>
-            <div class="detail-value">{{ formatDateTime(detailData.created_at) }}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.operator') }}</div>
-            <div class="detail-value">{{ detailData.username }}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.operationType') }}</div>
-            <div class="detail-value">
-              <el-tag :type="getActionTypeTag(detailData.action)" size="small">
-                {{ getActionLabel(detailData.action) }}
-              </el-tag>
+          <!-- 基础信息 -->
+          <div class="detail-group">
+            <div class="detail-group-title">
+              <el-icon><Document /></el-icon>
+              <span>{{ $t('auditLogs.basicInfo') }}</span>
+            </div>
+            <div class="detail-group-body">
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.time') }}</span>
+                <span class="detail-row-value">{{ formatDateTime(detailData.basic_info?.time) }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.operator') }}</span>
+                <span class="detail-row-value">
+                  {{ detailData.basic_info?.operator }}
+                  <el-tag v-if="detailData.basic_info?.operator_real_name" size="small" type="info" class="name-tag">
+                    {{ detailData.basic_info?.operator_real_name }}
+                  </el-tag>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.operationType') }}</span>
+                <span class="detail-row-value">
+                  <el-tag :type="getActionTypeTag(detailData.basic_info?.action)" size="small">
+                    {{ getActionLabel(detailData.basic_info?.action) }}
+                  </el-tag>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.resource') }}</span>
+                <span class="detail-row-value">{{ detailData.basic_info?.resource || '-' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.ipAddress') }}</span>
+                <span class="detail-row-value">{{ detailData.basic_info?.ip_address || '-' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.status') }}</span>
+                <span class="detail-row-value">
+                  <el-tag :type="detailData.basic_info?.status === 'success' ? 'success' : 'danger'" size="small">
+                    {{ detailData.basic_info?.status === 'success' ? $t('auditLogs.success') : $t('auditLogs.failed') }}
+                  </el-tag>
+                </span>
+              </div>
             </div>
           </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.resourceType') }}</div>
-            <div class="detail-value">{{ detailData.resource_type || '-' }}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.resourceId') }}</div>
-            <div class="detail-value">{{ detailData.resource_id || '-' }}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.ipAddress') }}</div>
-            <div class="detail-value">{{ detailData.ip_address || '-' }}</div>
-          </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.status') }}</div>
-            <div class="detail-value">
-              <el-tag :type="detailData.status === 'success' ? 'success' : 'danger'" size="small">
-                {{ detailData.status === 'success' ? $t('auditLogs.success') : $t('auditLogs.failed') }}
-              </el-tag>
+
+          <!-- 请求详情 -->
+          <div class="detail-group">
+            <div class="detail-group-title">
+              <el-icon><Link /></el-icon>
+              <span>{{ $t('auditLogs.requestDetail') }}</span>
+            </div>
+            <div class="detail-group-body">
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.requestMethod') }}</span>
+                <span class="detail-row-value">
+                  <el-tag v-if="detailData.request_detail?.method && detailData.request_detail?.method !== '-'" 
+                    :type="getMethodTag(detailData.request_detail?.method)" size="small">
+                    {{ detailData.request_detail?.method }}
+                  </el-tag>
+                  <span v-else class="text-muted">-</span>
+                </span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.requestUrl') }}</span>
+                <span class="detail-row-value url-value">{{ detailData.request_detail?.url || '-' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.userAgent') }}</span>
+                <span class="detail-row-value">{{ detailData.request_detail?.user_agent || '-' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.requestParams') }}</span>
+                <div class="detail-row-value">
+                  <pre v-if="detailData.request_detail?.params && Object.keys(detailData.request_detail?.params).length > 0" 
+                    class="detail-pre">{{ JSON.stringify(detailData.request_detail?.params, null, 2) }}</pre>
+                  <span v-else class="text-muted">-</span>
+                </div>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.responseStatus') }}</span>
+                <span class="detail-row-value">
+                  <el-tag :type="getStatusCodeTag(detailData.request_detail?.response_status)" size="small">
+                    {{ detailData.request_detail?.response_status || '-' }}
+                  </el-tag>
+                </span>
+              </div>
             </div>
           </div>
-          <div class="detail-section">
-            <div class="detail-label">{{ $t('auditLogs.detailData') }}</div>
-            <pre v-if="detailData.detail && Object.keys(detailData.detail).length > 0" class="detail-pre">{{ JSON.stringify(detailData.detail, null, 2) }}</pre>
-            <span v-else class="text-muted">-</span>
+
+          <!-- 服务端信息 -->
+          <div class="detail-group">
+            <div class="detail-group-title">
+              <el-icon><Cpu /></el-icon>
+              <span>{{ $t('auditLogs.serverInfo') }}</span>
+            </div>
+            <div class="detail-group-body">
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.duration') }}</span>
+                <span class="detail-row-value">{{ detailData.server_info?.duration || '-' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.backendService') }}</span>
+                <span class="detail-row-value">{{ detailData.server_info?.service || '-' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-row-label">{{ $t('auditLogs.errorMessage') }}</span>
+                <span class="detail-row-value error-value">{{ detailData.server_info?.error_message || '-' }}</span>
+              </div>
+            </div>
           </div>
         </template>
       </div>
@@ -213,10 +290,10 @@
 
 <script setup>
 // 第三次迭代陈思言负责
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import { Download, Document, Link, Cpu, Filter } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import { getAuditLogs, getAuditStats, getActionTypes, getAuditDetail, exportAuditLogs } from '@/api/audit'
 
@@ -358,6 +435,126 @@ const getActionLabel = (action) => {
   return found ? found.label : action
 }
 
+// 【第三次迭代陈思言负责】请求方法对应的标签类型
+const getMethodTag = (method) => {
+  const methodMap = {
+    'GET': 'success',
+    'POST': 'primary',
+    'PUT': 'warning',
+    'DELETE': 'danger',
+    'PATCH': 'info'
+  }
+  return methodMap[method?.toUpperCase()] || ''
+}
+
+// 【第三次迭代陈思言负责】HTTP 状态码对应的标签类型
+const getStatusCodeTag = (status) => {
+  if (!status || status === '-') return 'info'
+  const code = parseInt(status)
+  if (code >= 200 && code < 300) return 'success'
+  if (code >= 300 && code < 400) return 'warning'
+  if (code >= 400 && code < 500) return 'warning'
+  if (code >= 500) return 'danger'
+  return 'info'
+}
+
+// 【第三次迭代陈思言负责】统计卡片点击交互：点击后自动填充筛选条件
+const isTodayActive = computed(() => {
+  const today = dayjs().format('YYYY-MM-DD')
+  return filterForm.value.start_time === `${today} 00:00:00` && 
+         filterForm.value.end_time === `${today} 23:59:59` &&
+         !filterForm.value.action &&
+         !filterForm.value.status
+})
+
+const isWeekActive = computed(() => {
+  const weekAgo = dayjs().subtract(6, 'day').format('YYYY-MM-DD')
+  const today = dayjs().format('YYYY-MM-DD')
+  return filterForm.value.start_time === `${weekAgo} 00:00:00` && 
+         filterForm.value.end_time === `${today} 23:59:59` &&
+         !filterForm.value.action &&
+         !filterForm.value.status
+})
+
+const isLoginFailedActive = computed(() => {
+  return filterForm.value.action === 'LOGIN_FAILED'
+})
+
+const isPermissionDeniedActive = computed(() => {
+  return filterForm.value.action === 'PERMISSION_DENIED'
+})
+
+const filterToday = () => {
+  if (isTodayActive.value) {
+    resetFilter()
+    return
+  }
+  const today = dayjs().format('YYYY-MM-DD')
+  filterForm.value = {
+    action: '',
+    username: '',
+    resource_type: '',
+    status: '',
+    start_time: `${today} 00:00:00`,
+    end_time: `${today} 23:59:59`
+  }
+  page.value = 1
+  fetchLogs()
+}
+
+const filterWeek = () => {
+  if (isWeekActive.value) {
+    resetFilter()
+    return
+  }
+  const weekAgo = dayjs().subtract(6, 'day').format('YYYY-MM-DD')
+  const today = dayjs().format('YYYY-MM-DD')
+  filterForm.value = {
+    action: '',
+    username: '',
+    resource_type: '',
+    status: '',
+    start_time: `${weekAgo} 00:00:00`,
+    end_time: `${today} 23:59:59`
+  }
+  page.value = 1
+  fetchLogs()
+}
+
+const filterLoginFailed = () => {
+  if (isLoginFailedActive.value) {
+    resetFilter()
+    return
+  }
+  filterForm.value = {
+    action: 'LOGIN_FAILED',
+    username: '',
+    resource_type: '',
+    status: '',
+    start_time: '',
+    end_time: ''
+  }
+  page.value = 1
+  fetchLogs()
+}
+
+const filterPermissionDenied = () => {
+  if (isPermissionDeniedActive.value) {
+    resetFilter()
+    return
+  }
+  filterForm.value = {
+    action: 'PERMISSION_DENIED',
+    username: '',
+    resource_type: '',
+    status: '',
+    start_time: '',
+    end_time: ''
+  }
+  page.value = 1
+  fetchLogs()
+}
+
 const getActionTypeTag = (action) => {
   const typeMap = {
     'LOGIN': 'success',
@@ -440,20 +637,139 @@ onMounted(() => {
     }
   }
 
-  .detail-drawer-content {
-    .detail-section {
-      margin-bottom: 20px;
+  .stat-card {
+    position: relative;
+    transition: all 0.2s ease;
+    
+    &.clickable {
+      cursor: pointer;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        
+        .click-hint {
+          opacity: 1;
+        }
+      }
+      
+      &.active {
+        border: 2px solid #1890ff;
+        background: #f0f7ff;
+        
+        .click-hint {
+          opacity: 1;
+          color: #1890ff;
+        }
+      }
+      
+      &.danger-card.active {
+        border-color: #f56c6c;
+        background: #fef0f0;
+        
+        .click-hint {
+          color: #f56c6c;
+        }
+      }
+      
+      &.warning-card.active {
+        border-color: #e6a23c;
+        background: #fdf6ec;
+        
+        .click-hint {
+          color: #e6a23c;
+        }
+      }
+    }
+    
+    .click-hint {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 14px;
+      color: #999;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+  }
 
-      .detail-label {
-        font-size: 13px;
-        color: #666;
-        margin-bottom: 6px;
+  .detail-drawer-content {
+    padding: 0 4px;
+
+    // 【第三次迭代陈思言负责】分组卡片样式
+    .detail-group {
+      margin-bottom: 24px;
+      border: 1px solid #e4e7ed;
+      border-radius: 8px;
+      overflow: hidden;
+
+      &:last-child {
+        margin-bottom: 0;
       }
 
-      .detail-value {
+      .detail-group-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        background: #f5f7fa;
+        border-bottom: 1px solid #e4e7ed;
+        font-size: 15px;
+        font-weight: 600;
+        color: #303133;
+
+        .el-icon {
+          font-size: 18px;
+          color: #409eff;
+        }
+      }
+
+      .detail-group-body {
+        padding: 8px 16px;
+      }
+    }
+
+    .detail-row {
+      display: flex;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .detail-row-label {
+        width: 100px;
+        flex-shrink: 0;
+        font-size: 13px;
+        color: #606266;
+        line-height: 24px;
+      }
+
+      .detail-row-value {
+        flex: 1;
         font-size: 14px;
-        color: #333;
+        color: #303133;
+        line-height: 24px;
         word-break: break-all;
+
+        &.url-value {
+          font-family: 'Courier New', monospace;
+          font-size: 13px;
+          color: #409eff;
+          background: #f0f9ff;
+          padding: 2px 8px;
+          border-radius: 4px;
+          display: inline-block;
+        }
+
+        &.error-value {
+          color: #f56c6c;
+        }
+
+        .name-tag {
+          margin-left: 8px;
+        }
       }
     }
 
@@ -462,8 +778,10 @@ onMounted(() => {
       padding: 12px;
       border-radius: 4px;
       font-size: 12px;
-      max-height: 400px;
+      max-height: 300px;
       overflow: auto;
+      margin: 0;
+      width: 100%;
     }
   }
 }

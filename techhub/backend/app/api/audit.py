@@ -132,7 +132,7 @@ def get_my_logs():
 @audit_bp.route('/detail/<int:log_id>', methods=['GET'])
 @require_permission('audit_view')
 def get_audit_detail(log_id):
-    """获取审计日志详情"""
+    """获取审计日志详情 - 按分组格式返回"""
     from app.models import AuditLog, User
     
     log = AuditLog.query.get(log_id)
@@ -142,20 +142,40 @@ def get_audit_detail(log_id):
     # 获取用户信息
     user = User.query.get(log.user_id) if log.user_id else None
     
+    # 【第三次迭代陈思言负责】按分组格式组织详情数据
+    # 基础信息
+    basic_info = {
+        'time': log.created_at.isoformat() if log.created_at else None,
+        'operator': user.username if user else (log.username or '-'),
+        'operator_real_name': user.real_name if user else None,
+        'action': log.action,
+        'resource': f"{log.resource_type}#{log.resource_id}" if log.resource_type and log.resource_id else (log.resource_type or '-'),
+        'ip_address': log.ip_address or '-',
+        'status': log.status
+    }
+    
+    # 请求详情（从 detail 字段和现有数据中提取）
+    log_detail = log.detail or {}
+    request_detail = {
+        'method': log_detail.get('method', '-'),
+        'url': log_detail.get('url', '-'),
+        'user_agent': log.user_agent or '-',
+        'params': log_detail.get('params') or log_detail.get('before') or log_detail or None,
+        'response_status': log_detail.get('response_status', 200 if log.status == 'success' else 500)
+    }
+    
+    # 服务端信息
+    server_info = {
+        'duration': log_detail.get('duration', '-'),
+        'service': log_detail.get('service', '-'),
+        'error_message': log_detail.get('error') or log_detail.get('reason') or None
+    }
+    
     detail = {
         'id': log.id,
-        'action': log.action,
-        'resource_type': log.resource_type,
-        'resource_id': log.resource_id,
-        'detail': log.detail,
-        'ip_address': log.ip_address,
-        'status': log.status,
-        'created_at': log.created_at.isoformat() if log.created_at else None,
-        'user': {
-            'id': user.id if user else None,
-            'username': user.username if user else None,
-            'real_name': user.real_name if user else None
-        } if user else None
+        'basic_info': basic_info,
+        'request_detail': request_detail,
+        'server_info': server_info
     }
     
     return jsonify({'log': detail}), 200

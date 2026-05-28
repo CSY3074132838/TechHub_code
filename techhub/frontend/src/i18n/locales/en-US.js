@@ -963,7 +963,19 @@ export default {
     startTime: 'Start Time',
     endTime: 'End Time',
     selectStartTime: 'Select start time',
-    selectEndTime: 'Select end time'
+    selectEndTime: 'Select end time',
+    // 【第三次迭代陈思言负责】Detail drawer group translations
+    basicInfo: 'Basic Info',
+    requestDetail: 'Request Detail',
+    serverInfo: 'Server Info',
+    requestMethod: 'Method',
+    requestUrl: 'Request URL',
+    userAgent: 'User-Agent',
+    requestParams: 'Request Params',
+    responseStatus: 'Response Status',
+    duration: 'Duration',
+    backendService: 'Backend Service',
+    errorMessage: 'Error Message'
   },
 
   // Finance
