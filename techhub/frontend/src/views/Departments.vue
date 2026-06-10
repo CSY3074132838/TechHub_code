@@ -207,7 +207,16 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('common.position')" prop="position" width="140" />
+              <el-table-column :label="t('common.position')" width="140">
+                <template #default="{ row }">
+                  <div v-if="row.identities && row.identities.length > 0">
+                    <div v-for="identity in getDeptIdentities(row)" :key="identity.id" class="identity-line">
+                      <span style="font-size: 12px;">{{ identity.position || '-' }}</span>
+                    </div>
+                  </div>
+                  <span v-else>{{ row.position || '-' }}</span>
+                </template>
+              </el-table-column>
               <el-table-column :label="t('users.email')" prop="email" min-width="180" />
               <el-table-column :label="t('users.phone')" width="130">
                 <template #default="{ row }">{{ maskPhone(row.phone) }}</template>
@@ -808,6 +817,13 @@ const fetchDepartments = async () => {
   try {
     const res = await getDepartments()
     departmentTree.value = res.departments || []
+    // 同步更新当前选中部门，使右侧详情页自动刷新
+    if (currentDept.value) {
+      const updatedDept = findDeptById(departmentTree.value, currentDept.value.id)
+      if (updatedDept) {
+        currentDept.value = updatedDept
+      }
+    }
   } catch (error) { console.error(t('departments.fetchDeptFailed'), error) }
   finally { treeLoading.value = false }
 }
@@ -828,6 +844,13 @@ const fetchPositions = async () => {
     positionList.value = res.positions || []
   } catch (error) { console.error(t('departments.fetchPositionFailed'), error) }
   finally { treeLoading.value = false }
+}
+
+const fetchManagerOptions = async () => {
+  try {
+    const res = await getManagers()
+    managerOptions.value = res.managers || []
+  } catch (error) { console.error(t('departments.fetchManagersFailed'), error) }
 }
 
 const fetchStats = async () => {
@@ -930,10 +953,11 @@ const deptForm = ref({ id: '', name: '', code: '', parent_id: null, manager_id: 
 const roleForm = ref({ id: '', name: '', description: '', level: 4, data_scope: 'self', permissions: [] })
 const positionForm = ref({ oldName: '', name: '' })
 
-const openAddDialog = () => {
+const openAddDialog = async () => {
   isEdit.value = false
   if (activeCategory.value === 'department') {
     deptForm.value = { id: '', name: '', code: '', parent_id: null, manager_id: null, sort_order: 0, description: '' }
+    await fetchManagerOptions()
     showDeptDialog.value = true
   } else if (activeCategory.value === 'role') {
     roleForm.value = { id: '', name: '', description: '', level: 4, data_scope: 'self', permissions: [] }
@@ -944,13 +968,14 @@ const openAddDialog = () => {
   }
 }
 
-const openEditDialog = (item) => {
+const openEditDialog = async (item) => {
   isEdit.value = true
   if (activeCategory.value === 'department') {
     deptForm.value = {
       id: item.id, name: item.name, code: item.code, parent_id: item.parent_id,
       manager_id: item.manager_id, sort_order: item.sort_order || 0, description: item.description || ''
     }
+    await fetchManagerOptions()
     showDeptDialog.value = true
   } else if (activeCategory.value === 'role') {
     roleForm.value = {
@@ -1101,7 +1126,12 @@ const openAddMemberDialog = async () => {
   addMemberLoading.value = true
   try {
     const res = await getUsers({ per_page: 1000 })
-    noDeptUsers.value = (res.users || []).filter(u => !u.department_id)
+    // 过滤掉在当前部门已有身份的用户
+    const currentDeptId = currentDept.value?.id
+    noDeptUsers.value = (res.users || []).filter(u => {
+      if (!u.identities || u.identities.length === 0) return true
+      return !u.identities.some(i => i.department_id === currentDeptId)
+    })
   } catch (error) { console.error(t('departments.fetchUsersFailed'), error) }
   finally { addMemberLoading.value = false }
 }
@@ -1258,6 +1288,13 @@ const maskPhone = (phone) => {
   return phone
 }
 
+// 获取用户在当前部门下的身份
+const getDeptIdentities = (user) => {
+  if (!user.identities) return []
+  const deptId = currentDept.value?.id
+  return user.identities.filter(i => i.department_id === deptId)
+}
+
 // ==================== 饼图 ====================
 const initPieChart = () => {
   if (!pieChart.value) return
@@ -1320,6 +1357,17 @@ const findFirstDept = (nodes) => {
     if (found) return found
   }
   return nodes[0] || null
+}
+
+const findDeptById = (nodes, id) => {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findDeptById(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 onMounted(async () => {

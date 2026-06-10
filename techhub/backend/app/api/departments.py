@@ -5,7 +5,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import Department, User
+from app.models import Department, User, UserIdentity
 from app.decorators import require_permission
 from app.services import AuditService
 
@@ -154,7 +154,7 @@ def delete_department(dept_id):
 @departments_bp.route('/<int:dept_id>/members', methods=['GET'])
 @jwt_required()
 def get_department_members(dept_id):
-    """【第二次迭代】获取部门成员列表"""
+    """【第二次迭代】获取部门成员列表（基于用户身份）"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     include_sub_depts = request.args.get('include_sub', 'false').lower() == 'true'
@@ -170,15 +170,20 @@ def get_department_members(dept_id):
             return ids
         
         dept_ids = get_all_children_ids(dept)
-        query = User.query.filter(User.department_id.in_(dept_ids))
+        identity_query = UserIdentity.query.filter(UserIdentity.department_id.in_(dept_ids))
     else:
-        query = User.query.filter_by(department_id=dept_id)
+        identity_query = UserIdentity.query.filter_by(department_id=dept_id)
     
+    # 获取该部门下所有有身份的用户ID（去重）
+    user_ids = [uid for uid, in identity_query.distinct(UserIdentity.user_id).with_entities(UserIdentity.user_id).all()]
+    
+    # 按用户ID查询用户列表
+    query = User.query.filter(User.id.in_(user_ids))
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
     return jsonify({
         'members': [user.to_dict(include_email=True) for user in pagination.items],
-        'total': pagination.total,
+        'total': len(user_ids),
         'pages': pagination.pages,
         'current_page': page,
         'department': dept.to_dict()
@@ -188,16 +193,17 @@ def get_department_members(dept_id):
 @departments_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_department_stats():
-    """【第二次迭代】获取部门统计概览"""
+    """【第二次迭代】获取部门统计概览（基于用户身份）"""
     total_depts = Department.query.count()
-    total_members = User.query.filter(User.department_id.isnot(None)).count()
+    # 统计有至少一个身份的用户数
+    total_members = db.session.query(UserIdentity.user_id).distinct().count()
     
-    # 按部门统计人数
+    # 按部门统计人数（基于身份）
     dept_stats = db.session.query(
         Department.id,
         Department.name,
-        db.func.count(User.id)
-    ).outerjoin(User, User.department_id == Department.id) \
+        db.func.count(db.distinct(UserIdentity.user_id))
+    ).outerjoin(UserIdentity, UserIdentity.department_id == Department.id) \
      .group_by(Department.id).all()
     
     return jsonify({
@@ -214,7 +220,7 @@ def get_department_stats():
 @departments_bp.route('/<int:dept_id>/members', methods=['POST'])
 @jwt_required()
 def add_department_member(dept_id):
-    """添加成员到部门"""
+    """添加成员到部门（基于身份系统）"""
     data = request.get_json()
     user_id = data.get('user_id')
     
@@ -224,10 +230,25 @@ def add_department_member(dept_id):
     dept = Department.query.get_or_404(dept_id)
     user = User.query.get_or_404(user_id)
     
-    # 更新用户的 department_id 和 department 字段
-    user.department_id = dept_id
-    user.department = dept.name
+    # 检查是否已有该部门的身份
+    existing = UserIdentity.query.filter_by(user_id=user_id, department_id=dept_id).first()
+    if existing:
+        return jsonify({'message': '该用户已在该部门', 'error': 'already_in_department'}), 409
+    
+    # 创建新身份（如果不是第一个身份，不设为主身份）
+    has_identities = UserIdentity.query.filter_by(user_id=user_id).count() > 0
+    identity = UserIdentity(
+        user_id=user_id,
+        department_id=dept_id,
+        position=user.position or '',
+        is_primary=not has_identities
+    )
+    db.session.add(identity)
     db.session.commit()
+    
+    # 同步用户主身份
+    from app.api.user_identities import _sync_user_primary_identity
+    _sync_user_primary_identity(user)
     
     AuditService.log_from_current_user(
         action='DEPT_MEMBER_ADD',
@@ -246,18 +267,29 @@ def add_department_member(dept_id):
 @departments_bp.route('/<int:dept_id>/members/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def remove_department_member(dept_id, user_id):
-    """从部门移除成员"""
+    """从部门移除成员（基于身份系统：删除对应身份）"""
     dept = Department.query.get_or_404(dept_id)
     user = User.query.get_or_404(user_id)
     
-    # 验证用户是否属于该部门
-    if user.department_id != dept_id:
+    # 查找并删除该用户在该部门的身份
+    identity = UserIdentity.query.filter_by(user_id=user_id, department_id=dept_id).first()
+    if not identity:
         return jsonify({'message': '该用户不在此部门', 'error': 'not_in_department'}), 400
     
-    # 清空用户的部门信息
-    user.department_id = None
-    user.department = None
+    was_primary = identity.is_primary
+    db.session.delete(identity)
     db.session.commit()
+    
+    # 如果删除的是主身份，重新指定主身份
+    if was_primary:
+        remaining = UserIdentity.query.filter_by(user_id=user_id).order_by(UserIdentity.created_at.asc()).first()
+        if remaining:
+            remaining.is_primary = True
+            db.session.commit()
+    
+    # 同步用户主身份
+    from app.api.user_identities import _sync_user_primary_identity
+    _sync_user_primary_identity(user)
     
     AuditService.log_from_current_user(
         action='DEPT_MEMBER_REMOVE',
@@ -275,7 +307,7 @@ def remove_department_member(dept_id, user_id):
 @departments_bp.route('/<int:dept_id>/members/transfer', methods=['POST'])
 @jwt_required()
 def transfer_department_member(dept_id):
-    """转移部门成员到另一个部门"""
+    """转移部门成员到另一个部门（基于身份系统：转移身份）"""
     data = request.get_json()
     user_id = data.get('user_id')
     target_dept_id = data.get('target_dept_id')
@@ -283,19 +315,29 @@ def transfer_department_member(dept_id):
     if not user_id or not target_dept_id:
         return jsonify({'message': '请提供用户ID和目标部门ID', 'error': 'missing_fields'}), 400
     
-    # 验证用户是否在当前部门
     user = User.query.get_or_404(user_id)
-    if user.department_id != dept_id:
+    
+    # 查找用户在原部门的身份
+    identity = UserIdentity.query.filter_by(user_id=user_id, department_id=dept_id).first()
+    if not identity:
         return jsonify({'message': '该用户不在当前部门', 'error': 'not_in_source_department'}), 400
     
     # 验证目标部门
     target_dept = Department.query.get_or_404(target_dept_id)
     
-    # 执行转移
-    old_dept_name = user.department
-    user.department_id = target_dept_id
-    user.department = target_dept.name
+    # 检查目标部门是否已有该用户的身份
+    existing = UserIdentity.query.filter_by(user_id=user_id, department_id=target_dept_id).first()
+    if existing:
+        return jsonify({'message': '该用户已在目标部门', 'error': 'already_in_target_department'}), 409
+    
+    # 执行转移：修改身份的部门ID
+    old_dept_name = identity.department.name if identity.department else None
+    identity.department_id = target_dept_id
     db.session.commit()
+    
+    # 同步用户主身份
+    from app.api.user_identities import _sync_user_primary_identity
+    _sync_user_primary_identity(user)
     
     AuditService.log_from_current_user(
         action='DEPT_MEMBER_TRANSFER',

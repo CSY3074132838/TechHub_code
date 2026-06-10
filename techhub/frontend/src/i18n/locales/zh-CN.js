@@ -708,7 +708,13 @@ export default {
     techDirector: '技术总监',
     projectManager: '项目经理',
     deptManager: '部门经理',
-    adminSpecialist: '行政专员'
+    adminSpecialist: '行政专员',
+    identities: '身份管理',
+    identity: '身份',
+    primaryIdentity: '主身份',
+    secondaryIdentity: '副身份',
+    setPrimary: '设为主身份',
+    addIdentity: '添加身份'
   },
 
   // 组织架构
@@ -819,7 +825,8 @@ export default {
     transferFailed: '转移失败',
     selectTargetPositionMsg: '请选择目标职位',
     totalPeople: '总人数',
-    pieNoData: '暂无数据'
+    pieNoData: '暂无数据',
+    fetchManagersFailed: '获取负责人列表失败'
   },
 
   // 考勤工时
@@ -1171,6 +1178,7 @@ export default {
     applyPermission: '申请权限',
     noPermission: '暂无权限',
     myProfile: '我的档案',
+    identities: '身份管理',
     basicInfo: '基本信息',
     realName: '真实姓名',
     realNamePlaceholder: '请输入真实姓名',

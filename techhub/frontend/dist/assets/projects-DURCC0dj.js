@@ -1,1 +1,0 @@
-import{D as e}from"./index-DsRE6F-X.js";const c=t=>e.get("/projects/",{params:t}),o=t=>e.get(`/projects/${t}`),a=t=>e.post("/projects/",t),j=(t,r)=>e.put(`/projects/${t}`,r),n=t=>e.delete(`/projects/${t}`),p=t=>e.get(`/projects/${t}/tasks`),u=(t,r={})=>e.get(`/projects/${t}/activities`,{params:r});export{o as a,p as b,a as c,n as d,u as e,c as g,j as u};

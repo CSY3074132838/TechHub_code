@@ -98,26 +98,56 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('users.department')" width="120">
+        <!-- 多身份展示：部门 -->
+        <el-table-column :label="$t('users.department')" width="140">
           <template #default="{ row }">
-            {{ row.department || '-' }}
+            <div v-if="row.identities && row.identities.length > 0">
+              <div v-for="identity in row.identities" :key="identity.id" class="identity-line">
+                <el-tag size="small" :type="identity.is_primary ? 'success' : 'info'" style="margin-bottom: 2px;">
+                  {{ identity.department?.name || '-' }}
+                </el-tag>
+              </div>
+            </div>
+            <span v-else>{{ row.department || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('users.position')" width="120">
+        <!-- 多身份展示：职位 -->
+        <el-table-column :label="$t('users.position')" width="140">
           <template #default="{ row }">
-            {{ row.position || '-' }}
+            <div v-if="row.identities && row.identities.length > 0">
+              <div v-for="identity in row.identities" :key="identity.id" class="identity-line">
+                <span style="font-size: 12px; color: #606266;">{{ identity.position || '-' }}</span>
+              </div>
+            </div>
+            <span v-else style="color: #909399;">{{ row.position || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('users.role')" width="150">
+        <!-- 多身份展示：角色 -->
+        <el-table-column :label="$t('users.role')" width="160">
           <template #default="{ row }">
-            <el-tag
-              v-for="role in row.roles"
-              :key="role.id"
-              size="small"
-              style="margin-right: 4px;"
-            >
-              {{ role.description }}
-            </el-tag>
+            <div v-if="row.identities && row.identities.length > 0">
+              <div v-for="identity in row.identities" :key="identity.id" class="identity-line" style="margin-bottom: 2px;">
+                <el-tag
+                  v-for="role in identity.roles"
+                  :key="role.id"
+                  size="small"
+                  style="margin-right: 2px; margin-bottom: 2px;"
+                >
+                  {{ role.description }}
+                </el-tag>
+                <span v-if="!identity.roles || identity.roles.length === 0" style="font-size: 12px; color: #909399;">-</span>
+              </div>
+            </div>
+            <div v-else>
+              <el-tag
+                v-for="role in row.roles"
+                :key="role.id"
+                size="small"
+                style="margin-right: 4px;"
+              >
+                {{ role.description }}
+              </el-tag>
+            </div>
           </template>
         </el-table-column>
         <!-- 【第二次迭代】员工状态列 -->
@@ -227,8 +257,24 @@
           <el-descriptions-item :label="$t('users.username')">{{ detailUser.username }}</el-descriptions-item>
           <el-descriptions-item :label="$t('users.email')">{{ detailUser.email }}</el-descriptions-item>
           <el-descriptions-item :label="$t('users.phone')">{{ detailUser.phone || '-' }}</el-descriptions-item>
-          <el-descriptions-item :label="$t('users.department')">{{ detailUser.department || '-' }}</el-descriptions-item>
-          <el-descriptions-item :label="$t('users.position')">{{ detailUser.position || '-' }}</el-descriptions-item>
+          <!-- 多身份展示 -->
+          <el-descriptions-item :label="$t('users.identities')" :span="2">
+            <div v-if="detailUser.identities && detailUser.identities.length > 0" class="detail-identities">
+              <div v-for="(identity, idx) in detailUser.identities" :key="identity.id" class="detail-identity-item">
+                <el-tag :type="identity.is_primary ? 'success' : 'info'" size="small" style="margin-right: 8px; min-width: 60px; text-align: center;">
+                  {{ identity.department?.name || '-' }}
+                </el-tag>
+                <span style="color: #606266; margin-right: 8px; display: inline-block; min-width: 80px;">{{ identity.position || '-' }}</span>
+                <el-tag v-for="role in identity.roles" :key="role.id" size="small" style="margin-right: 4px;">{{ role.description }}</el-tag>
+                <el-tag :type="identity.is_primary ? 'success' : 'warning'" size="small" effect="plain">
+                  {{ identity.is_primary ? $t('users.primaryIdentity') : $t('users.secondaryIdentity') + ' ' + idx }}
+                </el-tag>
+              </div>
+            </div>
+            <div v-else>
+              <span style="color: #909399;">{{ detailUser.department || '-' }} / {{ detailUser.position || '-' }}</span>
+            </div>
+          </el-descriptions-item>
           <!-- 【第二次迭代】扩展档案字段 -->
           <el-descriptions-item :label="$t('users.employeeStatus')">{{ employeeStatusLabel(detailUser.employee_status) }}</el-descriptions-item>
           <el-descriptions-item :label="$t('users.entryDate')">{{ detailUser.entry_date || '-' }}</el-descriptions-item>
@@ -267,6 +313,46 @@
             <el-form-item :label="$t('users.employeeNo')">
               <el-input v-model="form.employee_no" :placeholder="$t('users.employeeNoPlaceholder')" />
             </el-form-item>
+            <el-form-item :label="$t('users.phone')">
+              <el-input v-model="form.phone" :placeholder="$t('users.phonePlaceholder')" />
+            </el-form-item>
+          </el-form>
+          <!-- 身份管理（编辑时显示） -->
+          <div v-if="isEdit" class="identities-section" style="margin-top: 8px;">
+            <div class="identity-section-title" style="font-weight: 600; font-size: 14px; color: #303133; margin-bottom: 12px; padding-left: 100px;">{{ $t('users.identities') }}</div>
+            <div v-for="(identity, index) in identityList" :key="identity._key || identity.id" class="identity-card">
+              <div class="identity-header">
+                <span class="identity-title">{{ $t('users.identity') }} {{ index + 1 }}</span>
+                <el-tag v-if="identity.is_primary" type="success" size="small">{{ $t('users.primaryIdentity') }}</el-tag>
+                <div class="identity-actions">
+                  <el-button v-if="!identity.is_primary" link type="primary" size="small" @click="setPrimaryIdentityLocal(index)">{{ $t('users.setPrimary') }}</el-button>
+                  <el-button link type="danger" size="small" @click="removeIdentity(index)">{{ $t('common.delete') }}</el-button>
+                </div>
+              </div>
+              <el-form :model="identity" label-width="100px">
+                <el-form-item :label="$t('users.department')" required>
+                  <el-select v-model="identity.department_id" :placeholder="$t('users.selectDepartment')" style="width: 100%">
+                    <el-option v-for="dept in flatDepartments" :key="dept.id" :label="dept.name" :value="dept.id" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item :label="$t('users.position')">
+                  <el-select v-model="identity.position" :placeholder="$t('users.selectPosition')" clearable style="width: 100%">
+                    <el-option v-for="pos in positionOptions" :key="pos" :label="pos" :value="pos" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item :label="$t('users.role')">
+                  <el-select v-model="identity.role_ids" multiple :placeholder="$t('users.selectRole')" style="width: 100%">
+                    <el-option v-for="role in roles" :key="role.id" :label="role.description" :value="role.id" />
+                  </el-select>
+                </el-form-item>
+              </el-form>
+            </div>
+            <el-button type="primary" plain @click="addIdentity" style="width: 100%; margin-top: 12px;">
+              <el-icon><Plus /></el-icon>{{ $t('users.addIdentity') }}
+            </el-button>
+          </div>
+          <!-- 添加用户时的部门/职位/角色（非编辑时显示） -->
+          <el-form v-if="!isEdit" :model="form" label-width="100px" style="margin-top: 8px;">
             <el-form-item :label="$t('users.department')">
               <el-select v-model="form.department" :placeholder="$t('users.selectDepartment')" clearable style="width: 100%">
                 <el-option
@@ -286,9 +372,6 @@
                   :value="pos"
                 />
               </el-select>
-            </el-form-item>
-            <el-form-item :label="$t('users.phone')">
-              <el-input v-model="form.phone" :placeholder="$t('users.phonePlaceholder')" />
             </el-form-item>
             <el-form-item :label="$t('users.role')">
               <el-select v-model="form.role_ids" multiple :placeholder="$t('users.selectRole')" style="width: 100%;">
@@ -359,6 +442,7 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
+
       </el-tabs>
       <template #footer>
         <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
@@ -409,6 +493,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { getUsers, getUser, updateUser, getUserStats, getRoles, createRole, updateRole, deleteRole, getPermissions, exportUsers } from '@/api/users'
 import { getDepartmentsFlat } from '@/api/departments'
+import { getUserIdentities, createUserIdentity, updateUserIdentity, deleteUserIdentity, setPrimaryIdentity as setPrimaryIdentityApi } from '@/api/userIdentities'
 import dayjs from 'dayjs'
 
 const { t } = useI18n()
@@ -465,6 +550,10 @@ const form = ref({
   position: '',
   role_ids: []
 })
+
+// 身份列表
+const identityList = ref([])
+let identityKeyCounter = 0
 
 // 【第二次迭代】档案详情表单
 const detailForm = ref({
@@ -658,7 +747,50 @@ const editUser = (row) => {
     emergency_phone: row.emergency_phone || '',
     address: row.address || ''
   }
+  // 填充身份列表
+  if (row.identities && row.identities.length > 0) {
+    identityList.value = row.identities.map(i => ({
+      ...i,
+      _key: `existing_${i.id}`,
+      role_ids: i.role_ids || []
+    }))
+  } else {
+    // 如果没有身份，用当前部门/职位/角色创建一个默认身份
+    identityList.value = [{
+      _key: `default_${++identityKeyCounter}`,
+      id: null,
+      department_id: row.department_id || null,
+      position: row.position || '',
+      role_ids: row.roles ? row.roles.map(r => r.id) : [],
+      is_primary: true
+    }]
+  }
   showCreateDialog.value = true
+}
+
+const addIdentity = () => {
+  identityList.value.push({
+    _key: `new_${++identityKeyCounter}`,
+    id: null,
+    department_id: null,
+    position: '',
+    role_ids: [],
+    is_primary: identityList.value.length === 0
+  })
+}
+
+const removeIdentity = (index) => {
+  identityList.value.splice(index, 1)
+  // 如果删除后没有主身份，将第一个设为主身份
+  if (identityList.value.length > 0 && !identityList.value.some(i => i.is_primary)) {
+    identityList.value[0].is_primary = true
+  }
+}
+
+const setPrimaryIdentityLocal = (index) => {
+  identityList.value.forEach((item, idx) => {
+    item.is_primary = idx === index
+  })
 }
 
 const saveUser = async () => {
@@ -677,6 +809,14 @@ const saveUser = async () => {
         phone: form.value.phone,
         employee_no: form.value.employee_no,
         roles: form.value.role_ids,
+        // 身份列表
+        identities: identityList.value.map(item => ({
+          id: item.id,
+          department_id: item.department_id,
+          position: item.position,
+          role_ids: item.role_ids,
+          is_primary: item.is_primary
+        })),
         // 【第二次迭代】合并档案详情字段
         ...detailForm.value
       }
@@ -937,6 +1077,38 @@ onMounted(() => {
           display: flex;
           gap: 4px;
           flex-wrap: wrap;
+        }
+      }
+    }
+  }
+
+  // 身份管理样式
+  .identities-section {
+    .identity-card {
+      border: 1px solid #e4e7ed;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: #fafafa;
+
+      .identity-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #e4e7ed;
+
+        .identity-title {
+          font-weight: 600;
+          font-size: 14px;
+          color: #303133;
+        }
+
+        .identity-actions {
+          margin-left: auto;
+          display: flex;
+          gap: 8px;
         }
       }
     }

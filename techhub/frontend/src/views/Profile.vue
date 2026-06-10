@@ -12,7 +12,26 @@
             </el-avatar>
             <h3>{{ userInfo?.real_name || userInfo?.username }}</h3>
             <p class="text-muted">{{ userInfo?.email }}</p>
-            <div class="role-tags">
+            <!-- 多身份角色标签 -->
+            <div v-if="userInfo?.identities && userInfo.identities.length > 0" class="role-tags">
+              <div v-for="(identity, idx) in userInfo.identities" :key="identity.id" class="identity-tag-row">
+                <el-tag :type="identity.is_primary ? 'success' : 'info'" size="small" style="margin-right: 4px; min-width: 60px; text-align: center;">
+                  {{ identity.department?.name || '-' }}
+                </el-tag>
+                <el-tag
+                  v-for="role in identity.roles"
+                  :key="role.id"
+                  size="small"
+                  style="margin-right: 4px;"
+                >
+                  {{ role.description }}
+                </el-tag>
+                <el-tag :type="identity.is_primary ? 'success' : 'warning'" size="small" effect="plain">
+                  {{ identity.is_primary ? $t('users.primaryIdentity') : $t('users.secondaryIdentity') + ' ' + idx }}
+                </el-tag>
+              </div>
+            </div>
+            <div v-else class="role-tags">
               <el-tag
                 v-for="role in userInfo?.roles"
                 :key="role.id"
@@ -41,14 +60,31 @@
               <span class="label">{{ $t('profile.employeeNo') }}</span>
               <span class="value">{{ userInfo?.employee_no || '-' }}</span>
             </div>
-            <div class="info-item">
-              <span class="label">{{ $t('profile.department') }}</span>
-              <span class="value">{{ userInfo?.department || '-' }}</span>
+            <!-- 多身份展示 -->
+            <div v-if="userInfo?.identities && userInfo.identities.length > 0" class="info-item identities-info">
+              <span class="label">{{ $t('profile.identities') || '身份' }}</span>
+              <div class="value identity-list">
+                <div v-for="(identity, idx) in userInfo.identities" :key="identity.id" class="identity-row">
+                  <el-tag :type="identity.is_primary ? 'success' : 'info'" size="small" style="margin-right: 4px; min-width: 60px; text-align: center;">
+                    {{ identity.department?.name || '-' }}
+                  </el-tag>
+                  <span style="color: #606266; margin-right: 4px; display: inline-block; min-width: 80px;">{{ identity.position || '-' }}</span>
+                  <el-tag :type="identity.is_primary ? 'success' : 'warning'" size="small" effect="plain">
+                    {{ identity.is_primary ? $t('users.primaryIdentity') : $t('users.secondaryIdentity') + ' ' + idx }}
+                  </el-tag>
+                </div>
+              </div>
             </div>
-            <div class="info-item">
-              <span class="label">{{ $t('profile.position') }}</span>
-              <span class="value">{{ userInfo?.position || '-' }}</span>
-            </div>
+            <template v-else>
+              <div class="info-item">
+                <span class="label">{{ $t('profile.department') }}</span>
+                <span class="value">{{ userInfo?.department || '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">{{ $t('profile.position') }}</span>
+                <span class="value">{{ userInfo?.position || '-' }}</span>
+              </div>
+            </template>
             <div class="info-item">
               <span class="label">{{ $t('profile.phone') }}</span>
               <span class="value">{{ userInfo?.phone || '-' }}</span>
@@ -419,6 +455,16 @@ onMounted(() => {
         justify-content: center;
         flex-wrap: wrap;
         gap: 4px;
+        .identity-tag-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 4px;
+          width: 100%;
+          margin-bottom: 6px;
+          &:last-child { margin-bottom: 0; }
+        }
       }
     }
     .profile-info {
@@ -428,8 +474,27 @@ onMounted(() => {
         padding: 12px 0;
         border-bottom: 1px solid #f0f0f0;
         &:last-child { border-bottom: none; }
-        .label { color: #666; font-size: 14px; }
+        .label { color: #666; font-size: 14px; flex-shrink: 0; }
         .value { color: #333; font-weight: 500; }
+        &.identities-info {
+          flex-direction: column;
+          gap: 8px;
+          .label { margin-bottom: 4px; }
+          .identity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            .identity-row {
+              display: flex;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 4px;
+              padding: 4px 0;
+              border-bottom: 1px dashed #e4e7ed;
+              &:last-child { border-bottom: none; }
+            }
+          }
+        }
       }
     }
   }

@@ -4,7 +4,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
-from app.models import User, Role, Department
+from app.models import User, Role, Department, UserIdentity
 from app.decorators import require_permission
 from app.services import AuditService, RoleService
 from sqlalchemy import extract
@@ -178,7 +178,51 @@ def update_user(user_id):
                     value = None
                 setattr(user, field, value)
     
-    # 只有管理员可以修改角色
+    # 处理 identities 身份列表（新增/编辑/删除）
+    identities_changed = False
+    if 'identities' in data and current_user.has_permission('all'):
+        from app.api.user_identities import _sync_user_primary_identity
+        new_identities = data['identities']
+        existing_identities = {i.id: i for i in UserIdentity.query.filter_by(user_id=user_id).all()}
+        processed_ids = set()
+        
+        for idx, identity_data in enumerate(new_identities):
+            if identity_data.get('id') and identity_data['id'] in existing_identities:
+                # 更新现有身份
+                identity = existing_identities[identity_data['id']]
+                if 'department_id' in identity_data:
+                    identity.department_id = identity_data['department_id']
+                if 'position' in identity_data:
+                    identity.position = identity_data['position']
+                if 'role_ids' in identity_data:
+                    roles = Role.query.filter(Role.id.in_(identity_data['role_ids'])).all()
+                    identity.roles = roles
+                identity.is_primary = identity_data.get('is_primary', idx == 0)
+                processed_ids.add(identity_data['id'])
+            else:
+                # 创建新身份
+                identity = UserIdentity(
+                    user_id=user_id,
+                    department_id=identity_data.get('department_id'),
+                    position=identity_data.get('position', ''),
+                    is_primary=identity_data.get('is_primary', idx == 0)
+                )
+                if 'role_ids' in identity_data:
+                    roles = Role.query.filter(Role.id.in_(identity_data['role_ids'])).all()
+                    identity.roles = roles
+                db.session.add(identity)
+            identities_changed = True
+        
+        # 删除未包含的身份
+        for existing_id in existing_identities:
+            if existing_id not in processed_ids:
+                db.session.delete(existing_identities[existing_id])
+                identities_changed = True
+        
+        db.session.commit()
+        _sync_user_primary_identity(user)
+    
+    # 只有管理员可以修改角色（兼容旧方式）
     roles_changed = False
     if 'roles' in data and current_user.has_permission('all'):
         role_ids = data['roles']

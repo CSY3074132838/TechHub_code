@@ -16,6 +16,7 @@
     "echarts": "^5.4.3",
     "element-plus": "^2.5.3",
     "js-cookie": "^3.0.5",
+    "marked": "^18.0.4",
     "pinia": "^2.1.7",
     "socket.io-client": "^4.8.3",
     "vue": "^3.4.15",

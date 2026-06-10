@@ -69,6 +69,9 @@
         </router-view>
       </el-main>
     </el-container>
+
+    <!-- AI 助手 -->
+    <AIAssistant />
   </el-container>
 </template>
 
@@ -91,6 +94,7 @@ import { getPendingCount, getApprovals } from '@/api/approvals'
 import { getNotifications, getUnreadCount, markAsRead, markAllAsRead } from '@/api/notifications'
 import { initSocket, disconnectSocket } from '@/utils/socket'
 import dayjs from 'dayjs'
+import AIAssistant from '@/components/ai/AIAssistant.vue'
 
 const { t } = useI18n()
 

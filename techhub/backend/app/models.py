@@ -106,6 +106,12 @@ user_roles = db.Table('user_roles',
     db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
 )
 
+# 身份-角色关联表
+identity_roles = db.Table('identity_roles',
+    db.Column('identity_id', db.Integer, db.ForeignKey('user_identities.id'), primary_key=True),
+    db.Column('role_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
+)
+
 # 项目-成员关联表
 project_members = db.Table('project_members',
     db.Column('project_id', db.Integer, db.ForeignKey('projects.id'), primary_key=True),
@@ -217,6 +223,7 @@ class User(db.Model):
     
     # 关联关系
     roles = db.relationship('Role', secondary=user_roles, back_populates='users')
+    identities = db.relationship('UserIdentity', foreign_keys='UserIdentity.user_id', lazy='dynamic', cascade='all, delete-orphan')
     created_projects = db.relationship('Project', foreign_keys='Project.creator_id', backref='creator', lazy='dynamic')
     assigned_tasks = db.relationship('Task', foreign_keys='Task.assignee_id', backref='assignee', lazy='dynamic')
     created_tasks = db.relationship('Task', foreign_keys='Task.creator_id', backref='task_creator', lazy='dynamic')
@@ -263,6 +270,8 @@ class User(db.Model):
             'permission_version': self.permission_version,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+        # 包含身份列表
+        data['identities'] = [identity.to_dict() for identity in self.identities]
         if include_email:
             data['email'] = self.email
             data['phone'] = self.phone
@@ -292,6 +301,36 @@ class User(db.Model):
         # ==================== 【第二次迭代】详情序列化结束 ====================
         return data
 
+
+class UserIdentity(db.Model):
+    """用户身份表 - 一个用户可在多个部门拥有不同身份"""
+    __tablename__ = 'user_identities'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    department_id = db.Column(db.Integer, db.ForeignKey('departments.id'), nullable=False)
+    position = db.Column(db.String(50))  # 职位名称
+    is_primary = db.Column(db.Boolean, default=False)  # 是否主身份
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # 关联关系
+    department = db.relationship('Department')
+    roles = db.relationship('Role', secondary=identity_roles, backref='identities')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'department_id': self.department_id,
+            'department': {'id': self.department.id, 'name': self.department.name, 'code': self.department.code} if self.department else None,
+            'position': self.position,
+            'is_primary': self.is_primary,
+            'roles': [role.to_dict() for role in self.roles],
+            'role_ids': [role.id for role in self.roles],
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
 # ==================== 【第二次迭代】部门模型 ====================
 class Department(db.Model):
     """部门模型 - 支持层级组织架构"""
@@ -312,11 +351,12 @@ class Department(db.Model):
     parent = db.relationship('Department', remote_side=[id], backref='children')
     
     def get_member_count(self):
-        """获取部门成员数量（仅直属成员）"""
-        return User.query.filter_by(department_id=self.id).count()
+        """获取部门成员数量（基于用户身份，仅直属成员）"""
+        from app.models import UserIdentity
+        return UserIdentity.query.filter_by(department_id=self.id).distinct(UserIdentity.user_id).count()
     
     def get_total_member_count(self):
-        """获取部门及所有子部门成员数量"""
+        """获取部门及所有子部门成员数量（基于用户身份）"""
         count = self.get_member_count()
         for child in self.children:
             count += child.get_total_member_count()
@@ -955,6 +995,62 @@ class Notification(db.Model):
             'is_read': self.is_read,
             'related_type': self.related_type,
             'related_id': self.related_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+# ==================== AI 助手会话模型 ====================
+class AIConversation(db.Model):
+    """AI 对话会话模型 - 保存历史会话"""
+    __tablename__ = 'ai_conversations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)  # 会话标题（自动从第一条消息生成）
+    messages = db.Column(db.JSON, default=list)  # 消息列表 [{role, content, timestamp}]
+    is_pinned = db.Column(db.Boolean, default=False)  # 是否置顶
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    user = db.relationship('User')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'title': self.title,
+            'message_count': len(self.messages) if self.messages else 0,
+            'is_pinned': self.is_pinned,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+    def to_dict_with_messages(self):
+        data = self.to_dict()
+        data['messages'] = self.messages or []
+        return data
+
+
+class AIConversationMessage(db.Model):
+    """AI 对话消息模型 - 单条消息记录"""
+    __tablename__ = 'ai_conversation_messages'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('ai_conversations.id'), nullable=False, index=True)
+    role = db.Column(db.String(20), nullable=False)  # user / assistant / system
+    content = db.Column(db.Text, nullable=False)
+    tool_calls = db.Column(db.JSON, default=list)  # 工具调用记录
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    conversation = db.relationship('AIConversation', backref='message_records')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'conversation_id': self.conversation_id,
+            'role': self.role,
+            'content': self.content,
+            'tool_calls': self.tool_calls or [],
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 # ==================== 【第二次迭代】财务管理模型结束 ====================

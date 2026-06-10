@@ -708,7 +708,12 @@ export default {
     techDirector: 'Tech Director',
     projectManager: 'Project Manager',
     deptManager: 'Department Manager',
-    adminSpecialist: 'Admin Specialist'
+    adminSpecialist: 'Admin Specialist',
+    identities: 'Identities',
+    identity: 'Identity',
+    primaryIdentity: 'Primary',
+    setPrimary: 'Set Primary',
+    addIdentity: 'Add Identity'
   },
 
   // Departments
@@ -817,7 +822,8 @@ export default {
     transferFailed: 'Transfer failed',
     selectTargetPositionMsg: 'Please select target position',
     totalPeople: 'Total',
-    pieNoData: 'No data'
+    pieNoData: 'No data',
+    fetchManagersFailed: 'Failed to fetch managers'
   },
 
   // Attendance

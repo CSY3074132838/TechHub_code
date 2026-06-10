@@ -3,6 +3,12 @@
 TechHub 后端启动脚本
 """
 import os
+from dotenv import load_dotenv
+
+# 加载 .env 文件中的环境变量
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
+
 from app import create_app, db
 from app.models import User, Role, Project, Task, Approval, Activity
 from flask_migrate import Migrate

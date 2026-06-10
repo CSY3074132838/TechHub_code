@@ -26,6 +26,10 @@ class Config:
     # 文件上传配置
     UPLOAD_FOLDER = 'uploads'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+    
+    # DeepSeek AI 配置
+    DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY') or ''
+    DEEPSEEK_API_BASE = os.environ.get('DEEPSEEK_API_BASE') or 'https://api.deepseek.com'
 
 class DevelopmentConfig(Config):
     """开发环境配置"""
