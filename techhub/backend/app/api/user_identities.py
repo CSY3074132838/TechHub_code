@@ -183,8 +183,14 @@ def set_primary_identity(user_id, identity_id):
     }), 200
 
 
+# ================================================
+# 【第三次迭代于然负责】(6) 用户管理与组织架构同步
+# 当用户管理页面编辑某员工部门后，同步更新 users 表
+# 使组织架构部门正确显示该员工
+# ================================================
 def _sync_user_primary_identity(user):
-    """同步用户主身份到 users 表（保持向后兼容）"""
+    """同步用户主身份到 users 表（保持向后兼容）
+    【第三次迭代于然负责】(6) 实现用户管理与组织架构的同步"""
     primary = UserIdentity.query.filter_by(user_id=user.id, is_primary=True).first()
     if primary:
         user.department_id = primary.department_id

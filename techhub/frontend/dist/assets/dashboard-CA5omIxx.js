@@ -1,1 +1,0 @@
-import{D as t}from"./index-ordjBq73.js";const s=()=>t.get("/dashboard/overview"),a=e=>t.get("/dashboard/activities",{params:e}),o=()=>t.get("/dashboard/statistics"),n=e=>t.get("/dashboard/todos",{params:e}),i=()=>t.get("/dashboard/crm-overview"),d=()=>t.get("/dashboard/crm-ranking"),g=()=>t.get("/dashboard/finance-overview");export{a,n as b,o as c,i as d,d as e,g as f,s as g};

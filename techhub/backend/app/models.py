@@ -139,12 +139,24 @@ class Role(db.Model):
     @staticmethod
     def init_roles():
         """初始化系统默认角色"""
+        # ================================================
+        # 【第三次迭代于然负责】角色体系重构
+        # (1) 新增角色：运营总监、副总经理、财务总监、技术总监
+        # (2) 角色名称修正：
+        #     - "Updated desc" → "总经理"
+        #     - "测试角色" → "项目组长"
+        #     - "数据查看员" → "数据分析员"
+        # (3) 角色排序（按level）：
+        #     总经理(1) → 副总经理(2) → 数据分析员(3) → 运营总监(3)
+        #     → 财务总监(3) → 技术总监(3) → 部门负责人(4) → 项目经理(5)
+        #     → 项目组长(6) → 普通成员(7)
+        # ================================================
         roles = [
             {'name': 'super_admin', 'description': '总经理', 'level': 1,
              'permissions': ['all']},
             {'name': 'deputy_general_manager', 'description': '副总经理', 'level': 2,
              'permissions': ['all']},
-            # 【第三次迭代陈思言负责】数据分析员增加审计日志查看权限
+            # 【第三次迭代于然负责】数据分析员增加审计日志查看权限
             {'name': 'data_analyst', 'description': '数据分析员', 'level': 3,
              'permissions': ['dashboard_view', 'data_export', 'audit_view']},
             {'name': 'operations_director', 'description': '运营总监', 'level': 3,
@@ -520,6 +532,15 @@ class Approval(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
+    # 【审批流程引擎】扩展字段
+    sub_type = db.Column(db.String(50))  # 子类型：请假类型(annual/sick/personal)、工单级别(normal/important/critical)等
+    leave_days = db.Column(db.Float)  # 请假天数
+    overtime_days = db.Column(db.Integer)  # 连续加班天数
+    ticket_level = db.Column(db.String(20))  # 工单级别
+    is_over_budget = db.Column(db.Boolean, default=False)  # 是否超出预算
+    is_standard_template = db.Column(db.Boolean, default=True)  # 是否标准模板
+    need_compensation = db.Column(db.Boolean, default=False)  # 是否需要赔偿
+    
     # 关联关系
     nodes = db.relationship('ApprovalNode', backref='approval', lazy='dynamic', 
                             foreign_keys='ApprovalNode.approval_id',
@@ -544,6 +565,13 @@ class Approval(db.Model):
             'processed_at': self.processed_at.isoformat() if self.processed_at else None,
             'process_comment': self.process_comment,
             'attachments': self.attachments,
+            'sub_type': self.sub_type,
+            'leave_days': self.leave_days,
+            'overtime_days': self.overtime_days,
+            'ticket_level': self.ticket_level,
+            'is_over_budget': self.is_over_budget,
+            'is_standard_template': self.is_standard_template,
+            'need_compensation': self.need_compensation,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
         if include_chain:
@@ -592,6 +620,13 @@ class ApprovalNode(db.Model):
     handled_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.now)
     
+    # 【审批流程引擎】扩展字段
+    node_type = db.Column(db.String(20), default='serial')  # serial(串行) / parallel(会签) / condition(条件) / auto(自动)
+    condition_expr = db.Column(db.String(200))  # 条件表达式，如 "amount>=500"
+    required_pass_count = db.Column(db.Integer, default=1)  # 会签中需要通过的人数
+    parallel_handlers = db.Column(db.JSON, default=list)  # 会签时的多个处理人ID列表 [{user_id, status, comment}]
+    is_auto = db.Column(db.Boolean, default=False)  # 是否自动节点
+    
     # 关联关系
     handler = db.relationship('User', foreign_keys=[handler_id])
     
@@ -604,7 +639,12 @@ class ApprovalNode(db.Model):
             'order': self.order,
             'comment': self.comment,
             'handled_at': self.handled_at.isoformat() if self.handled_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'node_type': self.node_type,
+            'condition_expr': self.condition_expr,
+            'required_pass_count': self.required_pass_count,
+            'parallel_handlers': self.parallel_handlers,
+            'is_auto': self.is_auto
         }
 
 class AuditLog(db.Model):

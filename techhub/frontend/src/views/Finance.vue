@@ -1,4 +1,10 @@
 <!-- 第三次迭代陈思言负责 -->
+<!--
+  【第三次迭代郝益墨负责】
+  (1) 财务看板页面（原独立页面，现内容整合到收付款页面下方）
+  (3) admin账号中，本月报销金额显示全部报销金额
+      本月报销类别分布显示全部报销情况
+-->
 <template>
   <div class="finance-page">
     <div class="page-header">
@@ -78,6 +84,7 @@
       </el-col>
     </el-row>
 
+    <!-- 【第三次迭代郝益墨负责】(1) 财务看板图表区域（admin可见） -->
     <!-- 图表区域 —— 2x2 等宽网格布局 -->
     <el-row :gutter="20" class="charts-row">
       <el-col :xs="24" :lg="12">
@@ -100,6 +107,7 @@
     </el-row>
 
     <el-row :gutter="20" class="charts-row">
+      <!-- 【第三次迭代郝益墨负责】(3) 报销类别分布（admin显示全部） -->
       <el-col :xs="24" :lg="12">
         <el-card class="dashboard-card">
           <template #header>

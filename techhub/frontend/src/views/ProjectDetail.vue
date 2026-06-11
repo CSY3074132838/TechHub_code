@@ -1,4 +1,10 @@
 <!-- 第三次迭代陈思言负责 -->
+<!--
+  【第三次迭代郝益墨负责】
+  (6) 编辑项目功能，增加项目负责人下拉框，可选择相应员工作为项目负责人
+  (7) 项目任务提交审批：全部项目成员都可以提交审批（不仅项目负责人）
+  (8) 新建项目中，增加项目负责人下拉框
+-->
 <template>
   <div class="project-detail-page">
     <!-- 项目头部信息 -->
@@ -281,6 +287,7 @@
             />
           </el-select>
         </el-form-item>
+        <!-- 【第三次迭代郝益墨负责】(6) 编辑项目时修改项目负责人 -->
         <el-form-item :label="$t('projects.projectLeader')">
           <el-select v-model="editForm.leader_id" :placeholder="$t('projects.selectLeader')" style="width: 100%;">
             <el-option
@@ -551,6 +558,7 @@ const isProjectLeader = computed(() => {
          userStore.hasPermission('project_manage')
 })
 
+// 【第三次迭代郝益墨负责】(7) 项目成员均可提交审核（不仅项目负责人）
 const canSubmitReview = computed(() => {
   if (!currentTask.value) return false
   // 项目成员均可提交审核

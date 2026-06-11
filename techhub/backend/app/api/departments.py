@@ -217,6 +217,10 @@ def get_department_stats():
 
 # ==================== 部门成员管理 ====================
 
+# ================================================
+# 【第三次迭代于然负责】(2)(6) 组织架构部门成员管理
+# 增加/删除/转移部门下的用户，与用户管理同步
+# ================================================
 @departments_bp.route('/<int:dept_id>/members', methods=['POST'])
 @jwt_required()
 def add_department_member(dept_id):
@@ -267,7 +271,8 @@ def add_department_member(dept_id):
 @departments_bp.route('/<int:dept_id>/members/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def remove_department_member(dept_id, user_id):
-    """从部门移除成员（基于身份系统：删除对应身份）"""
+    """【第三次迭代于然负责】(2)(6) 从部门移除成员（基于身份系统：删除对应身份）
+    与用户管理同步，移除后组织架构正确显示"""
     dept = Department.query.get_or_404(dept_id)
     user = User.query.get_or_404(user_id)
     
@@ -307,7 +312,8 @@ def remove_department_member(dept_id, user_id):
 @departments_bp.route('/<int:dept_id>/members/transfer', methods=['POST'])
 @jwt_required()
 def transfer_department_member(dept_id):
-    """转移部门成员到另一个部门（基于身份系统：转移身份）"""
+    """【第三次迭代于然负责】(2)(6) 转移部门成员到另一个部门（基于身份系统：转移身份）
+    与用户管理同步，转移后组织架构正确显示新部门"""
     data = request.get_json()
     user_id = data.get('user_id')
     target_dept_id = data.get('target_dept_id')

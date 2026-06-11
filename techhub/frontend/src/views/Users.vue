@@ -98,6 +98,10 @@
             </div>
           </template>
         </el-table-column>
+        <!-- ================================================
+             【第三次迭代于然负责】(5) 多身份展示
+             一个员工可在多个部门拥有不同职位和角色
+             ================================================ -->
         <!-- 多身份展示：部门 -->
         <el-table-column :label="$t('users.department')" width="140">
           <template #default="{ row }">
@@ -236,6 +240,10 @@
       </el-table>
     </el-card>
 
+    <!-- ================================================
+         【第三次迭代于然负责】(5) 用户详情抽屉
+         展示员工的多重身份信息（部门+职位+角色）
+         ================================================ -->
     <!-- 【第二次迭代】用户详情抽屉 -->
     <el-drawer v-model="showDetailDrawer" :title="$t('users.employeeProfile')" size="600px" :destroy-on-close="true">
       <div v-if="detailUser" class="user-detail">
@@ -318,6 +326,10 @@
             </el-form-item>
           </el-form>
           <!-- 身份管理（编辑时显示） -->
+          <!-- ================================================
+               【第三次迭代于然负责】(5) 编辑页面多重身份编辑
+               实现一个员工可拥有多个身份（不同部门+职位+角色）
+               ================================================ -->
           <div v-if="isEdit" class="identities-section" style="margin-top: 8px;">
             <div class="identity-section-title" style="font-weight: 600; font-size: 14px; color: #303133; margin-bottom: 12px; padding-left: 100px;">{{ $t('users.identities') }}</div>
             <div v-for="(identity, index) in identityList" :key="identity._key || identity.id" class="identity-card">
@@ -619,7 +631,11 @@ const fetchStats = async () => {
   }
 }
 
-// 角色自定义排序顺序：总经理 → 副总经理 → 数据分析员 → 运营总监 → 财务总监 → 技术总监 → 部门负责人 → 项目经理 → 项目组长 → 普通成员
+// ================================================
+// 【第三次迭代于然负责】(1) 角色下拉框排序
+// 按照：总经理 → 副总经理 → 数据分析员 → 运营总监 → 财务总监
+// → 技术总监 → 部门负责人 → 项目经理 → 项目组长 → 普通成员
+// ================================================
 const ROLE_SORT_ORDER = [
   'super_admin',
   'deputy_general_manager',

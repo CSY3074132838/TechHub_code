@@ -1,6 +1,12 @@
 """
 【第二次迭代】费用报销管理 API
 作者: 郝益墨
+
+【第三次迭代郝益墨负责】
+(2) 费用报销面板中的本月记录，筛选框增加按人名筛选
+(3) admin账号中，本月报销金额显示全部报销金额，本月报销类别分布显示全部报销情况
+(4) 报销记录界面，可点击查看每一个报销的详情内容
+(5) 新建报销中，加入上传附件功能（图片、文档）
 """
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -9,9 +15,10 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from app import db
-from app.models import Expense, User, Approval
+from app.models import Expense, User, Approval, Activity
 from app.decorators import require_permission
-from app.services import AuditService
+from app.services import AuditService, NotificationService
+from app.api.approvals import create_approval_chain
 
 expenses_bp = Blueprint('expenses', __name__)
 
@@ -42,12 +49,14 @@ def get_file_type(filename):
     return 'other'
 
 
-# 高管角色列表：可查看全部人员报销
+# 【第三次迭代郝益墨负责】(3) 高管角色列表：可查看全部人员报销
+# admin账号中，本月报销金额显示全部报销金额，本月报销类别分布显示全部报销情况
 FINANCE_ROLES = {'super_admin', 'deputy_general_manager', 'finance_director'}
 
 
 def _is_finance_manager(user):
-    """判断用户是否为财务高管（可查看全部报销）"""
+    """判断用户是否为财务高管（可查看全部报销）
+    【第三次迭代郝益墨负责】(3) admin账号显示全部报销统计"""
     return any(r.name in FINANCE_ROLES for r in user.roles)
 
 
@@ -90,8 +99,20 @@ def get_expenses():
         page=page, per_page=per_page, error_out=False
     )
     
+    # 【修复】同步检查：如果 expense 关联了 approval，但状态不一致，自动同步
+    expenses_data = []
+    for e in pagination.items:
+        if e.approval_id:
+            approval = Approval.query.get(e.approval_id)
+            if approval and approval.status != e.status:
+                # 审批中心状态与费用报销状态不一致，以审批中心为准
+                if approval.status in ('approved', 'rejected'):
+                    e.status = approval.status
+                    db.session.commit()
+        expenses_data.append(e.to_dict())
+    
     return jsonify({
-        'expenses': [e.to_dict() for e in pagination.items],
+        'expenses': expenses_data,
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page
@@ -119,19 +140,54 @@ def create_expense():
     )
     
     db.session.add(expense)
+    db.session.flush()
+    
+    # 【新增】同步创建审批中心审批单
+    applicant = User.query.get(current_user_id)
+    approval = Approval(
+        title=data['title'],
+        approval_type='expense',
+        description=data.get('description', ''),
+        amount=data['amount'],
+        applicant_id=current_user_id,
+        attachments=data.get('attachments', []),
+        is_over_budget=data.get('is_over_budget', False)
+    )
+    db.session.add(approval)
+    db.session.flush()
+    
+    # 关联审批单到报销记录
+    expense.approval_id = approval.id
+    
+    # 创建审批链
+    create_approval_chain(approval, 'expense', applicant, data)
+    
     db.session.commit()
+    
+    # 记录活动
+    activity = Activity(
+        activity_type='approval_submitted',
+        title=f'提交了报销审批 "{approval.title}"',
+        user_id=current_user_id
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    # 发送通知
+    NotificationService.notify_approval_submitted(approval)
     
     AuditService.log_from_current_user(
         action='EXPENSE_CREATE',
         resource_type='expense',
         resource_id=expense.id,
-        detail={'title': expense.title, 'amount': str(expense.amount)},
+        detail={'title': expense.title, 'amount': str(expense.amount), 'approval_id': approval.id},
         status='success'
     )
     
     return jsonify({
-        'message': '报销单已提交',
-        'expense': expense.to_dict()
+        'message': '报销单已提交，已同步到审批中心',
+        'expense': expense.to_dict(),
+        'approval': approval.to_dict(include_chain=True)
     }), 201
 
 
@@ -189,7 +245,8 @@ def update_expense(expense_id):
 @expenses_bp.route('/<int:expense_id>/approve', methods=['POST'])
 @jwt_required()
 def approve_expense(expense_id):
-    """审批通过报销单（管理员/财务权限）"""
+    """审批通过报销单（管理员/财务权限）
+    【新增】同步更新关联的审批中心审批单状态"""
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     
@@ -199,6 +256,15 @@ def approve_expense(expense_id):
     expense = Expense.query.get_or_404(expense_id)
     expense.status = 'approved'
     db.session.commit()
+    
+    # 【新增】同步更新审批中心审批单状态
+    if expense.approval_id:
+        approval = Approval.query.get(expense.approval_id)
+        if approval and approval.status == 'pending':
+            approval.status = 'approved'
+            approval.processor_id = current_user_id
+            approval.processed_at = datetime.now()
+            db.session.commit()
     
     AuditService.log_from_current_user(
         action='EXPENSE_APPROVE',
@@ -214,7 +280,8 @@ def approve_expense(expense_id):
 @expenses_bp.route('/<int:expense_id>/reject', methods=['POST'])
 @jwt_required()
 def reject_expense(expense_id):
-    """驳回报销单（管理员/财务权限）"""
+    """驳回报销单（管理员/财务权限）
+    【新增】同步更新关联的审批中心审批单状态"""
     current_user_id = get_jwt_identity()
     current_user = User.query.get(current_user_id)
     
@@ -224,6 +291,15 @@ def reject_expense(expense_id):
     expense = Expense.query.get_or_404(expense_id)
     expense.status = 'rejected'
     db.session.commit()
+    
+    # 【新增】同步更新审批中心审批单状态
+    if expense.approval_id:
+        approval = Approval.query.get(expense.approval_id)
+        if approval and approval.status == 'pending':
+            approval.status = 'rejected'
+            approval.processor_id = current_user_id
+            approval.processed_at = datetime.now()
+            db.session.commit()
     
     AuditService.log_from_current_user(
         action='EXPENSE_REJECT',
@@ -291,8 +367,9 @@ def delete_expense(expense_id):
 @expenses_bp.route('/stats', methods=['GET'])
 @jwt_required()
 def get_expense_stats():
-    """获取报销统计（按月份/类别聚合）
+    """【第三次迭代郝益墨负责】(3) 获取报销统计（按月份/类别聚合）
     高管角色查看全部人员统计，普通用户只看自己的
+    admin账号中，本月报销金额显示全部报销金额，本月报销类别分布显示全部报销情况
     """
     current_user_id = get_jwt_identity()
     user_id = request.args.get('user_id', type=int)
@@ -373,7 +450,7 @@ def get_expense_categories():
 @expenses_bp.route('/upload', methods=['POST'])
 @jwt_required()
 def upload_attachment():
-    """上传报销附件（图片/文档）"""
+    """【第三次迭代郝益墨负责】(5) 上传报销附件（图片/文档）"""
     current_user_id = get_jwt_identity()
     
     if 'file' not in request.files:

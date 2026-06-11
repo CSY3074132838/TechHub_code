@@ -63,6 +63,16 @@ const routes = [
         component: () => import('@/views/Approvals.vue'),
         meta: { title: '审批中心', icon: 'DocumentChecked' }
       },
+      // ================================================
+      // 【第三次迭代于然负责】(8) 审批流程展示页面路由
+      // 展示所有审批流程，供员工查看了解
+      // ================================================
+      {
+        path: '/approval-workflows',
+        name: 'ApprovalWorkflows',
+        component: () => import('@/views/WorkflowDefinitions.vue'),
+        meta: { title: '审批流程', icon: 'Document' }
+      },
       {
         path: '/analytics',
         name: 'Analytics',
@@ -113,7 +123,11 @@ const routes = [
         component: () => import('@/views/Attendance.vue'),
         meta: { title: '考勤工时', icon: 'Clock' }
       },
-      // 【第三次迭代陈思言负责】审计日志：高管或数据分析员可见
+      // ================================================
+      // 【第三次迭代于然负责】(4) 审计日志权限控制
+      // 拥有"数据分析员"角色的员工可访问审计日志页面
+      // 同时保持高管（总经理、副总经理）的访问权限
+      // ================================================
       {
         path: '/audit-logs',
         name: 'AuditLogs',
@@ -193,7 +207,10 @@ router.beforeEach(async (to, from, next) => {
 
   // 检查管理员权限
   if (to.meta.admin && !userStore.isAdmin) {
-    // 【第三次迭代陈思言负责】允许特定角色访问（如数据分析员可访问审计日志）
+    // ================================================
+    // 【第三次迭代于然负责】(4) 审计日志权限控制
+    // 允许特定角色访问（如数据分析员可访问审计日志）
+    // ================================================
     const allowedRoles = to.meta.allowRoles || []
     const userRoles = userStore.userInfo?.roles?.map(r => r.name) || []
     const hasAllowedRole = allowedRoles.some(role => userRoles.includes(role))

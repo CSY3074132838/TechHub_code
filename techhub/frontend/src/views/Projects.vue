@@ -1,4 +1,9 @@
 <!-- 第三次迭代陈思言负责 -->
+<!--
+  【第三次迭代郝益墨负责】
+  (6) 新建项目中，增加项目负责人下拉框，可选择相应员工作为项目负责人
+  (8) 项目管理中，编辑项目功能，增加项目负责人下拉框
+-->
 <template>
   <div class="projects-page">
     <div class="page-header">
@@ -128,6 +133,7 @@
             :placeholder="$t('projects.projectDescPlaceholder')"
           />
         </el-form-item>
+        <!-- 【第三次迭代郝益墨负责】(6)(8) 项目负责人下拉框 -->
         <el-form-item :label="$t('projects.projectLeader')">
           <el-select v-model="form.leader_id" :placeholder="$t('projects.selectLeader')" style="width: 100%;">
             <el-option

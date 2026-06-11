@@ -1,11 +1,20 @@
 <!-- 第三次迭代陈思言负责 -->
 <template>
   <div class="approvals-page">
+    <!-- ================================================
+         【第三次迭代于然负责】(8) 审批中心页面头部
+         增加"审批流程"按钮，跳转至流程展示页面
+         ================================================ -->
     <div class="page-header">
       <h2>{{ $t('approvals.pageTitle') }}</h2>
-      <el-button type="primary" @click="showCreateDialog = true">
-        <el-icon><Plus /></el-icon>{{ $t('approvals.newApproval') }}
-      </el-button>
+      <div class="header-actions">
+        <el-button type="info" plain @click="$router.push('/approval-workflows')">
+          <el-icon><Document /></el-icon>{{ $t('approvals.workflowDefinitions') }}
+        </el-button>
+        <el-button type="primary" @click="showCreateDialog = true">
+          <el-icon><Plus /></el-icon>{{ $t('approvals.newApproval') }}
+        </el-button>
+      </div>
     </div>
 
     <!-- 统计卡片 -->
@@ -66,37 +75,57 @@
       </template>
 
       <el-table :data="approvals" v-loading="loading" stripe>
-        <el-table-column :label="$t('approvals.title')" min-width="200">
+        <el-table-column :label="$t('approvals.title')" min-width="220">
           <template #default="{ row }">
             <div class="approval-title">
-              <el-tag v-if="row.is_urgent" type="danger" size="small">{{ $t('approvals.urgent') }}</el-tag>
+              <div class="type-icon" :class="`type-${row.approval_type}`">
+                <el-icon :size="14"><DocumentChecked /></el-icon>
+              </div>
+              <el-tag v-if="row.is_urgent" type="danger" size="small" effect="dark">{{ $t('approvals.urgent') }}</el-tag>
               <el-link type="primary" @click="viewDetail(row)">{{ row.title }}</el-link>
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('approvals.approvalType')" width="120">
+        <el-table-column :label="$t('approvals.approvalType')" width="110">
           <template #default="{ row }">
-            {{ getTypeLabel(row.approval_type) }}
+            <el-tag :type="getWorkflowTypeTag(row.approval_type)" size="small" effect="plain">
+              {{ getTypeLabel(row.approval_type) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column :label="$t('approvals.applicant')" width="120">
           <template #default="{ row }">
-            {{ row.applicant?.real_name }}
+            <div class="applicant-cell">
+              <el-avatar :size="24" :src="row.applicant?.avatar">{{ row.applicant?.real_name?.charAt(0) }}</el-avatar>
+              <span>{{ row.applicant?.real_name }}</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('approvals.amount')" width="120">
+        <el-table-column :label="$t('approvals.amount')" width="110">
           <template #default="{ row }">
-            {{ row.amount ? `¥${row.amount}` : '-' }}
+            <span class="amount-text">{{ row.amount ? `¥${row.amount}` : '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('common.status')" width="100">
           <template #default="{ row }">
-            <el-tag :type="getStatusType(row.status)">
+            <el-tag :type="getStatusType(row.status)" effect="dark" size="small">
               {{ getStatusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column :label="$t('approvals.submitTime')" width="160">
+        <el-table-column label="进度" width="120">
+          <template #default="{ row }">
+            <div class="progress-cell">
+              <el-progress
+                :percentage="getApprovalProgress(row)"
+                :status="row.status === 'approved' ? 'success' : row.status === 'rejected' ? 'exception' : ''"
+                :stroke-width="6"
+                :show-text="true"
+              />
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column :label="$t('approvals.submitTime')" width="150">
           <template #default="{ row }">
             {{ formatDate(row.created_at) }}
           </template>
@@ -130,10 +159,10 @@
     </el-card>
 
     <!-- 发起审批对话框 -->
-    <el-dialog v-model="showCreateDialog" :title="$t('approvals.processDialogTitle')" width="600px">
-      <el-form :model="form" label-width="100px" :rules="rules" ref="formRef">
+    <el-dialog v-model="showCreateDialog" :title="$t('approvals.newApproval')" width="600px">
+      <el-form :model="form" label-width="120px" :rules="rules" ref="formRef">
         <el-form-item :label="$t('approvals.approvalType')" prop="approval_type">
-          <el-select v-model="form.approval_type" :placeholder="$t('approvals.selectType')" style="width: 100%;">
+          <el-select v-model="form.approval_type" :placeholder="$t('approvals.selectType')" style="width: 100%;" @change="onTypeChange">
             <el-option
               v-for="type in approvalTypes"
               :key="type.value"
@@ -145,8 +174,42 @@
         <el-form-item :label="$t('approvals.approvalTitle')" prop="title">
           <el-input v-model="form.title" :placeholder="$t('approvals.approvalTitlePlaceholder')" />
         </el-form-item>
+        <!-- 子类型 -->
+        <el-form-item :label="$t('approvals.subType')" v-if="showSubType">
+          <el-select v-model="form.sub_type" :placeholder="$t('approvals.selectSubType')" style="width: 100%;">
+            <el-option v-for="opt in subTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          </el-select>
+        </el-form-item>
+        <!-- 工单级别 -->
+        <el-form-item :label="$t('approvals.ticketLevel')" v-if="form.approval_type === 'ticket'">
+          <el-select v-model="form.ticket_level" :placeholder="$t('approvals.selectTicketLevel')" style="width: 100%;">
+            <el-option :label="$t('approvals.ticketNormal')" value="normal" />
+            <el-option :label="$t('approvals.ticketImportant')" value="important" />
+            <el-option :label="$t('approvals.ticketCritical')" value="critical" />
+          </el-select>
+        </el-form-item>
         <el-form-item :label="$t('approvals.amount')" v-if="showAmount">
           <el-input-number v-model="form.amount" :min="0" :precision="2" style="width: 100%;" />
+        </el-form-item>
+        <!-- 请假天数 -->
+        <el-form-item :label="$t('approvals.leaveDays')" v-if="form.approval_type === 'leave'">
+          <el-input-number v-model="form.leave_days" :min="0.5" :precision="1" :step="0.5" style="width: 100%;" />
+        </el-form-item>
+        <!-- 加班天数 -->
+        <el-form-item :label="$t('approvals.overtimeDays')" v-if="form.approval_type === 'overtime'">
+          <el-input-number v-model="form.overtime_days" :min="1" :precision="0" style="width: 100%;" />
+        </el-form-item>
+        <!-- 是否标准模板 -->
+        <el-form-item :label="$t('approvals.isStandardTemplate')" v-if="form.approval_type === 'contract'">
+          <el-switch v-model="form.is_standard_template" :active-text="$t('approvals.yes')" :inactive-text="$t('approvals.no')" />
+        </el-form-item>
+        <!-- 是否超出预算 -->
+        <el-form-item :label="$t('approvals.isOverBudget')" v-if="form.approval_type === 'expense'">
+          <el-switch v-model="form.is_over_budget" :active-text="$t('approvals.yes')" :inactive-text="$t('approvals.no')" />
+        </el-form-item>
+        <!-- 是否需要赔偿 -->
+        <el-form-item :label="$t('approvals.needCompensation')" v-if="form.approval_type === 'ticket'">
+          <el-switch v-model="form.need_compensation" :active-text="$t('approvals.yes')" :inactive-text="$t('approvals.no')" />
         </el-form-item>
         <el-form-item :label="$t('approvals.urgency')">
           <el-switch v-model="form.is_urgent" :active-text="$t('approvals.urgent')" :inactive-text="$t('approvals.normal')" />
@@ -195,8 +258,12 @@
       </template>
     </el-dialog>
 
+    <!-- ================================================
+         【第三次迭代于然负责】(3) 审批详情对话框
+         点击审批标题可查看详情和审批流程
+         ================================================ -->
     <!-- 审批详情对话框（含审批链可视化） -->
-    <el-dialog v-model="showDetailDialog" :title="$t('approvals.detailDialogTitle')" width="700px">
+    <el-dialog v-model="showDetailDialog" :title="$t('approvals.detailDialogTitle')" width="760px">
       <div v-if="detailApproval" class="approval-detail">
         <el-descriptions :column="2" border>
           <el-descriptions-item :label="$t('approvals.approvalTitle')">{{ detailApproval.title }}</el-descriptions-item>
@@ -215,26 +282,67 @@
           <el-descriptions-item :label="$t('approvals.approvalDesc')" :span="2">{{ detailApproval.description || $t('common.none') }}</el-descriptions-item>
         </el-descriptions>
 
+        <!-- 【审批流程引擎】美化审批链展示 -->
         <div class="approval-chain-section">
           <h4>{{ $t('approvals.approvalFlow') }}</h4>
-          <el-steps :active="getActiveStep(detailApproval)" finish-status="success" direction="vertical">
-            <el-step
+          <div class="flow-timeline">
+            <div
               v-for="(node, index) in detailApproval.approval_chain"
               :key="node.id"
-              :title="node.node_name"
-              :status="getNodeStatus(node, index, detailApproval)"
+              class="flow-node"
+              :class="[
+                'node-' + getNodeStatus(node, index, detailApproval),
+                { 'is-condition': node.node_type === 'condition' || node.condition_expr },
+                { 'is-parallel': node.node_type === 'parallel' },
+                { 'is-auto': node.is_auto || node.node_type === 'auto' },
+                { 'is-current': node.id === detailApproval.current_node }
+              ]"
             >
-              <template #description>
-                <div class="step-desc">
-                  <span v-if="node.handler">{{ $t('approvals.handler') }}：{{ node.handler.real_name }}</span>
-                  <span v-if="node.status === 'completed'" class="text-success">{{ $t('approvals.approved') }}</span>
-                  <span v-if="node.status === 'rejected'" class="text-danger">{{ $t('approvals.rejected') }}</span>
-                  <span v-if="node.status === 'pending'" class="text-warning">{{ $t('approvals.pending') }}</span>
-                  <span v-if="node.comment" class="comment">{{ $t('approvals.flowRemark') }}：{{ node.comment }}</span>
+              <div class="node-marker">
+                <div class="node-icon">
+                  <el-icon v-if="node.status === 'completed'" size="16"><Check /></el-icon>
+                  <el-icon v-else-if="node.status === 'rejected'" size="16"><Close /></el-icon>
+                  <el-icon v-else-if="node.status === 'skipped'" size="16"><Remove /></el-icon>
+                  <span v-else class="node-number">{{ index + 1 }}</span>
                 </div>
-              </template>
-            </el-step>
-          </el-steps>
+                <div v-if="index < detailApproval.approval_chain.length - 1" class="node-line"></div>
+              </div>
+              <div class="node-content">
+                <div class="node-header">
+                  <span class="node-title">{{ node.node_name }}</span>
+                  <el-tag v-if="node.node_type === 'condition' || node.condition_expr" size="small" type="warning" effect="plain">{{ $t('approvals.conditionNode') }}</el-tag>
+                  <el-tag v-else-if="node.node_type === 'parallel'" size="small" type="primary" effect="plain">{{ $t('approvals.parallelNode') }}</el-tag>
+                  <el-tag v-else-if="node.is_auto || node.node_type === 'auto'" size="small" type="info" effect="plain">{{ $t('approvals.autoNode') }}</el-tag>
+                  <el-tag
+                    :type="node.status === 'completed' ? 'success' : node.status === 'rejected' ? 'danger' : node.status === 'skipped' ? 'info' : node.id === detailApproval.current_node ? 'warning' : ''"
+                    size="small"
+                    effect="dark"
+                  >
+                    {{ getNodeStatusLabel(node) }}
+                  </el-tag>
+                </div>
+                <div class="node-body">
+                  <div v-if="node.handler" class="node-handler">
+                    <el-avatar :size="24" :src="node.handler.avatar">{{ node.handler.real_name?.charAt(0) }}</el-avatar>
+                    <span>{{ node.handler.real_name }}</span>
+                  </div>
+                  <!-- 会签处理人 -->
+                  <div v-else-if="node.parallel_handlers && node.parallel_handlers.length > 0" class="node-parallel-handlers">
+                    <div v-for="ph in node.parallel_handlers" :key="ph.user_id" class="parallel-handler">
+                      <el-tag :type="ph.status === 'completed' ? 'success' : ph.status === 'rejected' ? 'danger' : 'info'" size="small">
+                        {{ ph.real_name || $t('approvals.pending') }}
+                      </el-tag>
+                    </div>
+                  </div>
+                  <div v-if="node.handled_at" class="node-time">{{ formatDateTime(node.handled_at) }}</div>
+                  <div v-if="node.comment" class="node-comment">
+                    <el-icon><ChatDotRound /></el-icon>
+                    <span>{{ node.comment }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </el-dialog>
@@ -249,6 +357,7 @@ import dayjs from 'dayjs'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { getApprovals, createApproval, processApproval, getApprovalStats, getApprovalTypes, getApprovalChain, getApproval } from '@/api/approvals'
+import { Document } from '@element-plus/icons-vue'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -284,7 +393,14 @@ const form = ref({
   title: '',
   amount: 0,
   is_urgent: false,
-  description: ''
+  description: '',
+  sub_type: '',
+  leave_days: 1,
+  overtime_days: 1,
+  ticket_level: 'normal',
+  is_standard_template: true,
+  is_over_budget: false,
+  need_compensation: false
 })
 
 const processForm = ref({
@@ -298,8 +414,44 @@ const rules = {
 }
 
 const showAmount = computed(() => {
-  return ['expense', 'purchase'].includes(form.value.approval_type)
+  return ['expense', 'purchase', 'contract'].includes(form.value.approval_type)
 })
+
+const showSubType = computed(() => {
+  return ['leave', 'permission', 'overtime'].includes(form.value.approval_type)
+})
+
+const subTypeOptions = computed(() => {
+  const map = {
+    leave: [
+      { value: 'annual', label: t('approvals.annualLeave') },
+      { value: 'sick', label: t('approvals.sickLeave') },
+      { value: 'personal', label: t('approvals.personalLeave') },
+      { value: 'other', label: t('approvals.otherLeave') }
+    ],
+    permission: [
+      { value: 'read_only', label: t('approvals.readOnly') },
+      { value: 'read_write', label: t('approvals.readWrite') },
+      { value: 'deploy', label: t('approvals.deploy') },
+      { value: 'sensitive', label: t('approvals.sensitiveData') }
+    ],
+    overtime: [
+      { value: 'compensatory', label: t('approvals.compensatory') },
+      { value: 'paid', label: t('approvals.paidOvertime') }
+    ]
+  }
+  return map[form.value.approval_type] || []
+})
+
+const onTypeChange = () => {
+  form.value.sub_type = ''
+  form.value.ticket_level = 'normal'
+  form.value.leave_days = 1
+  form.value.overtime_days = 1
+  form.value.is_standard_template = true
+  form.value.is_over_budget = false
+  form.value.need_compensation = false
+}
 
 const fetchApprovals = async () => {
   loading.value = true
@@ -392,7 +544,14 @@ const handleCreate = async () => {
       title: '',
       amount: 0,
       is_urgent: false,
-      description: ''
+      description: '',
+      sub_type: '',
+      leave_days: 1,
+      overtime_days: 1,
+      ticket_level: 'normal',
+      is_standard_template: true,
+      is_over_budget: false,
+      need_compensation: false
     }
   } catch (error) {
     console.error(t('approvals.submitFailed'), error)
@@ -413,7 +572,14 @@ const canProcess = (approval) => {
   // 是当前节点指定处理人的可以处理
   if (approval.approval_chain && approval.current_node) {
     const currentNode = approval.approval_chain.find(n => n.id === approval.current_node)
-    if (currentNode && currentNode.handler_id === userStore.userInfo?.id) return true
+    if (currentNode) {
+      if (currentNode.handler_id === userStore.userInfo?.id) return true
+      // 会签节点检查
+      if (currentNode.parallel_handlers && currentNode.parallel_handlers.length > 0) {
+        const myPh = currentNode.parallel_handlers.find(ph => ph.user_id === userStore.userInfo?.id && ph.status === 'pending')
+        if (myPh) return true
+      }
+    }
   }
   return false
 }
@@ -458,6 +624,34 @@ const getActiveStep = (approval) => {
   return completed
 }
 
+const getApprovalProgress = (approval) => {
+  if (!approval.approval_chain || approval.approval_chain.length === 0) return 0
+  if (approval.status === 'approved') return 100
+  if (approval.status === 'rejected') return 0
+  
+  // 过滤掉条件节点，只计算实际审批节点
+  const validNodes = approval.approval_chain.filter(n => n.node_type !== 'condition')
+  const total = validNodes.length
+  // completed 包括 completed 和 skipped（条件判断跳过的也算完成）
+  const completed = validNodes.filter(n => n.status === 'completed' || n.status === 'skipped').length
+  
+  return total > 0 ? Math.round((completed / total) * 100) : 0
+}
+
+const getWorkflowTypeTag = (type) => {
+  const map = {
+    purchase: 'warning',
+    expense: 'success',
+    leave: 'primary',
+    overtime: 'danger',
+    permission: 'info',
+    contract: 'warning',
+    ticket: 'primary',
+    other: 'info'
+  }
+  return map[type] || ''
+}
+
 const getNodeStatus = (node, index, approval) => {
   if (node.status === 'completed') return 'success'
   if (node.status === 'rejected') return 'error'
@@ -480,9 +674,27 @@ const getTypeLabel = (type) => {
     'expense': t('approvals.expense'),
     'purchase': t('approvals.purchase'),
     'overtime': t('approvals.overtime'),
+    'permission': t('approvals.permission'),
+    'contract': t('approvals.contract'),
+    'ticket': t('approvals.ticket'),
     'other': t('approvals.other')
   }
   return typeMap[type] || type
+}
+
+const getNodeStatusLabel = (node) => {
+  const map = {
+    'completed': t('approvals.approved'),
+    'rejected': t('approvals.rejected'),
+    'skipped': t('approvals.skipped'),
+    'pending': node.id === detailApproval.value?.current_node ? t('approvals.processing') : t('approvals.pending')
+  }
+  return map[node.status] || t('approvals.pending')
+}
+
+const formatDateTime = (date) => {
+  if (!date) return ''
+  return dayjs(date).format('YYYY-MM-DD HH:mm')
 }
 
 const getStatusType = (status) => {
@@ -514,6 +726,24 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .approvals-page {
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h2 {
+      margin: 0;
+      font-size: 22px;
+      color: #303133;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+
   .stats-row {
     margin-bottom: 20px;
     
@@ -583,6 +813,41 @@ onMounted(() => {
       display: flex;
       align-items: center;
       gap: 8px;
+
+      .type-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ecf5ff;
+        color: #409eff;
+
+        &.type-purchase { background: #fdf6ec; color: #e6a23c; }
+        &.type-expense { background: #f0f9eb; color: #67c23a; }
+        &.type-leave { background: #ecf5ff; color: #409eff; }
+        &.type-overtime { background: #fef0f0; color: #f56c6c; }
+        &.type-permission { background: #f4f4f5; color: #909399; }
+        &.type-contract { background: #fdf6ec; color: #e6a23c; }
+        &.type-ticket { background: #ecf5ff; color: #409eff; }
+        &.type-other { background: #f4f4f5; color: #909399; }
+      }
+    }
+
+    .applicant-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .amount-text {
+      font-weight: 500;
+      color: #f56c6c;
+    }
+
+    .progress-cell {
+      width: 100px;
     }
     
     .pagination {
@@ -600,6 +865,199 @@ onMounted(() => {
     p {
       margin: 8px 0;
     }
+  }
+
+  // 【审批流程引擎】美化审批链展示
+  .approval-chain-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #e4e7ed;
+
+    h4 {
+      margin: 0 0 16px;
+      font-size: 16px;
+      color: #303133;
+    }
+
+    .flow-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .flow-node {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      position: relative;
+
+      .node-marker {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 32px;
+        flex-shrink: 0;
+
+        .node-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f5f7fa;
+          border: 2px solid #dcdfe6;
+          color: #909399;
+          font-size: 14px;
+          font-weight: 600;
+          z-index: 1;
+        }
+
+        .node-line {
+          width: 2px;
+          flex: 1;
+          min-height: 24px;
+          background: #e4e7ed;
+          margin-top: 4px;
+        }
+      }
+
+      .node-content {
+        flex: 1;
+        padding-bottom: 8px;
+
+        .node-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+          flex-wrap: wrap;
+
+          .node-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #303133;
+          }
+        }
+
+        .node-body {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+
+          .node-handler {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #606266;
+            font-size: 13px;
+          }
+
+          .node-parallel-handlers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+          }
+
+          .node-time {
+            font-size: 12px;
+            color: #909399;
+          }
+
+          .node-comment {
+            display: flex;
+            align-items: flex-start;
+            gap: 4px;
+            font-size: 13px;
+            color: #606266;
+            background: #f5f7fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 4px;
+
+            .el-icon {
+              margin-top: 2px;
+              flex-shrink: 0;
+            }
+          }
+        }
+      }
+
+      // 状态样式
+      &.node-success {
+        .node-icon {
+          background: #f0f9eb;
+          border-color: #67c23a;
+          color: #67c23a;
+        }
+      }
+
+      &.node-error {
+        .node-icon {
+          background: #fef0f0;
+          border-color: #f56c6c;
+          color: #f56c6c;
+        }
+      }
+
+      &.node-process {
+        .node-icon {
+          background: #ecf5ff;
+          border-color: #409eff;
+          color: #409eff;
+          animation: pulse 2s infinite;
+        }
+      }
+
+      &.node-wait {
+        .node-icon {
+          background: #f5f7fa;
+          border-color: #dcdfe6;
+          color: #c0c4cc;
+        }
+      }
+
+      &.is-condition {
+        .node-title {
+          color: #e6a23c;
+        }
+      }
+
+      &.is-parallel {
+        .node-title {
+          color: #409eff;
+        }
+      }
+
+      &.is-auto {
+        .node-title {
+          color: #909399;
+          font-style: italic;
+        }
+      }
+
+      &.is-current {
+        background: #f5f7fa;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 0 -12px;
+      }
+
+      &:last-child {
+        .node-line {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(64, 158, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(64, 158, 255, 0);
   }
 }
 </style>

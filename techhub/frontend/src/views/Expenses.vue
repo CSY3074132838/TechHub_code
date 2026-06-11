@@ -1,5 +1,12 @@
 <template>
   <!-- 第三次迭代陈思言负责 -->
+  <!--
+    【第三次迭代郝益墨负责】
+    (2) 费用报销面板中的本月记录，筛选框增加按人名筛选
+    (3) admin账号中，本月报销金额显示全部报销金额，本月报销类别分布显示全部报销情况
+    (4) 报销记录界面，可点击查看每一个报销的详情内容
+    (5) 新建报销中，加入上传附件功能（图片、文档）
+  -->
   <div class="expenses-page">
     <div class="page-header">
       <h2>{{ $t('expenses.pageTitle') }}</h2>
@@ -63,6 +70,7 @@
             <el-select v-model="filterCategory" :placeholder="$t('expenses.category')" clearable size="small" style="width: 120px; margin-right: 8px;">
               <el-option v-for="c in categories" :key="c.value" :label="categoryLabel(c.value)" :value="c.value" />
             </el-select>
+            <!-- 【第三次迭代郝益墨负责】(2) 按人名筛选报销记录 -->
             <el-input
               v-model="filterUserName"
               :placeholder="$t('expenses.filterByPerson')"
@@ -148,6 +156,7 @@
       </el-row>
     </el-card>
 
+    <!-- 【第三次迭代郝益墨负责】(4) 报销详情抽屉 -->
     <!-- 报销详情抽屉 -->
     <el-drawer v-model="showDetailDrawer" :title="$t('expenses.expenseDetail')" size="500px" :destroy-on-close="true">
       <div v-if="detailExpense" class="expense-detail">
@@ -220,6 +229,7 @@
         <el-form-item :label="$t('expenses.expenseDesc')">
           <el-input v-model="form.description" type="textarea" :rows="3" :placeholder="$t('expenses.expenseDescPlaceholder')" />
         </el-form-item>
+        <!-- 【第三次迭代郝益墨负责】(5) 上传附件功能（图片、文档） -->
         <el-form-item :label="$t('expenses.attachmentUpload')">
           <el-upload
             action="#"
@@ -256,6 +266,36 @@
         <el-button type="primary" @click="saveExpense" :loading="saving">{{ $t('common.save') }}</el-button>
       </template>
     </el-dialog>
+
+    <!-- 【新增】打款支付方式选择弹窗 -->
+    <el-dialog
+      v-model="showPaymentDialog"
+      title="选择支付方式"
+      width="420px"
+      :close-on-click-modal="false"
+      align-center
+    >
+      <div class="payment-options">
+        <div class="payment-option wechat" @click="handlePaymentSelect('wechat')">
+          <img src="@/assets/payment/wechat-pay.png" alt="微信支付" class="payment-logo" />
+          <span class="payment-name">微信支付</span>
+          <el-icon class="payment-arrow"><ArrowRight /></el-icon>
+        </div>
+        <div class="payment-option paypal" @click="handlePaymentSelect('paypal')">
+          <img src="@/assets/payment/paypal.png" alt="PayPal" class="payment-logo" />
+          <span class="payment-name">PayPal</span>
+          <el-icon class="payment-arrow"><ArrowRight /></el-icon>
+        </div>
+        <div class="payment-option alipay" @click="handlePaymentSelect('alipay')">
+          <img src="@/assets/payment/alipay.png" alt="支付宝" class="payment-logo" />
+          <span class="payment-name">支付宝</span>
+          <el-icon class="payment-arrow"><ArrowRight /></el-icon>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showPaymentDialog = false">取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -264,7 +304,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Upload, Picture, Document, Delete, Plus } from '@element-plus/icons-vue'
+import { Upload, Picture, Document, Delete, Plus, ArrowRight } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import {
   getExpenses, createExpense, updateExpense, deleteExpense,
@@ -285,7 +325,9 @@ const pageSize = ref(10)
 const total = ref(0)
 const filterStatus = ref('')
 const filterCategory = ref('')
+// 【第三次迭代郝益墨负责】(2) 按人名筛选报销记录
 const filterUserName = ref('')  // 按人名筛选
+// 【第三次迭代郝益墨负责】(3) admin账号中显示全部报销金额和类别分布
 const allUsers = ref([])  // 高管模式下全部用户列表
 
 const showCreateDialog = ref(false)
@@ -304,6 +346,10 @@ const form = ref({
 // 详情抽屉
 const showDetailDrawer = ref(false)
 const detailExpense = ref(null)
+
+// 【新增】支付选择弹窗
+const showPaymentDialog = ref(false)
+const currentReimburseRow = ref(null)
 
 const filteredExpenses = computed(() => {
   let result = expenses.value
@@ -473,18 +519,42 @@ const handleReject = async (row) => {
   }
 }
 
-const handleReimburse = async (row) => {
+const handleReimburse = (row) => {
+  // 【新增】打开支付方式选择弹窗
+  currentReimburseRow.value = row
+  showPaymentDialog.value = true
+}
+
+const handlePaymentSelect = async (paymentType) => {
+  // 跳转到对应支付官网
+  const paymentUrls = {
+    wechat: 'https://pay.weixin.qq.com/',
+    paypal: 'https://www.paypal.com/',
+    alipay: 'https://www.alipay.com/'
+  }
+  
+  if (paymentUrls[paymentType]) {
+    window.open(paymentUrls[paymentType], '_blank')
+  }
+  
+  // 关闭弹窗并标记已打款
+  showPaymentDialog.value = false
+  
+  if (!currentReimburseRow.value) return
+  
   try {
-    await reimburseExpense(row.id)
+    await reimburseExpense(currentReimburseRow.value.id)
     ElMessage.success(t('expenses.paidMarked'))
     fetchExpenses()
     fetchStats()
   } catch (error) {
     ElMessage.error(error.response?.data?.message || t('common.operationFailed'))
+  } finally {
+    currentReimburseRow.value = null
   }
 }
 
-// 查看报销详情
+// 【第三次迭代郝益墨负责】(4) 查看报销详情
 const handleViewDetail = (row) => {
   detailExpense.value = row
   showDetailDrawer.value = true
@@ -502,7 +572,7 @@ const resetForm = () => {
   form.value = { title: '', amount: 0, category: 'other', description: '', attachments: [] }
 }
 
-// 上传附件
+// 【第三次迭代郝益墨负责】(5) 上传附件
 const handleUpload = async (file) => {
   uploading.value = true
   try {
@@ -518,12 +588,12 @@ const handleUpload = async (file) => {
   }
 }
 
-// 删除附件
+// 【第三次迭代郝益墨负责】(5) 删除附件
 const removeAttachment = (index) => {
   form.value.attachments.splice(index, 1)
 }
 
-// 上传前校验
+// 【第三次迭代郝益墨负责】(5) 上传前校验
 const beforeUpload = (file) => {
   const allowedTypes = [
     'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/bmp', 'image/webp',
@@ -680,6 +750,68 @@ onMounted(() => {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+    }
+  }
+
+  // 【新增】支付方式选择弹窗样式
+  .payment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 10px 0;
+  }
+
+  .payment-option {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 2px solid #e4e7ed;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #fff;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    &.wechat {
+      border-color: #07c160;
+      background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+      &:hover { box-shadow: 0 4px 16px rgba(7, 193, 96, 0.2); }
+    }
+
+    &.paypal {
+      border-color: #003087;
+      background: linear-gradient(135deg, #f0f5ff 0%, #ffffff 100%);
+      &:hover { box-shadow: 0 4px 16px rgba(0, 48, 135, 0.2); }
+    }
+
+    &.alipay {
+      border-color: #1677ff;
+      background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+      &:hover { box-shadow: 0 4px 16px rgba(22, 119, 255, 0.2); }
+    }
+
+    .payment-logo {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+      margin-right: 16px;
+      border-radius: 8px;
+    }
+
+    .payment-name {
+      flex: 1;
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
+    }
+
+    .payment-arrow {
+      font-size: 18px;
+      color: #909399;
     }
   }
 }

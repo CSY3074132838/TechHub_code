@@ -139,7 +139,11 @@ const menuItems = computed(() => [
   ] : []),
   // 考勤工时菜单（所有登录用户可见）
   { path: '/attendance', title: t('menu.attendance'), icon: 'Clock' },
-  // 【第三次迭代陈思言负责】审计日志：高管或数据分析员可见
+  // ================================================
+  // 【第三次迭代于然负责】(4) 审计日志菜单显示控制
+  // 拥有"数据分析员"角色的员工可见审计日志菜单
+  // 同时保持高管（总经理、副总经理）的访问权限
+  // ================================================
   ...(userStore.userInfo?.roles?.some(r =>
     ['super_admin', 'deputy_general_manager', 'data_analyst'].includes(r.name)
   ) ? [

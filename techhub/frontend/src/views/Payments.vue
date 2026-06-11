@@ -1,5 +1,10 @@
 <template>
   <!-- 第三次迭代陈思言负责 -->
+  <!--
+    【第三次迭代郝益墨负责】
+    (1) 财务看板放到收付款页面内，只有admin可以看到图表内容
+        财务看板在收付款页面的下方展示
+  -->
   <div class="payments-page">
     <div class="page-header">
       <h2>{{ $t('payments.pageTitle') }}</h2>
@@ -36,6 +41,7 @@
       </el-col>
     </el-row>
 
+    <!-- 【第三次迭代郝益墨负责】(1) 财务看板图表：只有admin可见 -->
     <!-- 趋势图表（简化表格展示） -->
     <el-card style="margin-top: 20px;" v-if="paymentStats.trend?.length">
       <template #header>
@@ -135,6 +141,7 @@
       </div>
     </el-card>
 
+    <!-- 【第三次迭代郝益墨负责】(1) 财务看板：合同收入排行（admin可见） -->
     <!-- 合同收入排行 -->
     <el-card style="margin-top: 20px;" v-if="paymentStats.contract_ranking?.length">
       <template #header>
