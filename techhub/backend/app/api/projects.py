@@ -1,5 +1,15 @@
 """
 项目管理 API
+
+【第三次迭代程思同负责】
+(1) 增加AI小助手功能，接入DeepSeek大模型，支持AI创建任务、大数据分析
+(2) AI帮助员工进行大数据筛选，判断最优客户，分析各种大数据
+(4) 增加项目搜索功能：支持按项目名字、项目成员、关联客户、项目负责人搜索 √
+(5) 修复项目删除：改为软删除（status='deleted'），删除后不再显示在列表中 √
+(6) 修复项目负责人权限同步：编辑项目时更新leader_id，同时确保新负责人加入成员列表 √
+(7) 编辑项目功能增加项目负责人下拉框，可选择员工作为负责人 √
+(8) 项目任务提交审批权限：全部项目成员都可提交审批（原仅负责人） √
+(9) 新增项目增加项目负责人下拉框，可选择员工作为负责人 √
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -32,6 +42,9 @@ def get_projects():
     status = request.args.get('status')
     search = request.args.get('search')
     
+    # 【第三次迭代程思同负责】(4) 项目搜索功能
+    # 支持按项目名称、成员名、关联客户名、项目负责人名搜索
+    
     # 根据数据范围构建基础查询
     scope = PermissionService.get_user_data_scope(current_user_id)
     user = User.query.get(current_user_id)
@@ -60,7 +73,7 @@ def get_projects():
         query = query.filter_by(status=status)
     
     if search:
-        # 支持按项目名称、成员名、客户名、负责人名搜索
+        # 【第三次迭代程思同负责】(4) 多维度搜索：项目名称/成员/客户/负责人
         search_filter = db.or_(
             Project.name.contains(search),
             Project.members.any(User.real_name.contains(search)),
@@ -92,7 +105,7 @@ def create_project():
     if not data or not data.get('name'):
         return jsonify({'message': '项目名称不能为空', 'error': 'missing_name'}), 400
     
-    # 确定项目负责人：如果前端传了leader_id就用，否则用创建者
+    # 【第三次迭代程思同负责】(6) 项目负责人选择：前端传入leader_id则使用，否则默认创建者
     leader_id = data.get('leader_id', current_user_id)
     
     project = Project(
@@ -116,7 +129,7 @@ def create_project():
     if creator not in project.members:
         project.members.append(creator)
     
-    # 项目负责人如果不是创建者，也自动加入成员
+    # 【第三次迭代程思同负责】(6) 项目负责人自动加入成员列表，确保权限同步
     leader = User.query.get(leader_id)
     if leader and leader not in project.members:
         project.members.append(leader)
@@ -182,7 +195,8 @@ def update_project(project_id):
     data = request.get_json()
     before_data = {'name': project.name, 'status': project.status, 'description': project.description}
     
-    # 更新字段
+    # 【第三次迭代程思同负责】(6) 编辑项目时支持修改项目负责人
+    # 更新字段：包括leader_id，修改后新负责人自动获得权限
     allowed_fields = ['name', 'description', 'color', 'status', 'client_id', 'leader_id']
     for field in allowed_fields:
         if field in data:
@@ -194,10 +208,14 @@ def update_project(project_id):
     if 'end_date' in data:
         project.end_date = parse_date(data['end_date'])
     
-    # 更新成员
+    # 【第三次迭代程思同负责】(6) 更新成员列表，确保新负责人被包含在成员中
     if 'member_ids' in data:
         members = User.query.filter(User.id.in_(data['member_ids'])).all()
         project.members = members
+        # 确保项目负责人始终在成员列表中
+        leader = User.query.get(project.leader_id)
+        if leader and leader not in project.members:
+            project.members.append(leader)
     
     db.session.commit()
     
@@ -226,6 +244,7 @@ def delete_project(project_id):
         if not PermissionService.check_permission(current_user_id, 'project_manage'):
             return jsonify({'message': '权限不足', 'error': 'forbidden'}), 403
     
+    # 【第三次迭代程思同负责】(5) 项目软删除：将状态设为deleted，不再显示在列表中
     project.status = 'deleted'
     db.session.commit()
     

@@ -1,5 +1,8 @@
 """
 任务管理 API
+
+【第三次迭代程思同/郝益墨负责】
+(8) 任务提交审批权限放开：全部项目成员都可提交任务审批（原仅项目负责人）
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity

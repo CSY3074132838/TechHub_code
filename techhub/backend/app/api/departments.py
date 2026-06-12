@@ -1,6 +1,13 @@
 """
 【第二次迭代】部门管理 API - 组织架构管理
-作者: 于然
+
+【第三次迭代于然负责】
+(2) 组织架构部门成员管理：
+    - 增加/删除/转移部门下的用户
+    - 基于身份系统（UserIdentity）实现部门同步
+(6) 用户管理与组织架构同步：
+    - 用户管理页面编辑员工部门后，组织架构自动同步
+    - 部门成员正确显示，已转移的用户从原部门移除
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity

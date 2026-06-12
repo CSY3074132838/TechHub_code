@@ -1,4 +1,9 @@
-<!-- 第三次迭代陈思言负责 -->
+<!-- 【第三次迭代陈思言负责】 -->
+<!--
+  (3) 审计日志详情页面优化：补充丰富内容，更直观展示详细信息 √
+  (4) 统计卡片改为可交互按钮，点击后自动填充筛选条件 √
+  (5) 数据分析员可查看审计日志页面（与于然(4)协同）
+-->
 <template>
   <div class="audit-logs-page">
     <div class="page-header">
@@ -8,8 +13,7 @@
       </el-button>
     </div>
 
-    <!-- 统计卡片 -->
-    <!-- 【第三次迭代陈思言负责】统计卡片可点击，点击后自动填充筛选条件 -->
+    <!-- 统计卡片 - 可交互按钮 -->
     <el-row :gutter="20" class="stats-row">
       <el-col :xs="12" :sm="6">
         <div class="stat-card clickable" :class="{ active: isTodayActive }" @click="filterToday">

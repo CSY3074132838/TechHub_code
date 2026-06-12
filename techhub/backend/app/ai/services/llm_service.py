@@ -1,6 +1,11 @@
 """
 DeepSeek LLM 服务封装
-支持 function calling 和流式响应
+
+【第三次迭代程思同负责】
+(1) 接入 AI 大模型 DeepSeek：
+    - 支持 deepseek-chat（V3 通用对话）和 deepseek-reasoner（R1 推理模型）
+    - 支持 function calling（工具调用）
+    - 支持流式响应
 """
 import os
 import json

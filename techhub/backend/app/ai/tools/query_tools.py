@@ -1,6 +1,16 @@
 """
 数据查询工具 - 用于 AI 助手查询系统数据
-所有查询都遵循用户权限控制
+
+【第三次迭代程思同负责】
+(3) AI 数据查询：帮助员工查看人力无法快速总结的各种数据
+    - query_my_tasks: 查询当前用户的任务列表
+    - query_projects: 查询项目列表
+    - query_clients: 查询客户列表
+    - query_client_detail: 查询客户详情
+    - query_approvals: 查询审批列表
+    - query_tickets: 查询工单列表
+    - query_dashboard_stats: 查询工作台统计
+    - search_users: 搜索用户
 """
 from datetime import datetime, timedelta
 from app.ai.tools import register_tool, get_current_user

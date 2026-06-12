@@ -3,10 +3,12 @@
 作者: 郝益墨
 
 【第三次迭代郝益墨负责】
-(2) 费用报销面板中的本月记录，筛选框增加按人名筛选
-(3) admin账号中，本月报销金额显示全部报销金额，本月报销类别分布显示全部报销情况
-(4) 报销记录界面，可点击查看每一个报销的详情内容
-(5) 新建报销中，加入上传附件功能（图片、文档）
+(1) 财务看板整合到收付款页面，仅admin可查看图表，位于页面下方
+(2) 费用报销面板中的本月记录，筛选框增加按人名筛选 √
+(3) admin账号中，本月报销金额显示全部报销金额，本月报销类别分布显示全部报销情况 √
+(4) 报销记录界面，可点击查看每一个报销的详情内容 √
+(5) 新建报销中，加入上传附件功能（图片、文档） √
+(6) 费用报销页面支持打款方式选择（微信、支付宝、PayPal）
 """
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -99,7 +101,8 @@ def get_expenses():
         page=page, per_page=per_page, error_out=False
     )
     
-    # 【修复】同步检查：如果 expense 关联了 approval，但状态不一致，自动同步
+    # 【第三次迭代于然负责】(9) 同步检查：费用报销与审批中心状态同步
+    # 如果 expense 关联了 approval，但状态不一致，自动同步
     expenses_data = []
     for e in pagination.items:
         if e.approval_id:
@@ -142,7 +145,8 @@ def create_expense():
     db.session.add(expense)
     db.session.flush()
     
-    # 【新增】同步创建审批中心审批单
+    # 【第三次迭代于然负责】(9) 新建报销时同步创建审批中心审批单
+    # 费用报销页面新建报销后，在审批中心可直接看到并审批
     applicant = User.query.get(current_user_id)
     approval = Approval(
         title=data['title'],

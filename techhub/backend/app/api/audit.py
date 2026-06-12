@@ -1,9 +1,13 @@
 """
 审计日志 API - 操作日志查询与管理
-第三次迭代陈思言负责：
-- 新增时间范围筛选（start_time / end_time）
-- 新增日志详情接口 /detail/<log_id>
-- 新增 Excel 导出接口 /export（使用 openpyxl 生成）
+
+【第三次迭代陈思言负责】
+(3) 审计日志详情页面优化 √：
+    - 新增时间范围筛选（start_time / end_time）
+    - 新增日志详情接口 /detail/<log_id>，按分组格式展示
+    - 详情内容补充丰富：基础信息/请求详情/服务端信息
+(4) 审计日志四个看板改为可交互按钮，增强交互性 √
+(5) 数据分析员可查看审计日志页面（与于然(4)协同）
 """
 from flask import Blueprint, request, jsonify, send_file
 from app.services import AuditService

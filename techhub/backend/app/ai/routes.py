@@ -1,5 +1,15 @@
 """
 AI 助手 API 路由
+
+【第三次迭代程思同负责】
+(1) 接入 AI 大模型 DeepSeek，完善 AI 与员工的交流功能
+(2) AI 帮助员工新建任务、生成周报、获取智能提醒
+(3) AI 大数据筛选分析：判断最优客户、分析各种大数据
+
+功能：
+- /chat: AI 对话接口（支持工具调用循环）
+- /conversations: 历史会话管理（创建/查看/更新/删除）
+- /tools: 可用工具列表
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity

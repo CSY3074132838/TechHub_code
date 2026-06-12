@@ -1,6 +1,12 @@
 """
 数据分析工具 - 用于 AI 助手进行智能分析
-Phase 2 核心工具：客户分析、趋势分析、智能推荐
+
+【第三次迭代程思同负责】
+(3) AI 大数据筛选分析：
+    - analyze_client_potential: 分析客户合作潜力（综合合同金额、合作频次、付款记录等）
+    - analyze_client_trends: 分析客户合作趋势
+    - recommend_clients_to_focus: 智能推荐重点客户（待续签/流失风险/增长潜力）
+    - analyze_project_progress: 分析项目进度和健康度
 """
 from datetime import datetime, timedelta
 from collections import defaultdict

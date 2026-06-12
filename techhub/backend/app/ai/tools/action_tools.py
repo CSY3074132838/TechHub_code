@@ -1,6 +1,12 @@
 """
 操作工具 - 用于 AI 助手执行实际操作
-Phase 3 核心工具：创建任务、周报生成、智能提醒
+
+【第三次迭代程思同负责】
+(2) AI 帮助员工新建任务等加快工作效率：
+    - create_task: 创建新任务（指定标题、项目、执行人、截止日期）
+    - generate_weekly_report: 生成个人工作周报
+    - get_smart_reminders: 获取智能提醒（即将到期任务、待审批事项等）
+    - get_work_overview: 获取工作总览（今日/本周/本月统计）
 """
 from datetime import datetime, timedelta
 from app.ai.tools import register_tool, get_current_user

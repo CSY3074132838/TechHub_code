@@ -1,10 +1,10 @@
 """
 【第二次迭代】收付款记录管理 API
-作者: 郝益墨
 
 【第三次迭代郝益墨负责】
-(1) 财务看板放到收付款页面内，只有admin可以看到图表内容
-    财务看板在收付款页面的下方展示
+(1) 财务看板放到收付款页面内，只有admin可以看到图表内容：
+    - 收付款统计接口 /stats（收入/支出/趋势/合同排行）
+    - 财务看板在收付款页面的下方展示
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity

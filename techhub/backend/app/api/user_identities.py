@@ -1,6 +1,11 @@
 """
 用户身份管理 API
-一个用户可在多个部门拥有不同身份（部门+职位+角色）
+
+【第三次迭代于然负责】
+(5) 多重身份管理：一个用户可在多个部门拥有不同身份（部门+职位+角色）
+(6) 用户管理与组织架构同步：
+    - 编辑用户身份后同步更新 users 表
+    - 组织架构部门正确显示员工归属
 """
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
